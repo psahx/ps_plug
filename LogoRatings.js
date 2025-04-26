@@ -1,4 +1,4 @@
-// == Main Module | Base Original Script + MDBList Fetch for IMDB/TMDB ==
+// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT Display ==
 (function () {
     'use strict';
 
@@ -15,21 +15,17 @@
       var loaded = {};
 
       this.create = function () {
-        // **ORIGINAL** 'create' method
+        // **ORIGINAL** 'create' method - UNCHANGED
         html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>");
       };
 
       this.update = function (data) {
+        // **UNCHANGED** 'update' method from previous step (calls MDBLIST_Fetcher)
         var _this = this;
-
-        // Original 'update' PART 1
         html.find('.new-interface-info__head,.new-interface-info__details').text('---');
         html.find('.new-interface-info__title').text(data.title);
         html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
         Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
-        // End Original PART 1
-
-        // **ADDED**: MDBList Fetcher Call
         delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id];
         if (window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && data.id && data.method) {
              mdblistRatingsPending[data.id] = true;
@@ -42,15 +38,11 @@
                  }
              });
         } else if (!data.method) { /* Optional warning */ }
-        // --- END ADDED ---
-
-        // Original 'update' PART 2
         this.load(data);
-        // End Original PART 2
       };
 
       this.draw = function (data) {
-        // Original 'draw' variables
+        // Original 'draw' variables - UNCHANGED
         var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
         var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); // TMDB Score
         var head = [];
@@ -58,48 +50,49 @@
         var countries = Lampa.Api.sources.tmdb.parseCountries(data);
         var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
-        // Original head population
+        // Original head population - UNCHANGED
         if (create !== '0000') head.push('<span>' + create + '</span>');
         if (countries.length > 0) head.push(countries.join(', '));
 
         // --- Rating Display Logic ---
-        var mdblistResult = mdblistRatingsCache[data.id];
+        var mdblistResult = mdblistRatingsCache[data.id]; // Get MDBList results
 
-        // 1. IMDB Rating (Uses MDBList data, shows 0.0)
-        var imdbRating = mdblistResult && mdblistResult.imdb !== null ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
+        // 1. IMDB Rating (Uses MDBList data, shows 0.0) - UNCHANGED from previous step
+        var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number'
+                         ? parseFloat(mdblistResult.imdb || 0).toFixed(1)
+                         : '0.0';
         details.push('<div class="full-start__rate"><div>' + imdbRating + '</div><div>IMDB</div></div>');
 
-        // 2. TMDB Rating (Uses original data, shows 0.0)
-        // Using the logic from the working state where 0.0 was displayed
+        // 2. TMDB Rating (Uses original data, shows 0.0) - UNCHANGED from previous step
         details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>');
 
-        // NO KP or RT in this version - focusing on base style
-        // --- End Rating Display ---
+        // 3. **ADDED**: Rotten Tomatoes Rating (Uses MDBList data, shows 0% if missing/null)
+        let rtScoreDisplay = '0%'; // Default display string, mimicking the "0.0" logic for others
+        // Check if data exists, is a number, and not null before formatting
+        if (mdblistResult && typeof mdblistResult.tomatometer === 'number' && mdblistResult.tomatometer !== null) {
+            rtScoreDisplay = mdblistResult.tomatometer + '%'; // Format as percentage string
+        }
+         details.push('<div class="full-start__rate"><div>' + rtScoreDisplay + '</div><div>RT</div></div>');
+        // --- **END ADDED** ---
 
-        // Add other original details - UNCHANGED from original script
+        // Add other original details - UNCHANGED
         if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
         if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
         if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
 
-        // **ORIGINAL** HTML update
+        // **ORIGINAL** HTML update - UNCHANGED
         html.find('.new-interface-info__head').empty().append(head.join(', '));
         html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
       };
 
       this.load = function (data) {
-        // Original 'load' method - UNCHANGED (Ensures method added)
+        // Original 'load' method - UNCHANGED
         var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300);
       };
 
-      // Original 'render', 'empty' methods - UNCHANGED
+      // Original 'render', 'empty', 'destroy' methods - UNCHANGED (destroy clears MDBList cache)
       this.render = function () { return html; }; this.empty = function () {};
-
-      this.destroy = function () {
-        // Original destroy
-        html.remove(); loaded = {}; html = null;
-        // **ADDED**: Clear MDBList cache
-        mdblistRatingsCache = {}; mdblistRatingsPending = {};
-      };
+      this.destroy = function () { html.remove(); loaded = {}; html = null; mdblistRatingsCache = {}; mdblistRatingsPending = {}; };
     }
 
 
@@ -110,7 +103,7 @@
         this.create = function () {}; this.empty = function () { /* Original empty code */ var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); html.append(empty.render(button)); this.start = empty.start; this.activity.loader(false); this.activity.toggle(); }; this.loadNext = function () { /* Original loadNext code */ var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; new_data.forEach(_this.append.bind(_this)); Lampa.Layer.visible(items[active + 1].render(true)); }, function () { _this.next_wait = false; }); } }; this.push = function () {};
         this.build = function (data) { /* Original build code */ var _this2 = this; lezydata = data; info = new create(object); info.create(); scroll.minus(info.render()); data.slice(0, viewall ? data.length : 2).forEach(this.append.bind(this)); html.append(info.render()); html.append(scroll.render()); if (newlampa) { /* Original newlampa code */ Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { if (!Lampa.Controller.own(_this2)) _this2.start(); if (step > 0) _this2.down(); else if (active > 0) _this2.up(); }; } if (items.length > 0 && items[0] && items[0].data) { active = 0; info.update(items[active].data); this.background(items[active].data); } this.activity.loader(false); this.activity.toggle(); };
         this.background = function (elem) { /* Original background code */ if (!elem || !elem.backdrop_path) return; var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (new_background == background_last) return; background_timer = setTimeout(function () { background_img.removeClass('loaded'); background_img[0].onload = function () { background_img.addClass('loaded'); }; background_img[0].onerror = function () { background_img.removeClass('loaded'); }; background_last = new_background; setTimeout(function () { if (background_img[0]) background_img[0].src = background_last; }, 300); }, 1000); };
-        this.append = function (element) { /* Original append code, ensures method exists */ if (element.ready) return; var _this3 = this; element.ready = true; var item = new Lampa.InteractionLine(element, { url: element.url, card_small: true, cardClass: element.cardClass, genres: object.genres, object: object, card_wide: true, nomore: element.nomore }); item.create(); item.onDown = this.down.bind(this); item.onUp = this.up.bind(this); item.onBack = this.back.bind(this); item.onToggle = function () { active = items.indexOf(item); }; if (this.onMore) item.onMore = this.onMore.bind(this); item.onFocus = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; item.onHover = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; item.onFocusMore = info.empty.bind(info); scroll.append(item.render()); items.push(item); };
+        this.append = function (element) { /* Original append code */ if (element.ready) return; var _this3 = this; element.ready = true; var item = new Lampa.InteractionLine(element, { url: element.url, card_small: true, cardClass: element.cardClass, genres: object.genres, object: object, card_wide: true, nomore: element.nomore }); item.create(); item.onDown = this.down.bind(this); item.onUp = this.up.bind(this); item.onBack = this.back.bind(this); item.onToggle = function () { active = items.indexOf(item); }; if (this.onMore) item.onMore = this.onMore.bind(this); item.onFocus = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; item.onHover = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; item.onFocusMore = info.empty.bind(info); scroll.append(item.render()); items.push(item); };
         this.back = function () { Lampa.Activity.backward(); }; this.down = function () { active++; active = Math.min(active, items.length - 1); if (!viewall && lezydata) lezydata.slice(0, active + 2).forEach(this.append.bind(this)); items[active].toggle(); scroll.update(items[active].render()); }; this.up = function () { active--; if (active < 0) { active = 0; Lampa.Controller.toggle('head'); } else { items[active].toggle(); scroll.update(items[active].render()); } }; this.start = function () { /* Original start code */ var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { if (_this4.activity.canRefresh()) return false; if (items.length) { items[active].toggle(); } }, update: function update() {}, left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function right() { Navigator.move('right'); }, up: function up() { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function down() { if (Navigator.canmove('down')) Navigator.move('down'); }, back: this.back }); Lampa.Controller.toggle('content'); };
         this.refresh = function () { this.activity.loader(true); this.activity.need_refresh = true; }; this.pause = function () {}; this.stop = function () {}; this.render = function () { return html; }; this.destroy = function () { /* Original destroy code */ clearTimeout(background_timer); network.clear(); Lampa.Arrays.destroy(items); scroll.destroy(); if (info) info.destroy(); if (html) html.remove(); items = null; network = null; lezydata = null; info = null; html = null; };
     }
@@ -119,19 +112,18 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Base+MDBList: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Base+MDBList+RT: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **USING EXACT ORIGINAL CSS** from the first script you provided
-        var style_id = 'new_interface_style_original_untouched'; // ID for this state
+        // **USING EXACT ORIGINAL CSS** - UNCHANGED from previous step
+        var style_id = 'new_interface_style_original_untouched'; // Use same ID as previous correct one
         if (!$('style[data-id="' + style_id + '"]').length) {
-             // Clean up previous attempts aggressively
-             $('style[data-id^="new_interface_style_"]').remove(); // Remove all previous styles with this prefix
-
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up just in case
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
+            /* Exact original CSS */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -143,11 +135,7 @@
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
             .new-interface .full-start__background { height: 108%; top: -6em; }
-            /* This is the ORIGINAL style rule for the rating box */
             .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0; }
-            /* Note: The original script relied on default browser styles or other Lampa styles */
-            /* for the inner structure <div><div>Num</div><div>Label</div></div> */
-            /* We are NOT adding any extra styles here for those inner divs */
             .new-interface .card__promo { display: none; }
             .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }
             .new-interface .card.card--wide .card-watched { display: none !important; }
@@ -165,4 +153,3 @@
     if (!window.plugin_interface_ready) startPlugin();
 
 })();
-
