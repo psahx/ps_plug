@@ -1,119 +1,281 @@
-// == Original New Interface Script (v13 - Moved Info Creation into Build) ==
+// == Original New Interface Script + Extensive Logging ONLY ==
 
 (function () {
     'use strict';
+    const LOG_PREFIX = "### Original Log - "; // Prefix for clarity
 
     // --- Info Panel Class ('create' function from original script) ---
     function create() {
-      var html; var timer; var network = new Lampa.Reguest(); var loaded = {};
-      console.log("### InfoPanel: CONSTRUCTOR called"); // Log constructor start
+      var html;
+      var timer;
+      var network = new Lampa.Reguest();
+      var loaded = {};
+      console.log(LOG_PREFIX + "InfoPanel: CONSTRUCTOR called");
 
       this.create = function () {
-        console.log("### InfoPanel: create() method START"); // Log method start
-        html = $("<div class=\"new-interface-info\"><div class=\"new-interface-info__body\"><div class=\"new-interface-info__head\"></div><div class=\"new-interface-info__title\"></div><div class=\"new-interface-info__details\"></div><div class=\"new-interface-info__description\"></div></div></div>");
-        console.log("### InfoPanel: create() method END - HTML created"); // Log method end
+        console.log(LOG_PREFIX + "InfoPanel: create() START");
+        html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>");
+        console.log(LOG_PREFIX + "InfoPanel: create() END");
       };
 
-      this.update = function (data) { console.log("### InfoPanel: update() called with data:", data?.id); if (!data || typeof data !== 'object') { return; } if(!html) { console.error("InfoPanel update - HTML missing!"); /* Attempt recovery? */ this.create(); if(!html) return; } html.find('.new-interface-info__head,.new-interface-info__details').empty().text('---'); html.find('.new-interface-info__title').text(data.title || data.name || ''); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); this.load(data); };
-      this.draw = function (data) { /* ... draw logic with ratings ... */ console.log("### InfoPanel: draw() called with detailed data:", data?.id); if (!html) { console.error("### InfoPanel draw - HTML missing!"); return; } if (!data || typeof data !== 'object' || !data.id) { if(html) html.find('.new-interface-info__details').empty().text('Error loading details.'); return; } var movie_id = data.id; var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var head = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); if (create_year !== '0000') head.push('<span>' + create_year + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); html.find('.new-interface-info__head').empty().append(head.join(', ')); var details_container = html.find('.new-interface-info__details').empty(); var rating_elements = []; var other_detail_elements = []; var vote_tmdb = parseFloat((data.vote_average || 0) + '').toFixed(1); if (vote_tmdb > 0) { rating_elements.push('<div class="full-start__rate rate--tmdb"><div>' + vote_tmdb + '</div><div>TMDB</div></div>'); } rating_elements.push('<div class="full-start__rate rate--imdb loading" id="imdb-rating-' + movie_id + '">...</div>'); rating_elements.push('<div class="full-start__rate rate--kp loading" id="kp-rating-' + movie_id + '">...</div>'); var pg = Lampa.Api.sources.tmdb.parsePG(data); if (data.genres?.length > 0) { other_detail_elements.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); } if (data.runtime) { other_detail_elements.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); } if (pg) { other_detail_elements.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); } details_container.append(rating_elements.join('')); var details_splitter = $('<span class="new-interface-info__split details-splitter" style="display: none;">&#9679;</span>'); details_container.append(details_splitter); details_container.append(other_detail_elements.join('<span class="new-interface-info__split">&#9679;</span>')); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); console.log("### InfoPanel draw - Checking Ratings Fetcher..."); if (window.ExternalRatingsFetcher?.fetch) { console.log("### InfoPanel draw - Calling fetch..."); var data_for_fetcher = { id: data.id, title: data.title || data.name, original_title: data.original_title || data.original_name, release_date: data.release_date || data.first_air_date, imdb_id: data.imdb_id }; window.ExternalRatingsFetcher.fetch(data_for_fetcher, function(ratings) { console.log("### InfoPanel draw - Ratings received:", ratings); var imdb_placeholder = html.find('#imdb-rating-' + movie_id); var kp_placeholder = html.find('#kp-rating-' + movie_id); if (!imdb_placeholder.length && !kp_placeholder.length) { return; } imdb_placeholder.removeClass('loading').empty(); kp_placeholder.removeClass('loading').empty(); var kp_rating_str = (ratings.kp && !isNaN(ratings.kp)) ? parseFloat(ratings.kp).toFixed(1) : '0'; var imdb_rating_str = (ratings.imdb && !isNaN(ratings.imdb)) ? parseFloat(ratings.imdb).toFixed(1) : '0'; if (parseFloat(imdb_rating_str) > 0) { imdb_placeholder.append('<div>' + imdb_rating_str + '</div><div>IMDb</div>').show(); } else { imdb_placeholder.hide(); } if (parseFloat(kp_rating_str) > 0) { kp_placeholder.append('<div>' + kp_rating_str + '</div><div>KP</div>').show(); } else { kp_placeholder.hide(); } details_container.find('.rating-splitter, .details-splitter').remove(); var visible_ratings = details_container.find('.full-start__rate:visible'); visible_ratings.each(function(index) { if (index < visible_ratings.length - 1) { $(this).after('<span class="new-interface-info__split rating-splitter">&#9679;</span>'); } }); if (visible_ratings.length > 0 && other_detail_elements.length > 0) { visible_ratings.last().after('<span class="new-interface-info__split details-splitter">&#9679;</span>'); } }); } else { console.error("Ratings Fetcher not found!"); if(html) html.find('#imdb-rating-' + movie_id + ', #kp-rating-' + movie_id).hide(); } };
-      this.load = function (data) { console.log("### InfoPanel: load() called for:", data?.id); if (!data || !data.id) { return; } var _this = this; clearTimeout(timer); var media_type = data.name ? 'tv' : 'movie'; var url = Lampa.TMDB.api(media_type + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language')); if (loaded[url]) { console.log("### InfoPanel load - Cache HIT"); let cached_data = loaded[url]; if (cached_data.external_ids && !cached_data.imdb_id) { cached_data.imdb_id = cached_data.external_ids.imdb_id; } if (!cached_data.title && cached_data.name) { cached_data.title = cached_data.name; } if (!cached_data.original_title && cached_data.original_name) { cached_data.original_title = cached_data.original_name; } this.draw(cached_data); return; } console.log("### InfoPanel load - Cache MISS, fetching:", url); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie_detailed) { console.log("### InfoPanel load - Fetch SUCCESS"); if (movie_detailed.external_ids) { movie_detailed.imdb_id = movie_detailed.external_ids.imdb_id; } if (!movie_detailed.title && movie_detailed.name) { movie_detailed.title = movie_detailed.name; } if (!movie_detailed.original_title && movie_detailed.original_name) { movie_detailed.original_title = movie_detailed.original_name; } loaded[url] = movie_detailed; _this.draw(movie_detailed); }, function(a, c) { console.error("### InfoPanel load - Fetch ERROR:", network.errorDecode(a,c)); if(html) html.find('.new-interface-info__details').empty().text('Error loading details.'); }); }, 100); };
-      this.render = function () { return html; };
-      this.empty = function () { console.log("### InfoPanel: empty() called"); if(html) { html.find('.rate--kp, .rate--imdb').empty().hide(); html.find('.new-interface-info__head,.new-interface-info__details,.new-interface-info__title,.new-interface-info__description').empty().text(''); } };
-      this.destroy = function () { console.log("### InfoPanel: destroy() called"); try { if (html) html.remove(); } catch (e) {} loaded = {}; html = null; network.clear(); };
+      this.update = function (data) {
+        console.log(LOG_PREFIX + "InfoPanel: update() START - Received data:", data?.id, data?.title || data?.name);
+        if (!data || typeof data !== 'object') { console.warn(LOG_PREFIX + "InfoPanel update() - Invalid data received."); return; }
+        if(!html) { console.error(LOG_PREFIX + "InfoPanel update() - HTML not created!"); this.create(); if(!html) return; } // Safety check
+
+        html.find('.new-interface-info__head,.new-interface-info__details').empty().text('---');
+        html.find('.new-interface-info__title').text(data.title || data.name || '');
+        html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
+        console.log(LOG_PREFIX + "InfoPanel: update() - Calling load()...");
+        this.load(data);
+      };
+
+      this.draw = function (data) {
+        console.log(LOG_PREFIX + "InfoPanel: draw() START - Received detailed data:", data?.id, data?.title || data?.name);
+        if (!html) { console.error(LOG_PREFIX + "InfoPanel draw() - HTML not created!"); return; }
+        if (!data || typeof data !== 'object' || !data.id) { console.warn(LOG_PREFIX + "InfoPanel draw() - Invalid detailed data received."); if(html) html.find('.new-interface-info__details').empty().text('Error loading details.'); return; }
+
+        var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
+        var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
+        var head = [];
+        var details = [];
+        var countries = Lampa.Api.sources.tmdb.parseCountries(data);
+        var pg = Lampa.Api.sources.tmdb.parsePG(data);
+        console.log(LOG_PREFIX + "InfoPanel: draw() - Parsed:", { create, vote, countries, pg });
+
+        if (create !== '0000') head.push('<span>' + create + '</span>');
+        if (countries.length > 0) head.push(countries.join(', '));
+
+        if (vote > 0) details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>'); // Original TMDB rating
+        if (data.genres && data.genres.length > 0) { details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); }
+        if (data.runtime) { details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); }
+        if (pg) { details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); }
+
+        console.log(LOG_PREFIX + "InfoPanel: draw() - Updating DOM elements...");
+        html.find('.new-interface-info__head').empty().append(head.join(', '));
+        html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
+        html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
+        console.log(LOG_PREFIX + "InfoPanel: draw() END");
+      };
+
+      this.load = function (data) {
+        console.log(LOG_PREFIX + "InfoPanel: load() START - Received data:", data?.id, data?.title || data?.name);
+        if (!data || !data.id) { console.warn(LOG_PREFIX + "InfoPanel load() - Invalid data."); return; }
+        var _this = this;
+        clearTimeout(timer);
+        var media_type = data.name ? 'tv' : 'movie';
+        // *** Original URL without external_ids ***
+        var url = Lampa.TMDB.api(media_type + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
+        console.log(LOG_PREFIX + "InfoPanel: load() - TMDB URL:", url);
+
+        if (loaded[url]) { // Check cache
+            console.log(LOG_PREFIX + "InfoPanel: load() - Cache HIT.");
+             // Ensure title consistency just in case
+             if (!loaded[url].title && loaded[url].name) { loaded[url].title = loaded[url].name; }
+             if (!loaded[url].original_title && loaded[url].original_name) { loaded[url].original_title = loaded[url].original_name; }
+            return this.draw(loaded[url]);
+        }
+
+        console.log(LOG_PREFIX + "InfoPanel: load() - Cache MISS. Fetching...");
+        timer = setTimeout(function () {
+          network.clear();
+          network.timeout(5000);
+          network.silent(url, function (movie) { // Success
+            console.log(LOG_PREFIX + "InfoPanel: load() - Fetch SUCCESS.");
+             // Ensure title consistency
+             if (!movie.title && movie.name) { movie.title = movie.name; }
+             if (!movie.original_title && movie.original_name) { movie.original_title = movie.original_name; }
+            loaded[url] = movie;
+            _this.draw(movie);
+          }, function(a, c) { // Error
+             console.error(LOG_PREFIX + "InfoPanel: load() - Fetch ERROR:", network.errorDecode(a, c));
+             if(html) html.find('.new-interface-info__details').empty().text('Error loading details.');
+          });
+        }, 300);
+      };
+
+      this.render = function () {
+          console.log(LOG_PREFIX + "InfoPanel: render() called.");
+          return html;
+      };
+      this.empty = function () {
+          console.log(LOG_PREFIX + "InfoPanel: empty() called.");
+          if(html){ html.find('.new-interface-info__head,.new-interface-info__details,.new-interface-info__title,.new-interface-info__description').empty().text(''); }
+      };
+      this.destroy = function () {
+          console.log(LOG_PREFIX + "InfoPanel: destroy() called.");
+          if(html) html.remove(); loaded = {}; html = null; network.clear();
+      };
     } // --- End Info Panel Class ---
+
 
     // --- Main Component Class (Original Structure) ---
     function component(object) {
       var network = new Lampa.Reguest(); var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); var items = []; var html = $('<div class="new-interface"><img class="full-start__background"></div>'); var active = 0; var newlampa = Lampa.Manifest.app_digital >= 166; var info; var lezydata; var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; var background_img = html.find('.full-start__background'); var background_last = ''; var background_timer;
+      console.log(LOG_PREFIX + "Component: CONSTRUCTOR called with object:", object);
 
-      // *** component.create - REMOVED info creation ***
       this.create = function () {
-          console.log("### Component: create() called - Info creation moved to build.");
-          // Do NOT create info instance here
+          console.log(LOG_PREFIX + "Component: create() START");
+          info = new create(); // Instantiate original info panel controller
+          info.create();
+          html.prepend(info.render()); // Prepend info panel
+          console.log(LOG_PREFIX + "Component: create() END");
       };
 
-      this.empty = function () { /* ... original empty logic ... */ console.log("### Component: empty() called"); var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); if(html) html.append(empty.render(button)); this.start = empty.start; if(this.activity) this.activity.loader(false); if(this.activity) this.activity.toggle(); };
-      this.loadNext = function () { /* ... original load next logic ... */ console.log("### Component: loadNext() called"); var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; var results = Array.isArray(new_data) ? new_data : (new_data?.results || []); results.forEach(_this.append.bind(_this)); if (items[active + 1]) { Lampa.Layer.visible(items[active + 1].render(true)); } }, function () { _this.next_wait = false; }); } };
-      this.push = function () {};
+      this.empty = function () {
+          console.log(LOG_PREFIX + "Component: empty() called");
+          var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); if(html) html.append(empty.render(button)); this.start = empty.start; if(this.activity) this.activity.loader(false); if(this.activity) this.activity.toggle();
+      };
 
-      // *** component.build - MOVED info creation here ***
+      this.loadNext = function () {
+          console.log(LOG_PREFIX + "Component: loadNext() called. Wait:", this.next_wait);
+          var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; console.log(LOG_PREFIX + "Component: loadNext() - Received new data."); var results = Array.isArray(new_data) ? new_data : (new_data?.results || []); results.forEach(_this.append.bind(_this)); if (items[active + 1]) { Lampa.Layer.visible(items[active + 1].render(true)); } }, function () { console.warn(LOG_PREFIX + "Component: loadNext() - Error callback."); _this.next_wait = false; }); }
+      };
+      this.push = function () { console.log(LOG_PREFIX + "Component: push() called (No action)."); };
+
       this.build = function (data) {
-            console.log("### Component build - START");
-            var _this2 = this; items = []; active = 0;
+            console.log(LOG_PREFIX + "Component: build() START. Received data:", JSON.stringify(data).slice(0, 300) + '...');
+            var _this2 = this;
+            lezydata = data; // Store original data
+            items = []; // Reset items
+            active = 0; // Reset active index
 
-            // --- Create info panel instance HERE ---
-            try {
-                info = new create(); // Instantiate info panel controller
-                info.create();      // Build its HTML
-                console.log("### Component build - Info instance created successfully.");
-                 // Prepend its HTML to the main container
-                 if (html.children('.new-interface-info').length === 0) {
-                     html.prepend(info.render());
-                     console.log("### Component build - Info panel prepended.");
-                 }
-            } catch (e) {
-                console.error("### Component build - ERROR creating/prepending info instance:", e);
-                this.empty(); // Cannot proceed without info panel
-                return;
-            }
-            // --- End info panel creation ---
+            // Determine items to process - ORIGINAL script didn't handle nested rows explicitly here.
+            // It assumed 'data' was the list to iterate. Let's log what happens.
+            var items_to_process = Array.isArray(data) ? data : (data?.results || data || []); // Try to get a list
+            console.log(LOG_PREFIX + "Component: build() - Determined", items_to_process.length, "items to process.");
 
-            // --- Find first movie row ---
-            var firstMovieRowData = null; var rows_to_process = Array.isArray(data) ? data : (data?.results || []);
-            console.log("### Component build - Found", rows_to_process.length, "initial rows.");
-            for (let i = 0; i < rows_to_process.length; i++) { let row = rows_to_process[i]; if (row?.results?.length > 0 && row.results[0].id) { console.log("### Component build - Found movie row:", row.title); firstMovieRowData = row.results; lezydata = firstMovieRowData; break; } }
-            if (!firstMovieRowData) { console.warn("### Component build - No valid movie row found."); this.empty(); return; }
-            console.log("### Component build - Using", firstMovieRowData.length, "movies from first valid row.");
-            // --- End Finding Row ---
+            // Original scroll setup
+             if (!info || typeof info.render !== 'function') { console.error(LOG_PREFIX + "Component: build() - 'info' not ready before scroll.minus!"); this.empty(); return; }
+             console.log(LOG_PREFIX + "Component: build() - Calling scroll.minus()...");
+             scroll.minus(info.render());
+             console.log(LOG_PREFIX + "Component: build() - scroll.minus() finished.");
 
-            // --- Call scroll.minus() ---
-            try {
-                 console.log("### Component build - Calling scroll.minus()...");
-                 if (!scroll || typeof scroll.minus !== 'function') { scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); } // Create scroll if needed
-                 scroll.minus(info.render()); // Pass info panel's render output
-                 console.log("### Component build - scroll.minus() finished.");
-            } catch (e) { console.error("### Component build - ERROR during scroll.minus():", e, e.stack); }
-            // --- End scroll.minus() call ---
 
-            // Append initial cards
-            scroll.clear();
-            firstMovieRowData.slice(0, viewall ? firstMovieRowData.length : 2).forEach(this.append.bind(this));
-            console.log("### Component build - Finished appending initial cards. Total cards:", items.length);
+            // Append initial items - Iterate whatever items_to_process contains
+            scroll.clear(); // Clear previous items
+            console.log(LOG_PREFIX + "Component: build() - Appending initial items...");
+            items_to_process.slice(0, viewall ? items_to_process.length : 2).forEach(this.append.bind(this));
+            console.log(LOG_PREFIX + "Component: build() - Finished appending initial cards. Total cards:", items.length);
 
             // Append scroll container
-             if (html.children('.scroll').length === 0) { html.append(scroll.render()); console.log("### Component build - Appended scroll container."); }
+             if (html.children('.scroll').length === 0) { html.append(scroll.render()); console.log(LOG_PREFIX + "Component: build() - Appended scroll container."); }
 
             // Update initial info/background
-            if (items.length > 0) {
-                 console.log("### Component build - Updating info/background for first card:", items[0].data?.id);
+            if (items.length > 0 && items[0] && items[0].data) { // Check item and item.data exist
+                 console.log(LOG_PREFIX + "Component: build() - Updating info/background for first card:", items[0].data.id);
                  if(info?.update) info.update(items[0].data); else console.error("info.update missing");
                  this.background(items[0].data);
-            } else { console.warn("### Component build - No items appended."); if(info?.empty) info.empty(); }
+            } else { console.warn(LOG_PREFIX + "Component: build() - No valid items appended, cannot set initial info/background."); if(info?.empty) info.empty(); }
 
             // Lampa layer/scroll handling
-            if (newlampa) { Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { if (!Lampa.Controller.own(_this2)) _this2.start(); if (step > 0) _this2.down(); else if (active > 0) _this2.up(); }; }
+            if (newlampa) { console.log(LOG_PREFIX + "Component: build() - Setting up new Lampa Layer/Scroll handlers."); Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { if (!Lampa.Controller.own(_this2)) _this2.start(); if (step > 0) _this2.down(); else if (active > 0) _this2.up(); }; }
 
             this.activity.loader(false); this.activity.toggle();
-            console.log("### Component build - END.");
-      }; // *** End MODIFIED component.build ***
+            console.log(LOG_PREFIX + "Component: build() END.");
+      };
 
-      this.background = function (elem) { console.log("### Component: background() called for:", elem?.id); /* ... original background logic ... */ if (!elem || !elem.backdrop_path) return; var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (!new_background || new_background === background_last) return; background_timer = setTimeout(function () { background_img.removeClass('loaded'); var img = new Image(); img.onload = function () { if (background_last === new_background) { background_img.attr('src', new_background); background_img.addClass('loaded'); } }; img.onerror = function () { if (background_last === new_background) { background_img.removeClass('loaded').attr('src', ''); background_last = ''; } }; background_last = new_background; img.src = new_background; }, 100); };
-      this.append = function (element) { /* ... original append logic with original params ... */ console.log("### Component append - START for:", element?.id); var _this3 = this; if (!element || typeof element !== 'object' || !element.id) { return; } if (items.some(function(itm){ return itm.data?.id === element.id; })) { return; } if (element.ready) return; element.ready = true; if (!element.title && element.name) element.title = element.name; if (!element.original_title && element.original_name) element.original_title = element.original_name; try { var item = new Lampa.InteractionLine(element, { url: element.url, card_small: true, cardClass: element.cardClass, genres: object.genres, object: object, card_wide: true, nomore: element.nomore }); item.create(); item.onDown = this.down.bind(this); item.onUp = this.up.bind(this); item.onBack = this.back.bind(this); item.onToggle = function () { active = items.indexOf(item); }; if (this.onMore) item.onMore = this.onMore.bind(this); item.onFocus = function () { if (info?.update && item.data) { info.update(item.data); _this3.background(item.data); }}; item.onHover = function () { if (info?.update && item.data) { info.update(item.data); _this3.background(item.data); }}; item.onFocusMore = info.empty.bind(info); scroll.append(item.render()); items.push(item); console.log("### Component append - END. Total cards:", items.length); } catch(e) { console.error("### Component append - ERROR creating InteractionLine for:", element.id, e, e.stack); element.ready = true; }};
-      this.back = function () { Lampa.Activity.backward(); };
-      this.down = function () { /* ... original down logic ... */ console.log("### Component: down() called"); active++; active = Math.min(active, items.length - 1); if(!viewall && lezydata) { /* Lazyload check needs update: lezydata only has first row */ } if(items[active]) { items[active].toggle(); if(scroll) scroll.update(items[active].render()); } };
-      this.up = function () { /* ... original up logic ... */ console.log("### Component: up() called"); active--; if (active < 0) { active = 0; Lampa.Controller.toggle('head'); } else { if(items[active]) { items[active].toggle(); if(scroll) scroll.update(items[active].render()); } } };
-      this.start = function () { /* ... original start/controller logic ... */ console.log("### Component: start() called"); var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { console.log("### Component Controller Toggle:", active); if (_this4.activity?.canRefresh()) return false; if (items.length) { if(items[active]) items[active].toggle(); else if(items[0]) { active=0; items[0].toggle(); } } else { console.log("Component Controller Toggle - No items to toggle focus"); } }, update: function update() {}, left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function right() { Navigator.move('right'); }, up: function up() { _this4.up(); }, down: function down() { _this4.down(); }, back: _this4.back.bind(_this4) }); Lampa.Controller.toggle('content'); };
-      this.refresh = function () { this.activity.loader(true); this.activity.need_refresh = true; };
-      this.pause = function () {}; this.stop = function () {};
-      this.render = function () { return html; };
-      this.destroy = function () { /* ... original destroy logic ... */ console.log("### Component: destroy() called"); network.clear(); clearTimeout(background_timer); if(Lampa?.Arrays) Lampa.Arrays.destroy(items); if (scroll) scroll.destroy(); if (info) info.destroy(); if(html) html.remove(); items = null; scroll = null; network = null; lezydata = null; html=null; info=null; object=null; background_img=null; };
+      this.background = function (elem) { console.log(LOG_PREFIX + "Component: background() called for:", elem?.id); /* ... original background logic ... */ if (!elem || !elem.backdrop_path) return; var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (!new_background || new_background === background_last) return; background_timer = setTimeout(function () { background_img.removeClass('loaded'); var img = new Image(); img.onload = function () { if (background_last === new_background) { background_img.attr('src', new_background); background_img.addClass('loaded'); } }; img.onerror = function () { if (background_last === new_background) { background_img.removeClass('loaded').attr('src', ''); background_last = ''; } }; background_last = new_background; img.src = new_background; }, 100); };
+
+      this.append = function (element) {
+        console.log(LOG_PREFIX + "Component: append() START - Received element:", JSON.stringify(element).slice(0, 100) + '...');
+        var _this3 = this;
+        // Original script didn't have strict validation here, let's see what happens
+        // if (!element || typeof element !== 'object' || !element.id) { console.warn("Invalid element"); return; }
+
+        if (element.ready) { console.log(LOG_PREFIX + "Component: append() - Skipping 'ready' element."); return; }
+        element.ready = true;
+        if (!element.title && element.name) element.title = element.name;
+        if (!element.original_title && element.original_name) element.original_title = element.original_name;
+
+        // Prepare params for InteractionLine using original values
+        let line_params = {
+            url: element.url,
+            card_small: true,
+            cardClass: element.cardClass,
+            genres: object.genres, // 'object' is from component constructor
+            object: object,        // 'object' is from component constructor
+            card_wide: true,
+            nomore: element.nomore
+        };
+        console.log(LOG_PREFIX + "Component: append() - Params for InteractionLine:", line_params);
+
+        try {
+            console.log(LOG_PREFIX + "Component: append() - Creating InteractionLine...");
+            var item = new Lampa.InteractionLine(element, line_params); // Use Lampa's component
+            item.create();
+            console.log(LOG_PREFIX + "Component: append() - InteractionLine CREATED successfully for:", element?.id || element?.title);
+
+            // Original event handlers
+            item.onDown = this.down.bind(this); item.onUp = this.up.bind(this); item.onBack = this.back.bind(this);
+            item.onToggle = function () { active = items.indexOf(item); console.log(LOG_PREFIX + "Component append item.onToggle - Active index now:", active); };
+            if (this.onMore) item.onMore = this.onMore.bind(this);
+
+            item.onFocus = function () { console.log(LOG_PREFIX + "Component append item.onFocus:", item.data?.id); if (info?.update && item.data) { info.update(item.data); _this3.background(item.data); }};
+            item.onHover = function () { console.log(LOG_PREFIX + "Component append item.onHover:", item.data?.id); if (info?.update && item.data) { info.update(item.data); _this3.background(item.data); }};
+            if(info?.empty) item.onFocusMore = info.empty.bind(info);
+
+            scroll.append(item.render()); items.push(item);
+            console.log(LOG_PREFIX + "Component: append() END - Success. Total items:", items.length);
+        } catch(e) {
+            console.error(LOG_PREFIX + "Component: append() - ERROR creating/appending InteractionLine:", e, e.stack);
+            // Don't mark ready on error, maybe retry? Or maybe original didn't have try/catch
+             element.ready = false; // Allow potential retry?
+        }
+      };
+
+      this.back = function () { console.log(LOG_PREFIX + "Component: back() called."); Lampa.Activity.backward(); };
+      this.down = function () { console.log(LOG_PREFIX + "Component: down() called. Current active:", active); active++; active = Math.min(active, items.length - 1); if(!viewall && lezydata) { /* Original lazyload - might process rows again? */ console.log(LOG_PREFIX+"Down - Lazyload check"); /* lezydata.slice(0, active + 2).forEach(this.append.bind(this)); */ } if(items[active]) { items[active].toggle(); if(scroll) scroll.update(items[active].render()); } console.log(LOG_PREFIX + "Component: down() - New active:", active); };
+      this.up = function () { console.log(LOG_PREFIX + "Component: up() called. Current active:", active); active--; if (active < 0) { active = 0; Lampa.Controller.toggle('head'); } else { if(items[active]) { items[active].toggle(); if(scroll) scroll.update(items[active].render()); } } console.log(LOG_PREFIX + "Component: up() - New active:", active); };
+      this.start = function () { console.log(LOG_PREFIX + "Component: start() called."); var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { console.log(LOG_PREFIX+"Component Controller Toggle:", active); if (_this4.activity?.canRefresh()) return false; if (items.length) { if(items[active]) items[active].toggle(); else if(items[0]) { active=0; items[0].toggle(); } } else { console.log(LOG_PREFIX+"Component Controller Toggle - No items."); } }, update: function update() {}, left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function right() { Navigator.move('right'); }, up: function up() { _this4.up(); }, down: function down() { _this4.down(); }, back: _this4.back.bind(_this4) }); Lampa.Controller.toggle('content'); };
+      this.refresh = function () { console.log(LOG_PREFIX + "Component: refresh() called."); this.activity.loader(true); this.activity.need_refresh = true; };
+      this.pause = function () { console.log(LOG_PREFIX + "Component: pause() called.");}; this.stop = function () { console.log(LOG_PREFIX + "Component: stop() called.");};
+      this.render = function () { console.log(LOG_PREFIX + "Component: render() called."); return html; };
+      this.destroy = function () { console.log(LOG_PREFIX + "Component: destroy() called."); network.clear(); clearTimeout(background_timer); if(Lampa?.Arrays) Lampa.Arrays.destroy(items); if (scroll) scroll.destroy(); if (info) info.destroy(); if(html) html.remove(); items = null; scroll = null; network = null; lezydata = null; html=null; info=null; object=null; background_img=null; };
     } // --- End Main Component Class ---
 
     // --- Plugin Initialization ---
-    function startPlugin() { /* ... startPlugin logic ... */ if (window.plugin_new_interface_original_structure_ready) { return; } window.plugin_new_interface_original_structure_ready = true; console.log('New Interface Plugin (Original Structure): Starting initialization...'); var old_interface = Lampa.InteractionMain; var new_interface_component = component; if (typeof Lampa.InteractionMain !== 'function') { console.error("New Interface Plugin Error: Lampa.InteractionMain not found."); window.plugin_new_interface_original_structure_ready = false; return; } Lampa.InteractionMain = function (object) { var use_new_interface = true; if (!object || typeof object !== 'object') use_new_interface = false; else { if (!(object.source == 'tmdb' || object.source == 'cub')) use_new_interface = false; if (window.innerWidth < 767) use_new_interface = false; if (!Lampa.Account.hasPremium()) use_new_interface = false; if (Lampa.Manifest.app_digital < 153) use_new_interface = false; } var InterfaceClass = use_new_interface ? new_interface_component : old_interface; if (typeof InterfaceClass !== 'function') { InterfaceClass = old_interface; if (typeof InterfaceClass !== 'function') return {}; } console.log("New Interface Plugin (Original Structure): Using", use_new_interface ? "New Interface" : "Old Interface", "for component:", object?.component); return new InterfaceClass(object); }; var style_tag_id = 'new-interface-ratings-style'; if ($('#' + style_tag_id).length === 0) { Lampa.Template.add(style_tag_id, `/* CSS */ <style id="${style_tag_id}">.new-interface{display:flex;flex-direction:column; width: 100%; height: 100%;} .new-interface .scroll{flex-grow: 1; overflow-y: auto; padding: 0 1.5em;} .new-interface--rows .items-line{margin-bottom:1.5em} .new-interface .card--small.card--wide{width:18.3em}.new-interface-info{position:relative;padding:1.5em;height:24em;flex-shrink:0}.new-interface-info__body{width:80%;padding-top:1.1em}.new-interface-info__head{color:rgba(255,255,255,.6);margin-bottom:1em;font-size:1.3em;min-height:1em}.new-interface-info__head span{color:#fff}.new-interface-info__title{font-size:4em;font-weight:600;margin-bottom:.3em;overflow:hidden;text-overflow:".";display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;margin-left:-.03em;line-height:1.3}.new-interface-info__details{margin-bottom:1.6em;display:flex;align-items:center;flex-wrap:wrap;min-height:1.9em;font-size:1.1em}.new-interface-info__split{margin:0 .8em;font-size:.7em;display:inline-block;vertical-align:middle}.new-interface-info__description{font-size:1.2em;font-weight:300;line-height:1.5;overflow:hidden;text-overflow:".";display:-webkit-box;-webkit-line-clamp:4;line-clamp:4;-webkit-box-orient:vertical;width:70%}.new-interface .card-more__box{padding-bottom:95%}.new-interface .full-start__background{position:absolute;left:0;right:0;width:100%;height:108%;top:-6em;object-fit:cover;object-position:center center;opacity:0;transition:opacity .5s ease;z-index:-1}.new-interface .full-start__background.loaded{opacity:1}.new-interface .full-start__rate{font-size:1.3em;margin-right:0;display:inline-flex;flex-direction:column;align-items:center;text-align:center;min-width:3.5em;vertical-align:middle}.new-interface .full-start__rate>div:first-child{font-weight:700;font-size:1.1em}.new-interface .full-start__rate>div:last-child{font-size:.8em;color:rgba(255,255,255,.7);text-transform:uppercase}.new-interface .full-start__rate.loading{min-width:2.5em;color:rgba(255,255,255,.5);justify-content:center;display:inline-flex}.new-interface .full-start__rate.loading>div{display:none}.new-interface .full-start__rate.loading::after{content:'.';animation:dots 1s steps(5,end) infinite;display:inline-block;width:1em;text-align:left;font-size:1.1em;font-weight:700}.new-interface .card__promo{display:none}.new-interface .card.card--wide+.card-more .card-more__box{padding-bottom:95%}.new-interface .card.card--wide .card-watched{display:none!important}body.light--version .new-interface-info__body{width:69%;padding-top:1.5em}body.light--version .new-interface-info{height:25.3em}body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view{animation:animation-card-focus .2s}body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view{animation:animation-trigger-enter .2s forwards}@keyframes dots{0%,20%{color:transparent;text-shadow:.25em 0 0 transparent,.5em 0 0 transparent}40%{color:rgba(255,255,255,.5);text-shadow:.25em 0 0 transparent,.5em 0 0 transparent}60%{text-shadow:.25em 0 0 rgba(255,255,255,.5),.5em 0 0 transparent}80%,to{text-shadow:.25em 0 0 rgba(255,255,255,.5),.5em 0 0 rgba(255,255,255,.5)}}</style>`); $('body').append(Lampa.Template.get(style_tag_id, {}, true)); } console.log('New Interface Plugin (Original Structure): Initialization complete.'); }
+    function startPlugin() {
+        if (window.plugin_new_interface_original_logging_ready) { return; } // New flag name
+        window.plugin_new_interface_original_logging_ready = true;
 
-    // *** Initialization Logic with Polling ***
-    function checkAndInitialize() { var lampaReady = window.Lampa?.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain && Lampa.InteractionLine; var fetcherReady = window.ExternalRatingsFetcher?.fetch; if (lampaReady && fetcherReady) { startPlugin(); return true; } return false; }
-    if (!checkAndInitialize()) { var checkInterval = 250; var maxWaitTime = 15000; var timeWaited = 0; var initIntervalTimer = null; console.log('New Interface Plugin (Original Structure): Prerequisites not met. Starting polling...'); initIntervalTimer = setInterval(function() { timeWaited += checkInterval; if (checkAndInitialize()) { clearInterval(initIntervalTimer); } else if (timeWaited >= maxWaitTime) { clearInterval(initIntervalTimer); console.error('New Interface Plugin Error: Timed out waiting for Lampa and/or ExternalRatingsFetcher plugin.'); } }, checkInterval); }
+        console.log('New Interface Plugin (Original+Log): Starting initialization...');
+        var old_interface = Lampa.InteractionMain;
+        var new_interface_component = component; // Use the component defined above
+
+        if (typeof Lampa.InteractionMain !== 'function') { console.error("New Interface Plugin Error: Lampa.InteractionMain not found."); window.plugin_new_interface_original_logging_ready = false; return; }
+
+        Lampa.InteractionMain = function (object) {
+            var use_new_interface = true;
+            if (!object || typeof object !== 'object') use_new_interface = false;
+            else { if (!(object.source == 'tmdb' || object.source == 'cub')) use_new_interface = false; if (window.innerWidth < 767) use_new_interface = false; if (!Lampa.Account.hasPremium()) use_new_interface = false; if (Lampa.Manifest.app_digital < 153) use_new_interface = false; }
+
+            var InterfaceClass = use_new_interface ? new_interface_component : old_interface;
+            if (typeof InterfaceClass !== 'function') { InterfaceClass = old_interface; if (typeof InterfaceClass !== 'function') return {}; }
+            console.log("New Interface Plugin (Original+Log): Using", use_new_interface ? "New Interface" : "Old Interface", "for component:", object?.component);
+            return new InterfaceClass(object);
+        };
+
+        // --- CSS Styles (Keep original - no rating styles needed yet) ---
+        Lampa.Template.add('new_interface_style', "\n        <style>\n        .new-interface .card--small.card--wide { width: 18.3em; } .new-interface-info { position: relative; padding: 1.5em; height: 24em; } .new-interface-info__body { width: 80%; padding-top: 1.1em; } .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; } .new-interface-info__head span { color: #fff; } .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; -o-text-overflow: \".\"; text-overflow: \".\"; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; } .new-interface-info__details { margin-bottom: 1.6em; display: -webkit-box; display: -webkit-flex; display: -moz-box; display: -ms-flexbox; display: flex; -webkit-box-align: center; -webkit-align-items: center; -moz-box-align: center; -ms-flex-align: center; align-items: center; -webkit-flex-wrap: wrap; -ms-flex-wrap: wrap; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; } .new-interface-info__split { margin: 0 1em; font-size: 0.7em; } .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; -o-text-overflow: \".\"; text-overflow: \".\"; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; } .new-interface .card-more__box { padding-bottom: 95%; } .new-interface .full-start__background { height: 108%; top: -6em; } .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0; } .new-interface .card__promo { display: none; } .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; } .new-interface .card.card--wide .card-watched { display: none !important; } body.light--version .new-interface-info__body { width: 69%; padding-top: 1.5em; } body.light--version .new-interface-info { height: 25.3em; } body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view{ animation: animation-card-focus 0.2s } body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view{ animation: animation-trigger-enter 0.2s forwards } </style>\n    ");
+        var style_tag = Lampa.Template.get('new_interface_style', {}, true); // Get template jQuery object
+             style_tag.attr('id', 'new-interface-style-original-log'); // Add an ID
+             if ($('#' + 'new-interface-style-original-log').length === 0) { // Check if not already added
+                 $('body').append(style_tag);
+             }
+        console.log('New Interface Plugin (Original+Log): Initialization complete.');
+    }
+
+    // *** Initialization Logic (No Polling Needed Here) ***
+    // Assuming original script didn't need polling for external fetcher
+    function checkAndInitialize() {
+        var lampaReady = window.Lampa?.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain && Lampa.InteractionLine;
+        if (lampaReady) { startPlugin(); return true; } return false;
+    }
+    if (!checkAndInitialize()) {
+        var checkInterval = 250; var maxWaitTime = 15000; var timeWaited = 0; var initIntervalTimer = null;
+        console.log('New Interface Plugin (Original+Log): Lampa not ready. Starting polling...');
+        initIntervalTimer = setInterval(function() { timeWaited += checkInterval; if (checkAndInitialize()) { clearInterval(initIntervalTimer); } else if (timeWaited >= maxWaitTime) { clearInterval(initIntervalTimer); console.error('New Interface Plugin Error: Timed out waiting for Lampa.'); } }, checkInterval);
+    }
 
 })();
