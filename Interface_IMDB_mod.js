@@ -1,8 +1,8 @@
-// == User's Original Script + Logging ONLY ==
+// == User's Original Script + Logging ONLY (v16) ==
 
 (function () {
     'use strict';
-    const LOG_PREFIX = "### Original Log - "; // Prefix for clarity
+    const LOG_PREFIX = "### Original Log v16 - "; // Prefix for this version
 
     // --- Info Panel Class ('create' function from original script) ---
     function create(object) { // Added object parameter based on usage in component.build
@@ -10,7 +10,7 @@
       var timer;
       var network = new Lampa.Reguest();
       var loaded = {};
-      console.log(LOG_PREFIX + "InfoPanel: CONSTRUCTOR called with object:", JSON.stringify(object)); // Log object passed
+      console.log(LOG_PREFIX + "InfoPanel: CONSTRUCTOR called with object:", object); // Keep log minimal
 
       this.create = function () {
         console.log(LOG_PREFIX + "InfoPanel: create() START");
@@ -19,40 +19,34 @@
       };
 
       this.update = function (data) {
-        // Use JSON.stringify for potentially complex 'data' if needed, or log specific fields
-        console.log(LOG_PREFIX + "InfoPanel: update() START - Received data (logging first 100 chars):", JSON.stringify(data).slice(0,100)+'...');
-        // Original safety check (data could be DOM element or object)
+        console.log(LOG_PREFIX + "InfoPanel: update() START - Received data type:", typeof data, "- Has ID:", data && typeof data.id !== 'undefined');
+        // console.log(LOG_PREFIX + "InfoPanel: update() START - Received data:", data); // Full data log if needed
         if(!data) { console.warn(LOG_PREFIX + "InfoPanel update() - Received null/undefined data."); return; }
         if(!html) { console.error(LOG_PREFIX + "InfoPanel update() - HTML not created!"); this.create(); if(!html) return; }
 
-        // Extract properties carefully, checking existence
+        // Extract properties carefully from original logic
         let title = data.title || data.name || '---'; // Title/Name might exist
         let overview = data.overview || Lampa.Lang.translate('full_notext'); // Overview might exist
         let backdrop = data.backdrop_path; // Backdrop path might exist
 
-        console.log(LOG_PREFIX + "InfoPanel: update() - Extracted:", {title, overview, backdrop});
-
+        console.log(LOG_PREFIX + "InfoPanel: update() - Updating DOM with:", {title: title.slice(0,20)+'...', overview: overview.slice(0,30)+'...', backdrop});
         html.find('.new-interface-info__head,.new-interface-info__details').empty().text('---'); // Original clear
         html.find('.new-interface-info__title').text(title);
         html.find('.new-interface-info__description').text(overview);
 
         if (backdrop) {
-             console.log(LOG_PREFIX + "InfoPanel: update() - Requesting background change (Original position).");
+             console.log(LOG_PREFIX + "InfoPanel: update() - Requesting background change (Original Lampa.Background call).");
              Lampa.Background.change(Lampa.Api.img(backdrop, 'w200')); // Original call
         } else {
              console.log(LOG_PREFIX + "InfoPanel: update() - No backdrop_path found in data.");
         }
 
-        // Check if data has an ID - it might be a DOM element initially
+        // Original check for ID before calling load
         if (data.id) {
-            console.log(LOG_PREFIX + "InfoPanel: update() - Data has ID, Calling load() for ID:", data.id);
+            console.log(LOG_PREFIX + "InfoPanel: update() - Calling load() for ID:", data.id);
             this.load(data);
         } else {
-            // What happens if data has no ID? Maybe it's the DOM element 'elem'?
-            // Can we get ID from 'elem' somehow if Lampa attaches data? (Less likely standard practice)
-            console.warn(LOG_PREFIX + "InfoPanel: update() - Data has no ID. Cannot load details. Data type:", typeof data);
-            // Maybe clear details if we can't load?
-            // html.find('.new-interface-info__head,.new-interface-info__details').empty().text('');
+            console.warn(LOG_PREFIX + "InfoPanel: update() - Data has no ID. Cannot load details.");
         }
         console.log(LOG_PREFIX + "InfoPanel: update() END");
       };
@@ -68,7 +62,7 @@
         var head = []; var details = [];
         var countries = Lampa.Api.sources.tmdb.parseCountries(data);
         var pg = Lampa.Api.sources.tmdb.parsePG(data);
-        console.log(LOG_PREFIX + "InfoPanel: draw() - Parsed:", { create_year, vote, countries, pg });
+        console.log(LOG_PREFIX + "InfoPanel: draw() - Parsed:", { create_year, vote, countries: countries.slice(0,2), pg }); // Log parsed data
 
         if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
         if (countries.length > 0) head.push(countries.join(', '));
@@ -80,6 +74,7 @@
         console.log(LOG_PREFIX + "InfoPanel: draw() - Updating DOM details...");
         html.find('.new-interface-info__head').empty().append(head.join(', '));
         html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
+        // Update description again with detailed overview
         html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
         console.log(LOG_PREFIX + "InfoPanel: draw() END");
       };
@@ -107,12 +102,20 @@
       var network = new Lampa.Reguest(); var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); var items = []; var html = $('<div class="new-interface"><img class="full-start__background"></div>'); var active = 0; var newlampa = Lampa.Manifest.app_digital >= 166; var info; var lezydata; var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; var background_img = html.find('.full-start__background'); var background_last = ''; var background_timer;
       console.log(LOG_PREFIX + "Component: CONSTRUCTOR called with object:", JSON.stringify(object));
 
-      this.create = function () { // Original is empty
+      // Original component.create (EMPTY)
+      this.create = function () {
           console.log(LOG_PREFIX + "Component: create() called (Original - Empty)");
       };
 
-      this.empty = function () { /* Original empty */ console.log(LOG_PREFIX + "Component: empty() called"); var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); if(html) html.append(empty.render(button)); this.start = empty.start; if(this.activity) this.activity.loader(false); if(this.activity) this.activity.toggle(); };
-      this.loadNext = function () { /* Original loadNext */ console.log(LOG_PREFIX + "Component: loadNext() called. Wait:", this.next_wait); var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; console.log(LOG_PREFIX + "Component: loadNext() - Received new data:", new_data); var data_to_process = Array.isArray(new_data) ? new_data : (new_data?.results || []); data_to_process.forEach(_this.append.bind(_this)); if (items[active + 1]?.render) { Lampa.Layer.visible(items[active + 1].render(true)); } }, function () { console.warn(LOG_PREFIX + "Component: loadNext() - Error callback."); _this.next_wait = false; }); } };
+      this.empty = function () {
+        console.log(LOG_PREFIX + "Component: empty() called");
+        var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); if(html) html.append(empty.render(button)); this.start = empty.start; if(this.activity) this.activity.loader(false); if(this.activity) this.activity.toggle();
+      };
+
+      this.loadNext = function () {
+        console.log(LOG_PREFIX + "Component: loadNext() START. Wait:", this.next_wait);
+        var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; console.log(LOG_PREFIX + "Component: loadNext() - Received new data:", new_data); var data_to_process = Array.isArray(new_data) ? new_data : (new_data?.results || []); console.log(LOG_PREFIX + "Component: loadNext() - Processing", data_to_process.length, "items."); data_to_process.forEach(_this.append.bind(_this)); if (items[active + 1]?.render) { console.log(LOG_PREFIX + "Component: loadNext() - Making next item visible."); Lampa.Layer.visible(items[active + 1].render(true)); } }, function () { console.warn(LOG_PREFIX + "Component: loadNext() - Error callback."); _this.next_wait = false; }); } else { console.log(LOG_PREFIX + "Component: loadNext() - Conditions not met."); }
+      };
       this.push = function () { console.log(LOG_PREFIX + "Component: push() called (No action)."); };
 
       this.build = function (data) {
@@ -124,36 +127,35 @@
             try { console.log(LOG_PREFIX + "Component: build() - Calling scroll.minus()..."); scroll.minus(info.render()); console.log(LOG_PREFIX + "Component: build() - scroll.minus() finished."); } catch (e) { console.error(LOG_PREFIX + "Component: build() - ERROR during scroll.minus():", e, e.stack); }
             var items_to_process = [];
             try {
-                console.log(LOG_PREFIX + "Component: build() - Determining items to process...");
-                // *** Logging the check more carefully ***
-                if (Array.isArray(data)) {
-                    console.log(LOG_PREFIX + "Component: build() - Data is Array. Using data.slice().");
-                    items_to_process = data.slice(0, viewall ? data.length : 2);
-                } else if (data && Array.isArray(data.results)) {
-                     console.log(LOG_PREFIX + "Component: build() - Data has results array. Using data.results.slice().");
-                     items_to_process = data.results.slice(0, viewall ? data.results.length : 2);
-                } else {
-                     console.warn(LOG_PREFIX + "Component: build() - Data is not Array or {results:[]}. Cannot slice for append.");
-                     items_to_process = []; // Set to empty if unexpected structure
-                }
+                console.log(LOG_PREFIX + "Component: build() - Determining items to process from data type:", Array.isArray(data) ? 'Array' : typeof data);
+                // Original logic attempted data.slice() - this needs clarification from logs
+                 if (data && typeof data.slice === 'function') { // Check if data ITSELF is sliceable (an array)
+                     console.log(LOG_PREFIX + "Component: build() - Data is sliceable (Array). Slicing data.");
+                     items_to_process = data.slice(0, viewall ? data.length : 2);
+                 } else if (data && Array.isArray(data.results)) { // Check if data.results is the array
+                      console.log(LOG_PREFIX + "Component: build() - Data has results array. Slicing data.results.");
+                      items_to_process = data.results.slice(0, viewall ? data.results.length : 2);
+                 } else {
+                      console.warn(LOG_PREFIX + "Component: build() - Data is not sliceable and has no results property. Cannot process items for append.");
+                      items_to_process = [];
+                 }
                 console.log(LOG_PREFIX + "Component: build() - Processing", items_to_process.length, "items for initial append.");
                 scroll.clear(); items_to_process.forEach(this.append.bind(this)); // Call append for each item
             } catch (e) { console.error(LOG_PREFIX + "Component: build() - ERROR during data processing/append loop:", e, e.stack); }
             console.log(LOG_PREFIX + "Component: build() - Finished appending initial cards. Total cards in 'items':", items.length);
-            if (info?.render && html.children('.new-interface-info').length === 0) html.prepend(info.render()); // Original prepend info panel
-            if (scroll?.render && html.children('.scroll').length === 0) html.append(scroll.render()); // Append scroll
+            if (info?.render && html.children('.new-interface-info').length === 0) { console.log(LOG_PREFIX + "Component: build() - Prepending info render."); html.prepend(info.render()); }
+            if (scroll?.render && html.children('.scroll').length === 0) { console.log(LOG_PREFIX + "Component: build() - Appending scroll render."); html.append(scroll.render()); }
             if (newlampa) { console.log(LOG_PREFIX + "Component: build() - Setting up Lampa Layer/Scroll."); Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { if (!Lampa.Controller.own(_this2)) _this2.start(); if (step > 0) _this2.down(); else if (active > 0) _this2.up(); }; }
-            if (items.length > 0 && items[0] && items[0].data) { console.log(LOG_PREFIX + "Component: build() - Updating initial info/background for item:", items[0].data?.id); if(info?.update) info.update(items[0].data); else console.error("info.update missing"); this.background(items[0].data); } else { console.warn(LOG_PREFIX + "Component: build() - No items appended for initial update."); if(info?.empty) info.empty(); }
+            if (items.length > 0 && items[0] && items[0].data) { console.log(LOG_PREFIX + "Component: build() - Updating initial info/background for item:", items[0].data?.id); if(info?.update) info.update(items[0].data); this.background(items[0].data); } else { console.warn(LOG_PREFIX + "Component: build() - No items appended for initial update."); if(info?.empty) info.empty(); }
             this.activity.loader(false); this.activity.toggle(); console.log(LOG_PREFIX + "Component: build() END.");
       }; // *** End Original component.build ***
 
-      this.background = function (elem) { console.log(LOG_PREFIX + "Component: background() called for:", elem?.id || elem); if (!elem || !elem.backdrop_path) return; var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (new_background == background_last) return; background_timer = setTimeout(function () { background_img.removeClass('loaded'); background_img[0].onload = function () { background_img.addClass('loaded'); }; background_img[0].onerror = function () { background_img.removeClass('loaded'); }; background_last = new_background; setTimeout(function () { background_img[0].src = background_last; }, 300); }, 1000); };
+      this.background = function (elem) { console.log(LOG_PREFIX + "Component: background() START - Received 'elem':", elem); if (!elem || !elem.backdrop_path) {console.log(LOG_PREFIX+"Component: background() - No backdrop path."); return;} var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (new_background == background_last){console.log(LOG_PREFIX+"Component: background() - Path same as last."); return;} console.log(LOG_PREFIX+"Component: background() - Setting path:", new_background); background_timer = setTimeout(function () { background_img.removeClass('loaded'); background_img[0].onload = function () { console.log(LOG_PREFIX+"Component: background() - Image loaded."); background_img.addClass('loaded'); }; background_img[0].onerror = function () { console.warn(LOG_PREFIX+"Component: background() - Image failed to load."); background_img.removeClass('loaded'); }; background_last = new_background; setTimeout(function () { background_img[0].src = background_last; }, 300); }, 1000); };
 
       this.append = function (element) {
         console.log(LOG_PREFIX + "Component: append() START - Received element:", JSON.stringify(element).slice(0, 100) + '...');
         var _this3 = this;
-        // No validation in original, proceed cautiously
-        if (!element || typeof element !== 'object') { console.warn(LOG_PREFIX + "Component append() - Element is not object:", element); /* return; */ } // Log if not object, but maybe original allowed this?
+        if (!element || typeof element !== 'object') { console.warn(LOG_PREFIX + "Component append() - Element is not object:", element); return; } // Added basic check just for logging context
 
         if (element.ready) { console.log(LOG_PREFIX + "Component: append() - Skipping 'ready' element:", element?.id || element?.title); return; }
         element.ready = true;
@@ -163,39 +165,50 @@
         console.log(LOG_PREFIX + "Component: append() - Params for InteractionLine:", line_params);
         try {
             console.log(LOG_PREFIX + "Component: append() - Creating InteractionLine with element:", element);
-            var item = new Lampa.InteractionLine(element, line_params);
+            var item = new Lampa.InteractionLine(element, line_params); // Original call
             item.create();
-            console.log(LOG_PREFIX + "Component: append() - InteractionLine CREATED successfully.");
+            console.log(LOG_PREFIX + "Component: append() - InteractionLine CREATED successfully for:", element?.id || element?.title);
+            // Original event handlers
             item.onDown = this.down.bind(this); item.onUp = this.up.bind(this); item.onBack = this.back.bind(this);
             item.onToggle = function () { active = items.indexOf(item); console.log(LOG_PREFIX + "Component append item.onToggle - Active index now:", active); };
             if (this.onMore) item.onMore = this.onMore.bind(this);
-            // Original onFocus/onHover
-            item.onFocus = function (elem) { console.log(LOG_PREFIX + "Component append item.onFocus - Received 'elem':", elem); console.log(LOG_PREFIX + "Component append item.onFocus - 'info' exists:", !!info); if (info?.update) info.update(elem); _this3.background(elem); };
-            item.onHover = function (elem) { console.log(LOG_PREFIX + "Component append item.onHover - Received 'elem':", elem); if (info?.update) info.update(elem); _this3.background(elem); };
-            if(info?.empty) item.onFocusMore = info.empty.bind(info);
+            item.onFocus = function (elem) { // Original uses 'elem'
+                 console.log(LOG_PREFIX + "Component append item.onFocus - Received 'elem':", elem);
+                 console.log(LOG_PREFIX + "Component append item.onFocus - Calling info.update(elem) and background(elem)...");
+                 if (info?.update) info.update(elem); else console.warn("onFocus: info.update not ready");
+                 _this3.background(elem); // Original uses elem
+            };
+            item.onHover = function (elem) { // Original uses 'elem'
+                 console.log(LOG_PREFIX + "Component append item.onHover - Received 'elem':", elem);
+                 console.log(LOG_PREFIX + "Component append item.onHover - Calling info.update(elem) and background(elem)...");
+                 if (info?.update) info.update(elem); else console.warn("onHover: info.update not ready");
+                 _this3.background(elem); // Original uses elem
+            };
+            if(info?.empty) item.onFocusMore = info.empty.bind(info); // Original
             scroll.append(item.render()); items.push(item);
             console.log(LOG_PREFIX + "Component: append() END - Success. Total items:", items.length);
-        } catch(e) { console.error(LOG_PREFIX + "Component: append() - ERROR creating/appending InteractionLine:", e, e.stack); element.ready = false; } // Unset ready on error maybe?
+        } catch(e) { console.error(LOG_PREFIX + "Component: append() - ERROR creating/appending InteractionLine:", e, e.stack); element.ready = true; } // Mark ready on error? Original didn't have try/catch
       };
 
       this.back = function () { console.log(LOG_PREFIX + "Component: back() called."); Lampa.Activity.backward(); };
-      this.down = function () { /* ... original down logic ... */ console.log(LOG_PREFIX + "Component: down() called."); active++; active = Math.min(active, items.length - 1); if(!viewall && lezydata && typeof lezydata.slice === 'function') { console.log(LOG_PREFIX+"Down - Trying lazy append"); try{ lezydata.slice(0, active + 2).forEach(this.append.bind(this)); } catch(e){console.error("Lazy append failed:",e)} } if(items[active]) { items[active].toggle(); if(scroll) scroll.update(items[active].render()); } };
-      this.up = function () { /* ... original up logic ... */ console.log(LOG_PREFIX + "Component: up() called."); active--; if (active < 0) { active = 0; Lampa.Controller.toggle('head'); } else { if(items[active]) { items[active].toggle(); if(scroll) scroll.update(items[active].render()); } } };
-      this.start = function () { /* ... original start/controller logic ... */ console.log(LOG_PREFIX + "Component: start() called."); var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { console.log(LOG_PREFIX+"Component Controller Toggle:", active); if (_this4.activity?.canRefresh()) return false; if (items.length) { if(items[active]) items[active].toggle(); else if(items[0]) { active=0; items[0].toggle(); } } else { console.log(LOG_PREFIX+"Component Controller Toggle - No items."); } }, update: function update() {}, left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function right() { Navigator.move('right'); }, up: function up() { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function down() { if (Navigator.canmove('down')) Navigator.move('down');}, back: _this4.back.bind(_this4) }); Lampa.Controller.toggle('content'); };
+      this.down = function () { console.log(LOG_PREFIX + "Component: down() called. Current active:", active); active++; active = Math.min(active, items.length - 1); if(!viewall && lezydata && typeof lezydata.slice === 'function') { console.log(LOG_PREFIX+"Down - Checking lazy data slice..."); try{ lezydata.slice(0, active + 2).forEach(this.append.bind(this)); } catch(e){console.error("Lazy append failed:",e)} } if(items[active]) { console.log(LOG_PREFIX + "Component: down() - Toggling item", active); items[active].toggle(); if(scroll) scroll.update(items[active].render()); } console.log(LOG_PREFIX + "Component: down() - New active:", active); };
+      this.up = function () { console.log(LOG_PREFIX + "Component: up() called. Current active:", active); active--; if (active < 0) { active = 0; console.log(LOG_PREFIX + "Component: up() - At top, toggling head."); Lampa.Controller.toggle('head'); } else { if(items[active]) { console.log(LOG_PREFIX + "Component: up() - Toggling item", active); items[active].toggle(); if(scroll) scroll.update(items[active].render()); } } console.log(LOG_PREFIX + "Component: up() - New active:", active); };
+      this.start = function () { console.log(LOG_PREFIX + "Component: start() called."); var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { console.log(LOG_PREFIX+"Component Controller Toggle:", active); if (_this4.activity?.canRefresh()) return false; if (items.length) { if(items[active]) items[active].toggle(); else if(items[0]) { active=0; items[0].toggle(); } } else { console.log(LOG_PREFIX+"Component Controller Toggle - No items."); } }, update: function update() {}, left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function right() { Navigator.move('right'); }, up: function up() { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function down() { if (Navigator.canmove('down')) Navigator.move('down');}, back: _this4.back.bind(_this4) }); Lampa.Controller.toggle('content'); };
       this.refresh = function () { console.log(LOG_PREFIX + "Component: refresh() called."); this.activity.loader(true); this.activity.need_refresh = true; };
       this.pause = function () { console.log(LOG_PREFIX + "Component: pause() called.");}; this.stop = function () { console.log(LOG_PREFIX + "Component: stop() called.");};
       this.render = function () { console.log(LOG_PREFIX + "Component: render() called."); return html; };
-      this.destroy = function () { /* ... original destroy logic ... */ console.log(LOG_PREFIX + "Component: destroy() called."); network.clear(); clearTimeout(background_timer); if(Lampa?.Arrays) Lampa.Arrays.destroy(items); if (scroll) scroll.destroy(); if (info) info.destroy(); if(html) html.remove(); items = null; scroll = null; network = null; lezydata = null; html=null; info=null; object=null; background_img=null; };
+      this.destroy = function () { console.log(LOG_PREFIX + "Component: destroy() called."); network.clear(); clearTimeout(background_timer); if(Lampa?.Arrays) Lampa.Arrays.destroy(items); if (scroll) scroll.destroy(); if (info) info.destroy(); if(html) html.remove(); items = null; scroll = null; network = null; lezydata = null; html=null; info=null; object=null; background_img=null; };
     } // --- End Main Component Class ---
 
     // --- Plugin Initialization ---
     function startPlugin() {
-      if (window.plugin_interface_original_logging_ready) { return; }
-      window.plugin_interface_original_logging_ready = true;
-      console.log('New Interface Plugin (Original+Log): Starting initialization...');
+      // Use original flag name for consistency with original script end
+      if (window.plugin_interface_ready) { console.log(LOG_PREFIX + "Initialization check: Already ready."); return; }
+      window.plugin_interface_ready = true;
+      console.log(LOG_PREFIX + 'Starting initialization...');
       var old_interface = Lampa.InteractionMain;
       var new_interface = component;
-      if (typeof Lampa.InteractionMain !== 'function') { console.error("New Interface Plugin Error: Lampa.InteractionMain not found."); window.plugin_interface_original_logging_ready = false; return; }
+      if (typeof Lampa.InteractionMain !== 'function') { console.error(LOG_PREFIX + "Lampa.InteractionMain not found."); window.plugin_interface_ready = false; return; }
 
       Lampa.InteractionMain = function (object) { // Original override
         var use = new_interface;
@@ -204,7 +217,9 @@
         if (window.innerWidth < 767) use = old_interface;
         if (!Lampa.Account.hasPremium()) use = old_interface;
         if (Lampa.Manifest.app_digital < 153) use = old_interface;
-        console.log("New Interface Plugin (Original+Log): Using", use === new_interface ? "New Interface" : "Old Interface", "for component:", object?.component);
+        console.log(LOG_PREFIX + "Lampa.InteractionMain override: Using", use === new_interface ? "New Interface" : "Old Interface", "for component:", object?.component);
+        // Ensure 'use' is a constructor
+        if (typeof use !== 'function') { console.error(LOG_PREFIX + "Lampa.InteractionMain override: Interface class is not a function!"); use = old_interface; if(typeof use !== 'function') return {}; }
         return new use(object);
       };
 
@@ -217,26 +232,27 @@
            $('body').append(style_element);
            console.log(LOG_PREFIX + "Appended original CSS.");
       } else { console.log(LOG_PREFIX + "Original CSS already exists."); }
-      console.log('New Interface Plugin (Original+Log): Initialization complete.');
+      console.log(LOG_PREFIX + 'Initialization complete.');
     }
 
-    // Original init check - wait only for Lampa core, not fetcher
-    if (!window.plugin_interface_ready) { // Use original flag
-        var Lampa_init_timer = setInterval(function() {
-            // Check for essential Lampa objects needed by the original script
-            if (window.Lampa && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain && Lampa.InteractionLine && Lampa.Activity && Lampa.Layer && Lampa.Controller && Lampa.Api && Lampa.Background && Lampa.Empty && Lampa.Manifest && Lampa.Lang && Lampa.Reguest && Lampa.Scroll && Lampa.Arrays && typeof $ !== 'undefined') {
-                clearInterval(Lampa_init_timer);
-                console.log("New Interface Plugin (Original+Log): Lampa seems ready, calling startPlugin().");
-                startPlugin(); // Call init function
-            }
-        }, 250);
-         // Safeguard timeout
-         setTimeout(function() {
-             if (!window.plugin_interface_ready) { // Check original flag
-                 clearInterval(Lampa_init_timer);
-                 console.error("New Interface Plugin (Original+Log): Timed out waiting for Lampa to initialize.");
+    // Original init check
+    // Wait for Lampa objects needed by the original script
+    var lampaCheckCount = 0;
+    var lampaCheckMax = 60; // Wait max ~15 seconds
+    var lampaCheckTimer = setInterval(function() {
+        lampaCheckCount++;
+        let lampaReady = window.Lampa && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain && Lampa.InteractionLine && Lampa.Activity && Lampa.Layer && Lampa.Controller && Lampa.Api && Lampa.Background && Lampa.Empty && Lampa.Manifest && Lampa.Lang && Lampa.Reguest && Lampa.Scroll && Lampa.Arrays && typeof $ !== 'undefined';
+        if (lampaReady || lampaCheckCount > lampaCheckMax) {
+             clearInterval(lampaCheckTimer);
+             if (lampaReady && !window.plugin_interface_ready) { // Use original flag
+                 console.log(LOG_PREFIX + "Lampa seems ready, calling startPlugin().");
+                 startPlugin();
+             } else if (!window.plugin_interface_ready) {
+                  console.error(LOG_PREFIX + "Timed out waiting for Lampa dependencies.");
+             } else {
+                 console.log(LOG_PREFIX + "Plugin already marked as ready.");
              }
-         }, 15000);
-    }
+        }
+    }, 250);
 
 })();
