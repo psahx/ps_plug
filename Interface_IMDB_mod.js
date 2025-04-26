@@ -1,9 +1,7 @@
-// == New Interface Script (Modified to use ExternalRatingsFetcher & WAIT for it) ==
+// == New Interface Script (Modified to use ExternalRatingsFetcher & WAIT for it + DEBUG LOGS) ==
 
 (function () {
     'use strict';
-
-    // No helper functions needed here, they are in Rating_Fetcher.js
 
     // --- Info Panel Class ---
     function create() { // Defines the controller for the info panel
@@ -239,7 +237,7 @@
     } // --- End Info Panel Class ---
 
 
-    // --- Main Component Class (No changes needed from previous version) ---
+    // --- Main Component Class ---
     function component(object) {
         var network = new Lampa.Reguest(); // Network for component (e.g., next page load)
         var scroll = new Lampa.Scroll({
@@ -301,12 +299,23 @@
 
         this.push = function () {}; // Placeholder
 
+        // *** ADDED DEBUG LOGS to component.build ***
         this.build = function (data) { // data is the initial list/results object
+            console.log("### New Interface BUILD - START - Received data:", JSON.stringify(data).slice(0, 300) + '...'); // Log first part of incoming data
             var _this2 = this;
             lezydata = data; // Store for lazy loading
 
-            info = new create(); // Instantiate the modified info panel controller
-            info.create(); // Build its HTML
+            // Add check for info creation
+            try {
+                info = new create(); // Instantiate the modified info panel controller
+                info.create(); // Build its HTML
+                 console.log("### New Interface BUILD - Info panel created.");
+            } catch (e) {
+                console.error("### New Interface BUILD - Error creating info panel:", e);
+                // Don't proceed if info panel fails critically
+                this.activity.loader(false);
+                return;
+            }
 
             scroll.minus(info.render()); // Exclude info panel from scroll calculations
 
@@ -317,9 +326,12 @@
             } else if (data && typeof data === 'object' && Array.isArray(data.results)) {
                 initial_items = data.results;
             }
+             console.log("### New Interface BUILD - Derived initial_items count:", initial_items.length);
+
 
             // Append initial items to the scroll container
              initial_items.slice(0, viewall ? initial_items.length : 2).forEach(this.append.bind(this));
+             console.log("### New Interface BUILD - Finished APPENDING initial items. Total items in 'items' array now:", items.length);
 
 
             // Add elements to the main component container
@@ -341,7 +353,9 @@
 
             this.activity.loader(false); // Hide loading indicator
             this.activity.toggle(); // Make the activity visible/active
+            console.log("### New Interface BUILD - END - Activity Toggled.");
         };
+        // *** End MODIFIED component.build ***
 
         this.background = function (elem) { // Handles background image changes
              if (!elem || !elem.backdrop_path) return; // Need element with backdrop
@@ -369,13 +383,18 @@
              }, 300);
         };
 
+        // *** ADDED DEBUG LOGS to component.append ***
         this.append = function (element) { // Appends a single item to the scroll list
+             console.log("### New Interface APPEND - START for element ID:", element?.id, "Title:", element?.title || element?.name);
             var _this3 = this;
             // Validate element and check for duplicates
-            if (!element || typeof element !== 'object' || !element.id) return;
-            if (items.some(function(itm){ return itm.data && itm.data.id === element.id; })) return; // Skip duplicates
+            if (!element || typeof element !== 'object' || !element.id) {
+                console.log("### New Interface APPEND - Invalid element received."); return; };
+            if (items.some(function(itm){ return itm.data && itm.data.id === element.id; })) {
+                 console.log("### New Interface APPEND - Skipping duplicate element:", element.id); return; };
 
-            if (element.ready) return; // Use ready flag if present
+            if (element.ready) {
+                 console.log("### New Interface APPEND - Skipping 'ready' element:", element.id); return; }; // Use ready flag if present
             element.ready = true;
 
             // Ensure title/name consistency needed by info.update
@@ -415,7 +434,9 @@
             // Add item to scroll container and internal list
             scroll.append(item.render());
             items.push(item);
+            console.log("### New Interface APPEND - END for element ID:", element?.id, ". Total items now:", items.length);
         };
+        // *** End MODIFIED component.append ***
 
         this.back = function () { Lampa.Activity.backward(); }; // Standard back action
 
@@ -590,7 +611,7 @@
     } // --- End startPlugin function ---
 
 
-    // *** MODIFIED Initialization Logic ***
+    // *** Initialization Logic with Polling ***
     // Function to check prerequisites and initialize
     function checkAndInitialize() {
         // Prerequisite 1: Lampa core objects must be ready
@@ -599,11 +620,10 @@
         var fetcherReady = window.ExternalRatingsFetcher && typeof window.ExternalRatingsFetcher.fetch === 'function';
 
         if (lampaReady && fetcherReady) {
-            console.log('New Interface Plugin: Lampa and Fetcher are ready. Initializing...');
+            // console.log('New Interface Plugin: Lampa and Fetcher are ready. Initializing...'); // Optional success log
             startPlugin(); // Call the main initialization function
             return true; // Indicate success
         }
-        // console.log('New Interface Plugin: Waiting for prerequisites...', {lampaReady, fetcherReady});
         return false; // Indicate prerequisites not met
     }
 
@@ -612,23 +632,20 @@
         var checkInterval = 250; // ms
         var maxWaitTime = 15000; // 15 seconds
         var timeWaited = 0;
+        var initIntervalTimer = null; // Define timer variable
 
-        console.log('New Interface Plugin: Prerequisites not met. Starting polling...');
+        console.log('New Interface Plugin: Prerequisites not met. Starting polling for Lampa and ExternalRatingsFetcher...');
 
-        var initIntervalTimer = setInterval(function() {
+        initIntervalTimer = setInterval(function() { // Assign timer to variable
             timeWaited += checkInterval;
             if (checkAndInitialize()) { // If ready now
                 clearInterval(initIntervalTimer); // Stop polling
             } else if (timeWaited >= maxWaitTime) { // If timed out
                 clearInterval(initIntervalTimer); // Stop polling
                 console.error('New Interface Plugin Error: Timed out waiting for Lampa and/or ExternalRatingsFetcher plugin.');
-                // Optional: Maybe try to initialize anyway without fetcher? Or just fail.
-                // Attempt init anyway, draw function has fallback check
-                 // console.log('New Interface Plugin: Attempting initialization despite timeout...');
-                 // startPlugin(); // Might fail later if fetcher truly missing
             }
         }, checkInterval);
     }
-    // *** End MODIFIED Initialization Logic ***
+    // *** End Initialization Logic ***
 
 })(); // --- End IIFE ---
