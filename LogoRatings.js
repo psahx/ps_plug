@@ -1,4 +1,4 @@
-// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT (Logos & Padding) Display ==
+// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT (Logos) Display ==
 (function () {
     'use strict';
 
@@ -50,50 +50,58 @@
         var countries = Lampa.Api.sources.tmdb.parseCountries(data);
         var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
+        // Logo URLs
+        const imdbLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/IMDB_Logo_2016.svg/40px-IMDB_Logo_2016.svg.png';
+        const tmdbLogoUrl = 'https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6ace57931d83ba08051.svg';
+        const rtFreshLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Rotten_Tomatoes.svg/40px-Rotten_Tomatoes.svg.png';
+        const rtRottenLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rotten_Tomatoes_rotten.svg/40px-Rotten_Tomatoes_rotten.svg.png';
+
+
         // Original head population - UNCHANGED
         if (create !== '0000') head.push('<span>' + create + '</span>');
         if (countries.length > 0) head.push(countries.join(', '));
 
-        // --- Rating Display Logic ---
+        // --- Rating Display Logic (All use Logo + Number now) ---
         var mdblistResult = mdblistRatingsCache[data.id]; // Get MDBList results
 
-        // 1. IMDB Rating (Uses MDBList data, shows 0.0) - UNCHANGED from previous step
+        // 1. **MODIFIED**: IMDB Rating (Logo + Number)
         var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number'
                          ? parseFloat(mdblistResult.imdb || 0).toFixed(1)
                          : '0.0';
-        details.push('<div class="full-start__rate"><div>' + imdbRating + '</div><div>IMDB</div></div>');
+         // Always show the block, defaulting number to 0.0
+         details.push(
+             '<div class="full-start__rate imdb-rating-item">' + // Added class
+               '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + // Logo
+               '<div>' + imdbRating + '</div>' + // Number
+             '</div>'
+         );
 
-        // 2. TMDB Rating (Uses original data, shows 0.0) - UNCHANGED from previous step
-        details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>');
+        // 2. **MODIFIED**: TMDB Rating (Logo + Number)
+        // Always show the block, defaulting number 'vote' to 0.0
+        details.push(
+            '<div class="full-start__rate tmdb-rating-item">' + // Added class
+              '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + // Logo
+              '<div>' + vote + '</div>' + // Number
+            '</div>'
+        );
 
-        // 3. **MODIFIED**: Rotten Tomatoes Rating (Logos + Percentage)
-        const rtFreshLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Rotten_Tomatoes.svg/40px-Rotten_Tomatoes.svg.png'; // Fresh
-        const rtRottenLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rotten_Tomatoes_rotten.svg/40px-Rotten_Tomatoes_rotten.svg.png'; // Rotten
-
-        // Check if data exists, is a number, and not null before formatting
+        // 3. Rotten Tomatoes Rating (Logo + Percentage) - UNCHANGED from previous logic structure
         if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
             let score = mdblistResult.tomatoes;
             let logoUrl = '';
+            if (score >= 60) { logoUrl = rtFreshLogoUrl; }
+            else if (score >= 0) { logoUrl = rtRottenLogoUrl; }
 
-            if (score >= 60) {
-                logoUrl = rtFreshLogoUrl;
-            } else if (score >= 0) { // Scores 0-59 are Rotten
-                logoUrl = rtRottenLogoUrl;
-            }
-
-            // Only add the element if we have a valid logo (score >= 0)
             if (logoUrl) {
-                 // Add specific class "rt-rating-item" for potential styling adjustments
                  details.push(
-                     '<div class="full-start__rate rt-rating-item">' + // Added class
-                       '<img src="' + logoUrl + '" class="rt-logo" alt="RT Status" draggable="false">' + // Logo first
-                       '<div class="rt-score">' + score + '%</div>' + // Percentage second (added class rt-score)
+                     '<div class="full-start__rate rt-rating-item">' +
+                       '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + // Added rt-logo class
+                       '<div class="rt-score">' + score + '%</div>' +
                      '</div>'
                  );
             }
-            // If score is null or not a number, this block is skipped (RT rating not shown)
         }
-        // --- **END MODIFIED** ---
+        // --- End Rating Display ---
 
 
         // Add other original details - UNCHANGED
@@ -133,13 +141,13 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final RT Logo: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Logos: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **ORIGINAL CSS + Added RT Logo/Padding CSS**
-        var style_id = 'new_interface_style_final_rt_logo'; // Final style ID
+        // **MODIFIED CSS** - Added rules for general/specific logos and number styling
+        var style_id = 'new_interface_style_final_all_logos'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
@@ -165,51 +173,45 @@
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
-            /* Original base style rule for rating box - adjusted slightly */
+            /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.3em;
-                margin-right: 0.6em; /* Consistent spacing */
-                display: inline-flex;
-                align-items: center;
+                font-size: 1.3em;        /* Base size */
+                margin-right: 0.6em;     /* Spacing between items */
+                display: inline-flex;    /* Align logo and number horizontally */
+                align-items: center;     /* Center vertically */
                 vertical-align: middle;
-                background-color: rgba(255, 255, 255, 0.08);
+                background-color: transparent; /* No background on outer container */
+                padding: 0;
+                gap: 0.4em; /* Space between logo and number div */
+            }
+            /* Style for the Number Div (common to all ratings) */
+            .new-interface .full-start__rate > div {
+                font-weight: 600;
+                background-color: rgba(0, 0, 0, 0.4); /* Dark background */
+                color: #ffffff;
                 padding: 0.2em 0.5em;
                 border-radius: 3px;
-                white-space: nowrap;
-                gap: 0.4em; /* Use gap for internal spacing */
-             }
-            .new-interface .full-start__rate > div:first-child { /* Number/Score Part */
-                font-weight: 600;
+                line-height: 1.3;
+                font-size: 1em; /* Make number same base size */
             }
-            .new-interface .full-start__rate > div:last-child { /* Label Part */
-                font-size: 0.7em;
-                opacity: 0.8;
-                text-transform: uppercase;
+            /* General Logo Style */
+            .rating-logo {
+                height: 1.1em;    /* Control height */
+                width: auto;      /* Allow aspect ratio */
+                max-width: 40px;  /* Limit width */
+                vertical-align: middle;
             }
+             /* Specific Logo Adjustments */
+            .tmdb-logo { height: 0.9em; } /* TMDB logo is wider */
+            .rt-logo { height: 1.2em; } /* RT logo might look better slightly larger */
 
-            /* ** ADDED RT Logo/Padding CSS ** */
-            .new-interface .rt-rating-item {
-                /* This class is added to the RT .full-start__rate div */
-                /* We can override base styles here if needed, e.g., remove background */
-                 background-color: transparent; /* Make RT background transparent */
-                 padding: 0; /* Remove padding from outer RT container */
-                 gap: 0.3em; /* Slightly smaller gap for logo */
+            /* Specific style for RT Percentage Div */
+            .rt-rating-item > div.rt-score { /* Target the div holding the % */
+                padding: 0.2em 0.7em; /* Keep extra horizontal padding */
+                /* Inherits background, color, etc. from general rule */
             }
-            .new-interface .rt-rating-item .rt-logo {
-                width: 1.2em;  /* Slightly larger logo */
-                height: 1.2em;
-                vertical-align: middle; /* Keep middle aligned */
-            }
-            .new-interface .rt-rating-item .rt-score { /* The div containing the score % */
-                font-weight: 600;
-                font-size: 1em; /* Make score same size as other rating numbers */
-                line-height: 1;
-                padding: 0.2em 0.7em; /* ADDED: Extra horizontal padding (0.5em base + 0.2em extra) */
-                background-color: rgba(0, 0, 0, 0.4); /* Darker background for score */
-                border-radius: 3px; /* Rounded corners for score */
-                color: #ffffff; /* Ensure text is white */
-            }
-            /* ** END RT CSS ** */
+            /* --- End Rating Box Styles --- */
+
             </style>
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
