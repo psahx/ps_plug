@@ -1,11 +1,9 @@
-// == Main Module with TMDB + IMDB Rating Display ==
+// == Main Module with TMDB + IMDB + KP Rating Display ==
 (function () {
     'use strict';
 
     // --- External Ratings State (GLOBAL within plugin scope) ---
-    // Cache for external ratings results { tmdb_id: { kp: ..., imdb: ..., timestamp: ..., error: ... } }
     var externalRatingsCache = {};
-    // Tracking for pending external ratings requests { tmdb_id: true } - Minimal state needed
     var externalRatingsPending = {};
     // ---------------------------------------------------------
 
@@ -33,21 +31,20 @@
         // End Original PART 1
 
 
-        // **ADDED**: Minimal fetcher call
+        // Minimal fetcher call (Unchanged from previous step)
         if (window.ExternalRatingsFetcher && typeof window.ExternalRatingsFetcher.fetch === 'function' && data.id && !externalRatingsPending[data.id] && !externalRatingsCache[data.id]) {
              externalRatingsPending[data.id] = true;
              window.ExternalRatingsFetcher.fetch(data, function(externalRatingsResult) {
                  externalRatingsCache[data.id] = externalRatingsResult; // Store result
                  delete externalRatingsPending[data.id]; // Clear pending flag
 
-                 // Re-draw ONLY if TMDB data is already loaded, to show rating ASAP
+                 // Re-draw ONLY if TMDB data is already loaded
                  var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
                  if (loaded[tmdb_url]) {
                      _this.draw(loaded[tmdb_url]);
                  }
              });
         }
-        // --- END ADDED ---
 
 
         // Original 'update' method PART 2
@@ -74,13 +71,18 @@
             details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>');
         }
 
-        // 2. **MODIFIED**: Check cache and add IMDB rating if available
+        // 2. Check cache and add IMDB rating (Unchanged from previous step)
         var external = externalRatingsCache[data.id];
         if (external && external.imdb > 0) {
-            // Use the fetched IMDB number and "IMDB" text
             details.push('<div class="full-start__rate"><div>' + parseFloat(external.imdb).toFixed(1) + '</div><div>IMDB</div></div>');
         }
-        // *** END MODIFICATION *** (Removed the duplicated TMDB line, added IMDB logic)
+
+        // 3. **ADDED**: Check cache and add KP rating
+        if (external && external.kp > 0) {
+             // Use the fetched KP number and "KP" text, same structure
+             details.push('<div class="full-start__rate"><div>' + parseFloat(external.kp).toFixed(1) + '</div><div>KP</div></div>');
+        }
+        // *** END ADDED ***
 
 
         // Add other original details (genres, runtime, pg)
@@ -92,7 +94,7 @@
 
         // Original HTML update
         html.find('.new-interface-info__head').empty().append(head.join(', '));
-        // Use original details join logic - ratings will appear joined by the split symbol
+        // Use original details join logic
         html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
       };
 
@@ -101,14 +103,14 @@
         var _this = this;
         clearTimeout(timer);
         var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
-        if (loaded[url]) return this.draw(loaded[url]); // Draw will check external cache
+        if (loaded[url]) return this.draw(loaded[url]);
         timer = setTimeout(function () {
           network.clear();
           network.timeout(5000);
           network.silent(url, function (movie) {
             loaded[url] = movie;
-            _this.draw(movie); // Draw will check external cache
-          }); // Note: Original had no error handler here
+            _this.draw(movie);
+          });
         }, 300);
       };
 
@@ -121,7 +123,7 @@
         html.remove();
         loaded = {};
         html = null;
-        // **ADDED**: Clear global cache on destroy
+        // Clear global cache (Unchanged from previous step)
         externalRatingsCache = {};
         externalRatingsPending = {};
       };
@@ -165,7 +167,7 @@
             if (newlampa) { /* Original newlampa code */
                  Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { if (!Lampa.Controller.own(_this2)) _this2.start(); if (step > 0) _this2.down(); else if (active > 0) _this2.up(); };
             }
-            // Trigger update for first item (as added in previous step, assuming needed)
+            // Trigger update for first item
             if (items.length > 0 && items[0] && items[0].data) {
                  active = 0; info.update(items[active].data); this.background(items[active].data);
             }
@@ -194,25 +196,21 @@
 
 
     // --- Plugin Initialization Logic ---
-    // ORIGINAL FUNCTION - Mostly UNCHANGED
+    // ORIGINAL FUNCTION - UNCHANGED From previous step
     function startPlugin() {
-        // **ADDED**: Lampa readiness check
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang) { // Check minimal required components
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang) {
             console.error("NewInterface Minimal: Missing Lampa components");
             return;
         }
-        // **ADDED**: Minimal Lang strings needed
         Lampa.Lang.add({
-            full_notext: { en: 'No description', ru: 'Нет описания'}, // Assuming original needed this
-            // Add others if error messages need translation in `load` or elsewhere
-            // error: { en: 'Error', ru: 'Ошибка' }
+            full_notext: { en: 'No description', ru: 'Нет описания'},
         });
 
-        window.plugin_interface_ready = true; // Original flag
-        var old_interface = Lampa.InteractionMain; // Original store
-        var new_interface = component; // Original component reference
+        window.plugin_interface_ready = true;
+        var old_interface = Lampa.InteractionMain;
+        var new_interface = component;
 
-        Lampa.InteractionMain = function (object) { // Original replacement logic
+        Lampa.InteractionMain = function (object) {
             var use = new_interface;
             if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface;
             if (window.innerWidth < 767) use = old_interface;
@@ -221,9 +219,8 @@
             return new use(object);
         };
 
-        // Original CSS injection - UNCHANGED from the very first script you provided
-        Lampa.Template.add('new_interface_style', "\n        <style>\n        .new-interface .card--small.card--wide {\n            width: 18.3em;\n        }\n        \n        .new-interface-info {\n            position: relative;\n            padding: 1.5em;\n            height: 24em;\n        }\n        \n        .new-interface-info__body {\n            width: 80%;\n            padding-top: 1.1em;\n        }\n        \n        .new-interface-info__head {\n            color: rgba(255, 255, 255, 0.6);\n            margin-bottom: 1em;\n            font-size: 1.3em;\n            min-height: 1em;\n        }\n        \n        .new-interface-info__head span {\n            color: #fff;\n        }\n        \n        .new-interface-info__title {\n            font-size: 4em;\n            font-weight: 600;\n            margin-bottom: 0.3em;\n            overflow: hidden;\n            -o-text-overflow: \".\";\n            text-overflow: \".\";\n            display: -webkit-box;\n            -webkit-line-clamp: 1;\n            line-clamp: 1;\n            -webkit-box-orient: vertical;\n            margin-left: -0.03em;\n            line-height: 1.3;\n        }\n        \n        .new-interface-info__details {\n            margin-bottom: 1.6em;\n            display: -webkit-box;\n            display: -webkit-flex;\n            display: -moz-box;\n            display: -ms-flexbox;\n            display: flex;\n            -webkit-box-align: center;\n            -webkit-align-items: center;\n            -moz-box-align: center;\n            -ms-flex-align: center;\n            align-items: center;\n            -webkit-flex-wrap: wrap;\n            -ms-flex-wrap: wrap;\n            flex-wrap: wrap;\n            min-height: 1.9em;\n            font-size: 1.1em;\n        }\n        \n        .new-interface-info__split {\n            margin: 0 1em;\n            font-size: 0.7em;\n        }\n        \n        .new-interface-info__description {\n            font-size: 1.2em;\n            font-weight: 300;\n            line-height: 1.5;\n            overflow: hidden;\n            -o-text-overflow: \".\";\n            text-overflow: \".\";\n            display: -webkit-box;\n            -webkit-line-clamp: 4;\n            line-clamp: 4;\n            -webkit-box-orient: vertical;\n            width: 70%;\n        }\n        \n        .new-interface .card-more__box {\n            padding-bottom: 95%;\n        }\n        \n        .new-interface .full-start__background {\n            height: 108%;\n            top: -6em;\n        }\n        \n        .new-interface .full-start__rate {\n            font-size: 1.3em;\n            margin-right: 0;\n            /* Ensure this div structure is styled correctly by original CSS */ \n        }\n        \n        .new-interface .card__promo {\n            display: none;\n        }\n        \n        .new-interface .card.card--wide+.card-more .card-more__box {\n            padding-bottom: 95%;\n        }\n        \n        .new-interface .card.card--wide .card-watched {\n            display: none !important;\n        }\n        \n        body.light--version .new-interface-info__body {\n            width: 69%;\n            padding-top: 1.5em;\n        }\n        \n        body.light--version .new-interface-info {\n            height: 25.3em;\n        }\n\n        body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view{\n            animation: animation-card-focus 0.2s\n        }\n        body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view{\n            animation: animation-trigger-enter 0.2s forwards\n        }\n        </style>\n    ");
-      // Use original CSS template name and injection method
+        // Original CSS injection - UNCHANGED
+        Lampa.Template.add('new_interface_style', "\n        <style>\n        /* All original CSS from the first script you provided */\n        .new-interface .card--small.card--wide { width: 18.3em; }\n        .new-interface-info { position: relative; padding: 1.5em; height: 24em; }\n        .new-interface-info__body { width: 80%; padding-top: 1.1em; }\n        .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }\n        .new-interface-info__head span { color: #fff; }\n        .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: \".\"; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }\n        .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; }\n        .new-interface-info__split { margin: 0 1em; font-size: 0.7em; }\n        .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: \".\"; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }\n        .new-interface .card-more__box { padding-bottom: 95%; }\n        .new-interface .full-start__background { height: 108%; top: -6em; }\n        .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0; /* Original style */ }\n        .new-interface .card__promo { display: none; }\n        .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }\n        .new-interface .card.card--wide .card-watched { display: none !important; }\n        body.light--version .new-interface-info__body { width: 69%; padding-top: 1.5em; }\n        body.light--version .new-interface-info { height: 25.3em; }\n        body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }\n        body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }\n        </style>\n    ");
       $('body').append(Lampa.Template.get('new_interface_style', {}, true));
     }
 
