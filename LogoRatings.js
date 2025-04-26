@@ -1,4 +1,4 @@
-// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT (Corrected Logos) Display ==
+// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT (Final Style Tweaks) ==
 (function () {
     'use strict';
 
@@ -8,124 +8,20 @@
     // -----------------------------
 
     // --- create function (Info Panel Handler) ---
+    // UNCHANGED create function...
     function create() {
-      var html;
-      var timer;
-      var network = new Lampa.Reguest();
-      var loaded = {};
-
-      this.create = function () {
-        // **ORIGINAL** 'create' method - UNCHANGED
-        html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>");
-      };
-
-      this.update = function (data) {
-        // **UNCHANGED** 'update' method from previous step (calls MDBLIST_Fetcher)
-        var _this = this;
-        html.find('.new-interface-info__head,.new-interface-info__details').text('---');
-        html.find('.new-interface-info__title').text(data.title);
-        html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
-        Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
-        delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id];
-        if (window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && data.id && data.method) {
-             mdblistRatingsPending[data.id] = true;
-             window.MDBLIST_Fetcher.fetch(data, function(mdblistResult) {
-                 mdblistRatingsCache[data.id] = mdblistResult;
-                 delete mdblistRatingsPending[data.id];
-                 var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
-                 if (loaded[tmdb_url]) {
-                     _this.draw(loaded[tmdb_url]);
-                 }
-             });
-        } else if (!data.method) { /* Optional warning */ }
-        this.load(data);
-      };
-
-      this.draw = function (data) {
-        // Original 'draw' variables - UNCHANGED
-        var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
-        var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); // TMDB Score
-        var head = [];
-        var details = []; // Original single details array
-        var countries = Lampa.Api.sources.tmdb.parseCountries(data);
-        var pg = Lampa.Api.sources.tmdb.parsePG(data);
-
-        // **MODIFIED**: Use new Logo URLs provided by user
-        const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_IOS-OSX_App_Icon.png'; // New URL
-        const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; // New URL
-        const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; // New URL
-        const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; // New URL
-        // --- END MODIFIED ---
-
-
-        // Original head population - UNCHANGED
-        if (create !== '0000') head.push('<span>' + create + '</span>');
-        if (countries.length > 0) head.push(countries.join(', '));
-
-        // --- Rating Display Logic (Uses new Logo URLs) ---
-        var mdblistResult = mdblistRatingsCache[data.id]; // Get MDBList results
-
-        // 1. IMDB Rating (Logo + Number) - Uses new imdbLogoUrl
-        var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number'
-                         ? parseFloat(mdblistResult.imdb || 0).toFixed(1)
-                         : '0.0';
-         details.push(
-             '<div class="full-start__rate imdb-rating-item">' +
-               '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + // Updated URL
-               '<div>' + imdbRating + '</div>' +
-             '</div>'
-         );
-
-        // 2. TMDB Rating (Logo + Number) - Uses new tmdbLogoUrl
-        details.push(
-            '<div class="full-start__rate tmdb-rating-item">' +
-              '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + // Updated URL
-              '<div>' + vote + '</div>' +
-            '</div>'
-        );
-
-        // 3. Rotten Tomatoes Rating (Logo + Percentage) - Uses new rtFresh/RottenLogoUrl
-        if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
-            let score = mdblistResult.tomatoes;
-            let logoUrl = '';
-            if (score >= 60) { logoUrl = rtFreshLogoUrl; } // Updated URL
-            else if (score >= 0) { logoUrl = rtRottenLogoUrl; } // Updated URL
-
-            if (logoUrl) {
-                 details.push(
-                     '<div class="full-start__rate rt-rating-item">' +
-                       '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + // Updated URL used here
-                       '<div class="rt-score">' + score + '%</div>' +
-                     '</div>'
-                 );
-            }
-        }
-        // --- End Rating Display ---
-
-
-        // Add other original details - UNCHANGED
-        if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
-        if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
-        if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
-
-        // **ORIGINAL** HTML update - UNCHANGED
-        html.find('.new-interface-info__head').empty().append(head.join(', '));
-        html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
-      };
-
-      this.load = function (data) {
-        // Original 'load' method - UNCHANGED
-        var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300);
-      };
-
-      // Original 'render', 'empty', 'destroy' methods - UNCHANGED
+      var html; var timer; var network = new Lampa.Reguest(); var loaded = {};
+      this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); };
+      this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id]; if (window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && data.id && data.method) { mdblistRatingsPending[data.id] = true; window.MDBLIST_Fetcher.fetch(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
+      this.draw = function (data) { /* UNCHANGED draw function from previous step */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_IOS-OSX_App_Icon.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '<div>' + imdbRating + '</div>' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '<div>' + vote + '</div>' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '<div class="rt-score">' + score + '%</div>' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); };
+      this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
       this.render = function () { return html; }; this.empty = function () {};
-      this.destroy = function () { html.remove(); loaded = {}; html = null; mdblistRatingsCache = {}; mdblistRatingsPending = {}; };
+      this.destroy = function () { /* UNCHANGED destroy function */ html.remove(); loaded = {}; html = null; mdblistRatingsCache = {}; mdblistRatingsPending = {}; };
     }
 
 
     // --- component function (Main List Handler) ---
-    // ORIGINAL FUNCTION - UNCHANGED
+    // UNCHANGED Original Component Function
     function component(object) {
         var network = new Lampa.Reguest(); var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); var items = []; var html = $('<div class="new-interface"><img class="full-start__background"></div>'); var active = 0; var newlampa = Lampa.Manifest.app_digital >= 166; var info; var lezydata; var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; var background_img = html.find('.full-start__background'); var background_last = ''; var background_timer;
         this.create = function () {}; this.empty = function () { /* Original empty code */ var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); html.append(empty.render(button)); this.start = empty.start; this.activity.loader(false); this.activity.toggle(); }; this.loadNext = function () { /* Original loadNext code */ var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; new_data.forEach(_this.append.bind(_this)); Lampa.Layer.visible(items[active + 1].render(true)); }, function () { _this.next_wait = false; }); } }; this.push = function () {};
@@ -140,19 +36,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Logos Fix: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Style Fix: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **UNCHANGED CSS** from previous step
-        var style_id = 'new_interface_style_final_all_logos'; // Use same ID as previous step
+        // **MODIFIED CSS** - Reinstating wrapper box style + smoother edges
+        var style_id = 'new_interface_style_final_wrapper'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up just in case
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (exactly as before) */
+            /* Base styles... (exactly as original) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -172,14 +68,47 @@
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
-            /* Rating Box Styles - UNCHANGED from previous step */
-            .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0.6em; display: inline-flex; align-items: center; vertical-align: middle; background-color: transparent; padding: 0; gap: 0.4em; }
-            .rating-logo { height: 1.1em; width: auto; max-width: 40px; vertical-align: middle; }
+            /* --- CORRECTED Rating Box Styles --- */
+            .new-interface .full-start__rate {
+                font-size: 1.3em;        /* Base size */
+                margin-right: 0.6em;     /* Spacing between items */
+                display: inline-flex;    /* Align logo and number horizontally */
+                align-items: center;     /* Center vertically */
+                vertical-align: middle;
+                background-color: rgba(255, 255, 255, 0.12); /* Lighter background wrap */
+                padding: 0.2em 0.5em; /* Padding INSIDE the wrap box */
+                border-radius: 5px; /* Smoother edges for wrap box */
+                gap: 0.4em; /* Space between logo and number div */
+                overflow: hidden; /* Clip inner content if needed */
+            }
+            /* General Logo Style */
+            .rating-logo {
+                height: 1.1em;    /* Control height */
+                width: auto;      /* Allow aspect ratio */
+                max-width: 35px;  /* Slightly smaller max width */
+                vertical-align: middle; /* Ensure alignment */
+            }
+             /* Specific Logo Adjustments */
             .tmdb-logo { height: 0.9em; }
-            .rt-logo { height: 1.2em; }
-            .new-interface .full-start__rate > div { font-weight: 600; background-color: rgba(0, 0, 0, 0.4); color: #ffffff; padding: 0.2em 0.5em; border-radius: 3px; line-height: 1.3; font-size: 1em; }
-            .rt-rating-item > div.rt-score { padding: 0.2em 0.7em; }
-            /* End Rating Box Styles */
+            .rt-logo { height: 1.1em; } /* RT logo looks okay slightly bigger */
+
+            /* Style for the Number Div (common to all ratings) */
+            .new-interface .full-start__rate > div {
+                font-weight: 600;
+                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
+                color: #ffffff;
+                padding: 0.2em 0.5em; /* Padding INSIDE the dark box */
+                border-radius: 3px; /* Keep inner radius standard */
+                line-height: 1.3;
+                font-size: 1em; /* Number size relative to parent */
+            }
+             /* Specific padding for RT score number div */
+             .rt-rating-item > div.rt-score {
+                 padding-left: 0.7em;  /* Wider padding */
+                 padding-right: 0.7em; /* Wider padding */
+             }
+            /* --- End Rating Box Styles --- */
+
             </style>
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
