@@ -1,12 +1,13 @@
-// == Main Module with IMDB + TMDB + RT (Text) Display (Reverted Styles) ==
+// == Main Module with IMDB + TMDB + KP Display (Using MDBLIST_Fetcher Source) ==
+//    Based on the previously working state showing 0.0 defaults.
 (function () {
     'use strict';
 
-    // --- MDBList Fetcher State (GLOBAL within plugin scope) ---
+    // --- MDBList Fetcher State ---
+    // Using mdblist cache variables
     var mdblistRatingsCache = {};
     var mdblistRatingsPending = {};
-    // ---------------------------------------------------------
-
+    // -----------------------------
 
     // --- create function (Info Panel Handler) ---
     function create() {
@@ -16,107 +17,117 @@
       var loaded = {};
 
       this.create = function () {
-        // **REVERTED**: Original 'create' method - No separate ratings/details divs
+        // Original 'create' method - From the working KP version state
         html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>");
       };
 
       this.update = function (data) {
-        // 'update' method - UNCHANGED from previous RT attempt (uses MDBLIST_Fetcher)
         var _this = this;
+
+        // Original 'update' PART 1 - From the working KP version state
         html.find('.new-interface-info__head,.new-interface-info__details').text('---');
         html.find('.new-interface-info__title').text(data.title);
         html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
         Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
+        // End Original PART 1
 
-        delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id]; // Clear state on update
+        // **MODIFIED**: Call MDBLIST_Fetcher instead of previous logic
+        delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id]; // Clear state
 
         if (window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && data.id && data.method) {
              mdblistRatingsPending[data.id] = true;
+             // Call the MDBLIST_Fetcher
              window.MDBLIST_Fetcher.fetch(data, function(mdblistResult) {
-                 mdblistRatingsCache[data.id] = mdblistResult;
+                 mdblistRatingsCache[data.id] = mdblistResult; // Store result in MDBList cache
                  delete mdblistRatingsPending[data.id];
+                 // Re-draw ONLY if TMDB data is already loaded
                  var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
                  if (loaded[tmdb_url]) {
                      _this.draw(loaded[tmdb_url]);
                  }
              });
-        } else if (!data.method) { console.warn("MDBLIST_Fetcher Integration: movieData missing 'method' property."); }
+        } else if (!data.method) {
+            // Silently ignore if method is missing, or console.warn if preferred (keeping minimal change)
+        }
+        // --- END MODIFIED ---
+
+        // Original 'update' PART 2 - From the working KP version state
         this.load(data);
+        // End Original PART 2
       };
 
       this.draw = function (data) {
-        // Original 'draw' method variables - UNCHANGED
+        // Original 'draw' variables - From the working KP version state
         var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
         var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); // TMDB Score
         var head = [];
-        var details = []; // **REVERTED**: Single details array
+        var details = []; // Original single details array
         var countries = Lampa.Api.sources.tmdb.parseCountries(data);
         var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
-        // Original head population - UNCHANGED
+        // Original head population - From the working KP version state
         if (create !== '0000') head.push('<span>' + create + '</span>');
         if (countries.length > 0) head.push(countries.join(', '));
 
-        // --- **MODIFIED RATING DISPLAY LOGIC (Simplified RT, Reverted Structure)** ---
+        // --- Rating Display Logic (Using MDBLIST Cache, Showing 0.0) ---
+        // **MODIFIED**: Check MDBList cache instead of externalRatingsCache
         var mdblistResult = mdblistRatingsCache[data.id];
 
         // 1. IMDB Rating (Always display 0.0, uses MDBList data)
         var imdbRating = mdblistResult && mdblistResult.imdb !== null ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
         details.push('<div class="full-start__rate"><div>' + imdbRating + '</div><div>IMDB</div></div>');
 
-        // 2. TMDB Rating (Always display 0.0)
+        // 2. TMDB Rating (Always display 0.0) - Logic from working KP state
         details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>');
 
-        // 3. Rotten Tomatoes Rating (Text + Number, only if score exists)
-        if (mdblistResult && typeof mdblistResult.tomatometer === 'number') {
-            let score = mdblistResult.tomatometer;
-            // Display using original structure, no logos
-             details.push('<div class="full-start__rate"><div>' + score + '%</div><div>RT</div></div>');
-        }
-        // --- **END MODIFIED RATING DISPLAY LOGIC** ---
+        // 3. KP Rating (Always display 0.0, uses MDBList data)
+        // **MODIFIED**: Check mdblistResult for 'kp' value
+        var kpRating = mdblistResult && mdblistResult.kp !== null ? parseFloat(mdblistResult.kp || 0).toFixed(1) : '0.0';
+        details.push('<div class="full-start__rate"><div>' + kpRating + '</div><div>KP</div></div>');
+        // --- END MODIFIED ---
 
 
-        // Add other original details (genres, runtime, pg) - UNCHANGED
-        if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) {
-          return Lampa.Utils.capitalizeFirstLetter(item.name);
-        }).join(' | '));
+        // Add other original details - From the working KP version state
+        if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
         if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
         if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
 
-        // **REVERTED**: Original HTML update using single details array and split span
+        // Original HTML update - From the working KP version state
         html.find('.new-interface-info__head').empty().append(head.join(', '));
         html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
       };
 
       this.load = function (data) {
-        // Original 'load' method - UNCHANGED (but ensures 'method' is added)
+        // Original 'load' method - From the working KP version state (Ensures method added)
         var _this = this;
         clearTimeout(timer);
         var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
         if (loaded[url]) return this.draw(loaded[url]);
         timer = setTimeout(function () {
-          network.clear();
-          network.timeout(5000);
+          network.clear(); network.timeout(5000);
           network.silent(url, function (movie) {
             loaded[url] = movie;
-            if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; // Ensure method is present
+            if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
             _this.draw(movie);
           });
         }, 300);
       };
 
-      // Original 'render', 'empty', 'destroy' methods - UNCHANGED (except destroy clears cache)
+      // Original 'render', 'empty' methods - From the working KP version state
       this.render = function () { return html; };
       this.empty = function () {};
+
       this.destroy = function () {
+        // Original destroy
         html.remove(); loaded = {}; html = null;
-        mdblistRatingsCache = {}; mdblistRatingsPending = {}; // Clear MDBList cache
+        // **MODIFIED**: Clear MDBList cache
+        mdblistRatingsCache = {}; mdblistRatingsPending = {};
       };
     }
 
 
     // --- component function (Main List Handler) ---
-    // ORIGINAL FUNCTION - UNCHANGED
+    // ORIGINAL FUNCTION - From the working KP version state
     function component(object) {
         var network = new Lampa.Reguest(); var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); var items = []; var html = $('<div class="new-interface"><img class="full-start__background"></div>'); var active = 0; var newlampa = Lampa.Manifest.app_digital >= 166; var info; var lezydata; var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; var background_img = html.find('.full-start__background'); var background_last = ''; var background_timer;
         this.create = function () {}; this.empty = function () { /* Original empty code */ var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); html.append(empty.render(button)); this.start = empty.start; this.activity.loader(false); this.activity.toggle(); }; this.loadNext = function () { /* Original loadNext code */ var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; new_data.forEach(_this.append.bind(_this)); Lampa.Layer.visible(items[active + 1].render(true)); }, function () { _this.next_wait = false; }); } }; this.push = function () {};
@@ -130,37 +141,24 @@
 
     // --- Plugin Initialization Logic ---
     function startPlugin() {
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template) { // Added Template check
-            console.error("NewInterface RT Text: Missing Lampa components");
-            return;
-        }
-        Lampa.Lang.add({
-            full_notext: { en: 'No description', ru: 'Нет описания'},
-        });
-
+        // From the working KP version state
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Debug: Missing Lampa components"); return; }
+        Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true;
-        var old_interface = Lampa.InteractionMain;
-        var new_interface = component;
+        var old_interface = Lampa.InteractionMain; var new_interface = component;
+        Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        Lampa.InteractionMain = function (object) {
-            var use = new_interface;
-            if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface;
-            if (window.innerWidth < 767) use = old_interface;
-            if (!Lampa.Account.hasPremium()) use = old_interface;
-            if (Lampa.Manifest.app_digital < 153) use = old_interface;
-            return new use(object);
-        };
-
-        // **REVERTED**: Use original CSS injection from the KP working version
-        var style_id = 'new_interface_style_original_kp'; // Use a distinct ID for this style state
+        // **ORIGINAL CSS** - From the working KP version state
+        var style_id = 'new_interface_style_kp_state'; // Style ID reflecting the base state
         if (!$('style[data-id="' + style_id + '"]').length) {
-             // Remove potentially conflicting previous styles if they used predictable IDs
+             // Clean up previous attempts
              $('style[data-id="new_interface_style_with_rt"]').remove();
-             $('style[data-id="new_interface_style_with_ratings_minimal"]').remove(); // Clean up previous attempts
+             $('style[data-id="new_interface_style_with_ratings_minimal"]').remove();
+             $('style[data-id="new_interface_style_original_kp"]').remove();
+             $('style[data-id="new_interface_style_original_strict"]').remove();
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* All original CSS from the first script you provided */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -168,11 +166,12 @@
             .new-interface-info__head span { color: #fff; }
             .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
             .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; }
-            .new-interface-info__split { margin: 0 1em; font-size: 0.7em; } /* Original split style */
+            .new-interface-info__split { margin: 0 1em; font-size: 0.7em; }
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
             .new-interface .full-start__background { height: 108%; top: -6em; }
-            .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0.5em; /* Added small margin back for spacing between elements */ display: inline-flex; align-items: center; gap: 0.4em; background-color: rgba(255,255,255,0.08); padding: 0.2em 0.5em; border-radius: 3px; white-space: nowrap; } /* Style from KP version, slightly adjusted */
+            /* This is the key style block from the working KP version */
+            .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0; /* Original had 0 */ display: inline-flex; /* Use inline-flex for alignment */ align-items: center; gap: 0.4em; /* Space between number and label */ background-color: rgba(255,255,255,0.08); padding: 0.2em 0.5em; border-radius: 3px; white-space: nowrap; margin-right: 0.5em; /* Spacing between rating items */ }
             .new-interface .full-start__rate > div:first-child { font-weight: 600; }
             .new-interface .full-start__rate > div:last-child { font-size: 0.7em; opacity: 0.8; text-transform: uppercase; }
             .new-interface .card__promo { display: none; }
@@ -188,7 +187,8 @@
         }
     }
 
-    // Original check before starting - UNCHANGED
+    // Original check before starting
     if (!window.plugin_interface_ready) startPlugin();
 
 })();
+
