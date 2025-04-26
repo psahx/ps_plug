@@ -1,4 +1,4 @@
-// ==PRELIMINARY WORKING== == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT (Correct Key) Display ==
+// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT (Logos & Padding) Display ==
 (function () {
     'use strict';
 
@@ -66,16 +66,34 @@
         // 2. TMDB Rating (Uses original data, shows 0.0) - UNCHANGED from previous step
         details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>');
 
-        // 3. Rotten Tomatoes Rating (Uses MDBList data, shows 0% if missing/null)
-        // ---> **DEBUG LOGGING REMOVED** <---
-        let rtScoreDisplay = '0%'; // Default display string
-        // **MODIFIED**: Check for 'tomatoes' key (was 'tomatometer')
+        // 3. **MODIFIED**: Rotten Tomatoes Rating (Logos + Percentage)
+        const rtFreshLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Rotten_Tomatoes.svg/40px-Rotten_Tomatoes.svg.png'; // Fresh
+        const rtRottenLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rotten_Tomatoes_rotten.svg/40px-Rotten_Tomatoes_rotten.svg.png'; // Rotten
+
+        // Check if data exists, is a number, and not null before formatting
         if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
-            // **MODIFIED**: Use 'tomatoes' value (was 'tomatometer')
-            rtScoreDisplay = mdblistResult.tomatoes + '%';
+            let score = mdblistResult.tomatoes;
+            let logoUrl = '';
+
+            if (score >= 60) {
+                logoUrl = rtFreshLogoUrl;
+            } else if (score >= 0) { // Scores 0-59 are Rotten
+                logoUrl = rtRottenLogoUrl;
+            }
+
+            // Only add the element if we have a valid logo (score >= 0)
+            if (logoUrl) {
+                 // Add specific class "rt-rating-item" for potential styling adjustments
+                 details.push(
+                     '<div class="full-start__rate rt-rating-item">' + // Added class
+                       '<img src="' + logoUrl + '" class="rt-logo" alt="RT Status" draggable="false">' + // Logo first
+                       '<div class="rt-score">' + score + '%</div>' + // Percentage second (added class rt-score)
+                     '</div>'
+                 );
+            }
+            // If score is null or not a number, this block is skipped (RT rating not shown)
         }
-         details.push('<div class="full-start__rate"><div>' + rtScoreDisplay + '</div><div>RT</div></div>');
-        // --- End RT Logic ---
+        // --- **END MODIFIED** ---
 
 
         // Add other original details - UNCHANGED
@@ -115,18 +133,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final RT: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final RT Logo: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **USING EXACT ORIGINAL CSS** - UNCHANGED from previous step
-        var style_id = 'new_interface_style_original_untouched';
+        // **ORIGINAL CSS + Added RT Logo/Padding CSS**
+        var style_id = 'new_interface_style_final_rt_logo'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove();
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
+
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Exact original CSS */
+            /* Exact original base CSS */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -138,7 +157,6 @@
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
             .new-interface .full-start__background { height: 108%; top: -6em; }
-            .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0; }
             .new-interface .card__promo { display: none; }
             .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }
             .new-interface .card.card--wide .card-watched { display: none !important; }
@@ -146,6 +164,52 @@
             body.light--version .new-interface-info { height: 25.3em; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
+
+            /* Original base style rule for rating box - adjusted slightly */
+            .new-interface .full-start__rate {
+                font-size: 1.3em;
+                margin-right: 0.6em; /* Consistent spacing */
+                display: inline-flex;
+                align-items: center;
+                vertical-align: middle;
+                background-color: rgba(255, 255, 255, 0.08);
+                padding: 0.2em 0.5em;
+                border-radius: 3px;
+                white-space: nowrap;
+                gap: 0.4em; /* Use gap for internal spacing */
+             }
+            .new-interface .full-start__rate > div:first-child { /* Number/Score Part */
+                font-weight: 600;
+            }
+            .new-interface .full-start__rate > div:last-child { /* Label Part */
+                font-size: 0.7em;
+                opacity: 0.8;
+                text-transform: uppercase;
+            }
+
+            /* ** ADDED RT Logo/Padding CSS ** */
+            .new-interface .rt-rating-item {
+                /* This class is added to the RT .full-start__rate div */
+                /* We can override base styles here if needed, e.g., remove background */
+                 background-color: transparent; /* Make RT background transparent */
+                 padding: 0; /* Remove padding from outer RT container */
+                 gap: 0.3em; /* Slightly smaller gap for logo */
+            }
+            .new-interface .rt-rating-item .rt-logo {
+                width: 1.2em;  /* Slightly larger logo */
+                height: 1.2em;
+                vertical-align: middle; /* Keep middle aligned */
+            }
+            .new-interface .rt-rating-item .rt-score { /* The div containing the score % */
+                font-weight: 600;
+                font-size: 1em; /* Make score same size as other rating numbers */
+                line-height: 1;
+                padding: 0.2em 0.7em; /* ADDED: Extra horizontal padding (0.5em base + 0.2em extra) */
+                background-color: rgba(0, 0, 0, 0.4); /* Darker background for score */
+                border-radius: 3px; /* Rounded corners for score */
+                color: #ffffff; /* Ensure text is white */
+            }
+            /* ** END RT CSS ** */
             </style>
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
