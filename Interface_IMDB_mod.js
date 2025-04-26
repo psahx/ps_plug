@@ -1,4 +1,4 @@
-// == New Interface Script (v5 - Forcing Styles on Containers + Structure Fix) ==
+// == New Interface Script (v6 - Removed info.render Style + Structure Fix) ==
 
 (function () {
     'use strict';
@@ -60,84 +60,49 @@
             if (rows_to_process.length === 0) { console.log("### New Interface BUILD - No rows found."); this.empty(); return; }
 
             // --- Force Styles on Main Container ---
-            var main_html_element = html[0]; // Get the DOM element from jQuery object
-            if(main_html_element) { // Check if element exists
-                main_html_element.style.display = 'flex'; // Use flex for info + scroll
-                main_html_element.style.flexDirection = 'column';
-                main_html_element.style.width = '100%';
-                main_html_element.style.height = '100%'; // Occupy full activity height
-                main_html_element.style.border = '3px solid blue'; // Add border to see it
-                main_html_element.style.position = 'relative';
-                main_html_element.style.backgroundColor = 'rgba(0, 0, 100, 0.3)';
-                 console.log("### New Interface BUILD - Applied forcing styles to main HTML container.");
-            } else {
-                 console.error("### New Interface BUILD - Could not find main HTML element to style.");
-            }
-
+            var main_html_element = html[0]; if(main_html_element) { main_html_element.style.display = 'flex'; main_html_element.style.flexDirection = 'column'; main_html_element.style.width = '100%'; main_html_element.style.height = '100%'; main_html_element.style.border = '3px solid blue'; main_html_element.style.position = 'relative'; main_html_element.style.backgroundColor = 'rgba(0, 0, 100, 0.3)'; console.log("### New Interface BUILD - Applied forcing styles to main HTML container."); } else { console.error("### New Interface BUILD - Could not find main HTML element to style."); }
             // --- Force Styles on Scroll Container ---
-            var scroll_element = scroll.render(true); // Get the scroll DOM element
-             if(scroll_element) { // Check if element exists
-                scroll_element.style.display = 'block'; // Make sure it's displayed
-                scroll_element.style.width = '100%';
-                scroll_element.style.flexGrow = '1'; // Allow scroll area to fill remaining space
-                scroll_element.style.height = 'auto'; // Let flexbox determine height initially
-                scroll_element.style.minHeight = '200px'; // Ensure minimum height
-                scroll_element.style.border = '3px solid lime'; // Add border to see it
-                scroll_element.style.overflow = 'auto'; // Ensure scrollbars if content overflows
-                scroll_element.style.backgroundColor = 'rgba(0, 100, 0, 0.3)';
-                 console.log("### New Interface BUILD - Applied forcing styles to scroll container.");
-            } else {
-                 console.error("### New Interface BUILD - Could not find scroll element to style.");
-            }
+            var scroll_element = scroll.render(true); if(scroll_element) { scroll_element.style.display = 'block'; scroll_element.style.width = '100%'; scroll_element.style.flexGrow = '1'; scroll_element.style.height = 'auto'; scroll_element.style.minHeight = '200px'; scroll_element.style.border = '3px solid lime'; scroll_element.style.overflow = 'auto'; scroll_element.style.backgroundColor = 'rgba(0, 100, 0, 0.3)'; console.log("### New Interface BUILD - Applied forcing styles to scroll container."); } else { console.error("### New Interface BUILD - Could not find scroll element to style."); }
 
-            // Style Info Panel too
-            var info_element = info.render()[0]; // Get info panel DOM element
-            if(info_element) {
-                info_element.style.flexShrink = '0'; // Prevent info panel from shrinking
-                info_element.style.border = '2px solid yellow';
-                 console.log("### New Interface BUILD - Applied forcing styles to info panel container.");
-            }
-
+            // --- REMOVED Styling block for info panel ---
+            // var info_element = info.render()[0]; // <-- Removed this line
+            // if(info_element) { ... }             // <-- Removed this block
 
             // Build Lines (Append to scroll container)
             rows_to_process.forEach(this.buildLine.bind(this));
             console.log("### New Interface BUILD - Finished building lines. Total lines:", items.length);
 
             // Add TEST ELEMENT (Keep for now)
-            try {
-                 let testElement = document.createElement('div');
-                 testElement.style.height = '100px'; testElement.style.width = '90%'; testElement.style.backgroundColor = 'red'; testElement.style.color = 'white'; testElement.style.fontSize = '20px'; testElement.style.textAlign = 'center'; testElement.style.lineHeight = '100px'; testElement.style.margin = '20px auto'; testElement.style.position = 'relative'; testElement.style.zIndex = '9999';
-                 testElement.innerText = 'TEST ELEMENT - SCROLL CONTAINER CHECK';
-                 scroll.append(testElement);
-                 console.log("### New Interface BUILD - Appended TEST ELEMENT to scroll container.");
-            } catch(e) { console.error("### New Interface BUILD - Error appending TEST ELEMENT:", e); }
+            try { let testElement = document.createElement('div'); testElement.style.height = '100px'; testElement.style.width = '90%'; testElement.style.backgroundColor = 'red'; testElement.style.color = 'white'; testElement.style.fontSize = '20px'; testElement.style.textAlign = 'center'; testElement.style.lineHeight = '100px'; testElement.style.margin = '20px auto'; testElement.style.position = 'relative'; testElement.style.zIndex = '9999'; testElement.innerText = 'TEST ELEMENT - SCROLL CONTAINER CHECK'; scroll.append(testElement); console.log("### New Interface BUILD - Appended TEST ELEMENT to scroll container."); } catch(e) { console.error("### New Interface BUILD - Error appending TEST ELEMENT:", e); }
 
-            html.find('.new-interface-info').show(); // Ensure info panel is shown
+            // Ensure info panel is displayed (it's added in 'create', just ensure visibility)
+             if (info && info.render) {
+                info.render().show(); // Use jQuery show() method if available
+             }
 
-            if (newlampa) { /* ... Lampa layer handling ... */ Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { /* Let default scroll handle */ }; }
-            if (items.length === 0 && rows_to_process.length > 0) { console.warn("### New Interface BUILD - Rows found, but no valid lines were built."); this.empty(); return; } // Call empty if build failed to produce lines
+            if (newlampa) { Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { /* Let default scroll handle */ }; }
+            if (items.length === 0 && rows_to_process.length > 0) { console.warn("### New Interface BUILD - Rows found, but no valid lines were built."); this.empty(); return; }
             this.activity.loader(false); this.activity.toggle();
             console.log("### New Interface BUILD - END - Activity Toggled.");
         };
 
-        this.buildLine = function(row_data) { /* ... buildLine logic ... */ if (!row_data || typeof row_data !== 'object' || !Array.isArray(row_data.results)) { return; } if (row_data.results.length === 0 && !row_data.more) { return; } console.log("### New Interface buildLine - Building line for:", row_data.title || "Untitled Row"); try { let line_params = { object: object, card_small: true, card_wide: true, type: row_data.line_type || 'cards' }; var line = new Line(row_data, line_params); line.onFocus = (card_data)=>{ if (info && card_data?.id) { info.update(card_data); this.background(card_data); } else if (info) { info.empty(); } }; line.onEnter = (target, card_data)=>{ console.log("### New Interface line.onEnter:", card_data?.id || card_data?.title || 'More Button'); }; line.onLeft = ()=>{ console.log("### New Interface line.onLeft"); Controller.toggle('menu'); }; line.onBack = this.back.bind(this); line.onDown = this.down.bind(this); line.onUp = this.up.bind(this); line.create(); scroll.append(line.render(true)); items.push(line); } catch (e) { console.error("### New Interface buildLine - ERROR creating Line for:", row_data.title, e); }};
+        this.buildLine = function(row_data) { /* ... buildLine logic ... */ if (!row_data || typeof row_data !== 'object' || !Array.isArray(row_data.results)) { console.warn("### New Interface buildLine - Skipping invalid row data:", row_data?.title); return; } if (row_data.results.length === 0 && !row_data.more) { console.log("### New Interface buildLine - Skipping empty row:", row_data.title); return; } console.log("### New Interface buildLine - Building line for:", row_data.title || "Untitled Row"); try { let line_params = { object: object, card_small: true, card_wide: true, type: row_data.line_type || 'cards' }; var line = new Line(row_data, line_params); line.onFocus = (card_data)=>{ if (info && card_data?.id) { info.update(card_data); this.background(card_data); } else if (info) { info.empty(); } }; line.onEnter = (target, card_data)=>{ console.log("### New Interface line.onEnter:", card_data?.id || card_data?.title || 'More Button'); }; line.onLeft = ()=>{ console.log("### New Interface line.onLeft"); Controller.toggle('menu'); }; line.onBack = this.back.bind(this); line.onDown = this.down.bind(this); line.onUp = this.up.bind(this); line.create(); scroll.append(line.render(true)); items.push(line); } catch (e) { console.error("### New Interface buildLine - ERROR creating Line for:", row_data.title, e); }};
         this.background = function (elem) { /* ... background logic ... */ if (!elem || !elem.backdrop_path) return; var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (!new_background || new_background === background_last) return; background_timer = setTimeout(function () { background_img.removeClass('loaded'); var img = new Image(); img.onload = function () { if (background_last === new_background) { background_img.attr('src', new_background); background_img.addClass('loaded'); } }; img.onerror = function () { if (background_last === new_background) { background_img.removeClass('loaded').attr('src', ''); background_last = ''; } }; background_last = new_background; img.src = new_background; }, 300); };
         this.back = function () { Lampa.Activity.backward(); };
         this.down = function () { /* ... down logic ... */ if (!items.length || active >= items.length - 1) return; active++; active = Math.min(active, items.length - 1); if (items[active]) { console.log("### New Interface DOWN - Focusing line index:", active); items[active].toggle(); scroll.update(items[active].render(true), false); } };
         this.up = function () { /* ... up logic ... */ if (!items.length || active <= 0) { Lampa.Controller.toggle('head'); return; } active--; if (items[active]) { console.log("### New Interface UP - Focusing line index:", active); items[active].toggle(); scroll.update(items[active].render(true), false); } else { Lampa.Controller.toggle('head'); } };
-        this.start = function () { /* ... start/controller logic ... */ console.log("### New Interface START called"); var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { console.log("### New Interface Controller TOGGLE - Focusing line:", active); if (items?.length > 0 && items[active]) { console.log("### New Interface Controller TOGGLE: Toggling item", active); items[active].toggle(); } else if (items?.length > 0) { console.log("### New Interface Controller TOGGLE: Active index invalid, focusing item 0"); active = 0; items[0].toggle(); } else { console.log("### New Interface Controller TOGGLE: No lines ready yet, doing nothing."); } }, left: function left() {}, right: function right() {}, up: this.up.bind(this), down: this.down.bind(this), back: this.back.bind(this) }); Lampa.Controller.toggle('content'); };
+        this.start = function () { /* ... start/controller logic ... */ console.log("### New Interface START called"); var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { console.log("### New Interface Controller TOGGLE - Focusing line:", active); if (items?.length > 0 && items[active]) { console.log("### New Interface Controller TOGGLE: Toggling item", active); items[active].toggle(); } else if (items?.length > 0) { console.log("### New Interface Controller TOGGLE: Active index invalid, focusing item 0"); active = 0; items[0].toggle(); } else { console.log("### New Interface Controller TOGGLE: No lines ready yet, doing nothing."); } }, left: function left() { /* Let Line handle */ }, right: function right() { /* Let Line handle */ }, up: this.up.bind(this), down: this.down.bind(this), back: this.back.bind(this) }); Lampa.Controller.toggle('content'); };
         this.refresh = function () { this.activity.loader(true); this.activity.need_refresh = true; };
         this.pause = function () {}; this.stop = function () {};
         this.render = function () { return html; };
         this.destroy = function () { /* ... destroy logic ... */ try { network.clear(); clearTimeout(background_timer); if (info) info.destroy(); if (items) Lampa.Arrays.destroy(items); items = []; if (scroll) scroll.destroy(); if (html) html.remove(); } catch (e) {} scroll = null; network = null; lezydata = null; html = null; background_img = null; info = null; object = null; };
     } // --- End Main Component Class ---
 
-
     // --- Plugin Initialization ---
     function startPlugin() { /* ... startPlugin logic ... */ if (window.plugin_new_interface_with_ratings_ready) { return; } window.plugin_new_interface_with_ratings_ready = true; console.log('New Interface Plugin: Starting initialization...'); var old_interface = Lampa.InteractionMain; var new_interface_component = component; if (typeof Lampa.InteractionMain !== 'function') { console.error("New Interface Plugin Error: Lampa.InteractionMain not found."); window.plugin_new_interface_with_ratings_ready = false; return; } Lampa.InteractionMain = function (object) { var use_new_interface = true; if (!object || typeof object !== 'object') use_new_interface = false; else { if (!(object.source == 'tmdb' || object.source == 'cub')) use_new_interface = false; if (window.innerWidth < 767) use_new_interface = false; if (!Lampa.Account.hasPremium()) use_new_interface = false; if (Lampa.Manifest.app_digital < 153) use_new_interface = false; } var InterfaceClass = use_new_interface ? new_interface_component : old_interface; if (typeof InterfaceClass !== 'function') { InterfaceClass = old_interface; if (typeof InterfaceClass !== 'function') return {}; } return new InterfaceClass(object); }; var style_tag_id = 'new-interface-ratings-style'; if ($('#' + style_tag_id).length === 0) { Lampa.Template.add(style_tag_id, `/* CSS */ <style id="${style_tag_id}">.new-interface{display:flex;flex-direction:column}.new-interface--rows .items-line{margin-bottom:1.5em}.new-interface .card--small.card--wide{width:18.3em}.new-interface-info{position:relative;padding:1.5em;height:24em;flex-shrink:0}.new-interface-info__body{width:80%;padding-top:1.1em}.new-interface-info__head{color:rgba(255,255,255,.6);margin-bottom:1em;font-size:1.3em;min-height:1em}.new-interface-info__head span{color:#fff}.new-interface-info__title{font-size:4em;font-weight:600;margin-bottom:.3em;overflow:hidden;text-overflow:".";display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;margin-left:-.03em;line-height:1.3}.new-interface-info__details{margin-bottom:1.6em;display:flex;align-items:center;flex-wrap:wrap;min-height:1.9em;font-size:1.1em}.new-interface-info__split{margin:0 .8em;font-size:.7em;display:inline-block;vertical-align:middle}.new-interface-info__description{font-size:1.2em;font-weight:300;line-height:1.5;overflow:hidden;text-overflow:".";display:-webkit-box;-webkit-line-clamp:4;line-clamp:4;-webkit-box-orient:vertical;width:70%}.new-interface .card-more__box{padding-bottom:95%}.new-interface .full-start__background{position:absolute;left:0;right:0;width:100%;height:108%;top:-6em;object-fit:cover;object-position:center center;opacity:0;transition:opacity .5s ease;z-index:-1}.new-interface .full-start__background.loaded{opacity:1}.new-interface .full-start__rate{font-size:1.3em;margin-right:0;display:inline-flex;flex-direction:column;align-items:center;text-align:center;min-width:3.5em;vertical-align:middle}.new-interface .full-start__rate>div:first-child{font-weight:700;font-size:1.1em}.new-interface .full-start__rate>div:last-child{font-size:.8em;color:rgba(255,255,255,.7);text-transform:uppercase}.new-interface .full-start__rate.loading{min-width:2.5em;color:rgba(255,255,255,.5);justify-content:center;display:inline-flex}.new-interface .full-start__rate.loading>div{display:none}.new-interface .full-start__rate.loading::after{content:'.';animation:dots 1s steps(5,end) infinite;display:inline-block;width:1em;text-align:left;font-size:1.1em;font-weight:700}.new-interface .card__promo{display:none}.new-interface .card.card--wide+.card-more .card-more__box{padding-bottom:95%}.new-interface .card.card--wide .card-watched{display:none!important}body.light--version .new-interface-info__body{width:69%;padding-top:1.5em}body.light--version .new-interface-info{height:25.3em}body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view{animation:animation-card-focus .2s}body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view{animation:animation-trigger-enter .2s forwards}@keyframes dots{0%,20%{color:transparent;text-shadow:.25em 0 0 transparent,.5em 0 0 transparent}40%{color:rgba(255,255,255,.5);text-shadow:.25em 0 0 transparent,.5em 0 0 transparent}60%{text-shadow:.25em 0 0 rgba(255,255,255,.5),.5em 0 0 transparent}80%,to{text-shadow:.25em 0 0 rgba(255,255,255,.5),.5em 0 0 rgba(255,255,255,.5)}}</style>`); $('body').append(Lampa.Template.get(style_tag_id, {}, true)); } console.log('New Interface Plugin: Initialization complete.'); }
 
     // *** Initialization Logic with Polling ***
-    function checkAndInitialize() { var lampaReady = window.Lampa?.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain && Lampa.InteractionLine; var fetcherReady = window.ExternalRatingsFetcher?.fetch; if (lampaReady && fetcherReady) { startPlugin(); return true; } return false; }
+    function checkAndInitialize() { var lampaReady = window.Lampa?.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain && Lampa.InteractionLine; var fetcherReady = window.ExternalRatingsFetcher?.fetch; if (lampaReady && fetcherReady) { startPlugin(); return true; } return false; } // Added Lampa.InteractionLine check
     if (!checkAndInitialize()) { var checkInterval = 250; var maxWaitTime = 15000; var timeWaited = 0; var initIntervalTimer = null; console.log('New Interface Plugin: Prerequisites not met. Starting polling...'); initIntervalTimer = setInterval(function() { timeWaited += checkInterval; if (checkAndInitialize()) { clearInterval(initIntervalTimer); } else if (timeWaited >= maxWaitTime) { clearInterval(initIntervalTimer); console.error('New Interface Plugin Error: Timed out waiting for Lampa and/or ExternalRatingsFetcher plugin.'); } }, checkInterval); }
 
 })(); // --- End IIFE ---
