@@ -1,4 +1,4 @@
-// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT Display ==
+// == Main Module | Base Original Script + MDBList Fetch + IMDB/TMDB/RT Display (WITH RT DEBUG LOGGING) ==
 (function () {
     'use strict';
 
@@ -66,14 +66,21 @@
         // 2. TMDB Rating (Uses original data, shows 0.0) - UNCHANGED from previous step
         details.push('<div class="full-start__rate"><div>' + vote + '</div><div>TMDB</div></div>');
 
-        // 3. **ADDED**: Rotten Tomatoes Rating (Uses MDBList data, shows 0% if missing/null)
-        let rtScoreDisplay = '0%'; // Default display string, mimicking the "0.0" logic for others
+        // 3. Rotten Tomatoes Rating (Uses MDBList data, shows 0% if missing/null)
+        // ---> **ADDED DEBUG LOGGING** <---
+        console.log("DEBUG RT - MDBList Result for ID", data.id, ":", JSON.stringify(mdblistResult)); // Log the whole received object
+        var tomatometerValue = mdblistResult ? mdblistResult.tomatometer : undefined; // Safely access tomatometer
+        var tomatometerType = typeof tomatometerValue;
+        console.log("DEBUG RT - Tomatometer Value:", tomatometerValue, "| Type:", tomatometerType); // Log the specific value and its type
+        // ---> **END DEBUG LOGGING** <---
+
+        let rtScoreDisplay = '0%'; // Default display string
         // Check if data exists, is a number, and not null before formatting
         if (mdblistResult && typeof mdblistResult.tomatometer === 'number' && mdblistResult.tomatometer !== null) {
             rtScoreDisplay = mdblistResult.tomatometer + '%'; // Format as percentage string
         }
          details.push('<div class="full-start__rate"><div>' + rtScoreDisplay + '</div><div>RT</div></div>');
-        // --- **END ADDED** ---
+        // --- End RT Logic ---
 
         // Add other original details - UNCHANGED
         if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
@@ -112,15 +119,15 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Base+MDBList+RT: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface RT Debug: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
         // **USING EXACT ORIGINAL CSS** - UNCHANGED from previous step
-        var style_id = 'new_interface_style_original_untouched'; // Use same ID as previous correct one
+        var style_id = 'new_interface_style_original_untouched';
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up just in case
+             $('style[data-id^="new_interface_style_"]').remove();
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
             /* Exact original CSS */
