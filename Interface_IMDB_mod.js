@@ -1,4 +1,4 @@
-// == New Interface Script (Modified to use ExternalRatingsFetcher) ==
+// == New Interface Script (Modified to use ExternalRatingsFetcher & WAIT for it) ==
 
 (function () {
     'use strict';
@@ -28,7 +28,6 @@
             html.find('.new-interface-info__title').text(data.title || data.name || ''); // Use title/name
             html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
             // Don't change background here, let component's background logic handle it
-            // Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
             this.load(data); // Trigger detailed load
         };
 
@@ -92,7 +91,8 @@
             details_container.append(details_splitter);
             details_container.append(other_detail_elements.join('<span class="new-interface-info__split">&#9679;</span>'));
 
-            // 5. Call External Ratings Fetcher Plugin
+            // 5. Call External Ratings Fetcher Plugin (Check moved to initializer)
+            // Assume ExternalRatingsFetcher exists because the initializer waited for it
             if (window.ExternalRatingsFetcher && typeof window.ExternalRatingsFetcher.fetch === 'function') {
                 // Prepare data object for the fetcher
                 var data_for_fetcher = {
@@ -156,8 +156,9 @@
                 }); // End of fetcher callback
 
             } else {
-                 console.error("New Interface Error: window.ExternalRatingsFetcher.fetch not found!");
-                 // Hide placeholders if fetcher isn't available
+                 // This error should technically not happen if the initializer worked correctly
+                 console.error("New Interface Draw Error: window.ExternalRatingsFetcher.fetch not found! Initializer failed?");
+                 // Hide placeholders as a fallback
                  html.find('#imdb-rating-' + movie_id + ', #kp-rating-' + movie_id).hide();
             }
             // --- End Details Section ---
@@ -169,8 +170,6 @@
             // Basic validation
             if (!data || !data.id) {
                  console.warn("New Interface - Load: Invalid data received", data);
-                 // Draw with basic data to show *something*? Or clear panel?
-                 // this.draw(data); // Might cause issues if essential fields missing
                  return;
             }
 
@@ -213,10 +212,7 @@
 
                 }, function(a, c) { // Error fetching TMDB details
                     console.error("New Interface - TMDB Load Error:", network.errorDecode(a,c));
-                    // Draw using the basic data as fallback? Could be risky if draw expects detailed fields.
-                    // Maybe just show title/description and an error in details?
                      html.find('.new-interface-info__details').empty().text('Error loading details.');
-                     // Do NOT call draw with basic 'data' here unless 'draw' handles missing fields robustly.
                 });
             }, 300); // Delay before fetch
         }; // *** End MODIFIED info.load ***
@@ -233,18 +229,17 @@
         };
 
         this.destroy = function () {
-            html.remove();
+            // Use try-catch for safety during potential rapid destruction/recreation
+            try {
+                if (html) html.remove();
+            } catch (e) { console.error("Error removing info HTML:", e); }
             loaded = {};
             html = null;
-             // No need to clear rating network, fetcher handles its own
         };
     } // --- End Info Panel Class ---
 
 
-    // --- Main Component Class ---
-    // Uses the modified 'create' class above
-    // No major changes needed here from your original script,
-    // assuming Lampa.InteractionLine provides item.data correctly.
+    // --- Main Component Class (No changes needed from previous version) ---
     function component(object) {
         var network = new Lampa.Reguest(); // Network for component (e.g., next page load)
         var scroll = new Lampa.Scroll({
@@ -263,9 +258,7 @@
         var background_last = '';
         var background_timer;
 
-        this.create = function () {
-            // Initialization logic for the component itself (if any)
-        };
+        this.create = function () {};
 
         this.empty = function () { // Render empty state
              var button;
@@ -345,8 +338,6 @@
                     else if (active > 0) _this2.up();
                 };
             }
-
-            // No initial info.update needed here, focus/hover will trigger it.
 
             this.activity.loader(false); // Hide loading indicator
             this.activity.toggle(); // Make the activity visible/active
@@ -494,8 +485,6 @@
         this.refresh = function () { // Placeholder for refresh logic
             this.activity.loader(true);
             this.activity.need_refresh = true;
-            // Needs implementation if refresh is required
-            // Lampa.Activity.replace({...});
         };
 
         this.pause = function () {}; // Activity lifecycle placeholder
@@ -504,28 +493,38 @@
         this.render = function () { return html; }; // Return the main jQuery element
 
         this.destroy = function () { // Cleanup
-             // console.log("Destroying new interface component");
-             network.clear(); // Clear component's network requests
-             clearTimeout(background_timer); // Clear background timer
-             if (info) info.destroy(); // Destroy info panel instance
-             if (items) Lampa.Arrays.destroy(items); // Destroy interaction lines
-             if (scroll) scroll.destroy(); // Destroy scroll component
-             if (html) html.remove(); // Remove component HTML from DOM
-             // Nullify references
+             // Use try-catch for safety during potential rapid destruction/recreation
+             try {
+                 network.clear();
+                 clearTimeout(background_timer);
+                 if (info) info.destroy();
+                 if (items) Lampa.Arrays.destroy(items);
+                 if (scroll) scroll.destroy();
+                 if (html) html.remove();
+             } catch (e) { console.error("Error during component destruction:", e); }
              items = null; scroll = null; network = null; lezydata = null; html = null; background_img = null; info = null; object = null;
         };
     } // --- End Main Component Class ---
 
 
-    // --- Plugin Initialization ---
+    // --- Plugin Initialization (Function that runs the setup) ---
     function startPlugin() {
-        // Use a unique, descriptive name for the ready flag
+        // Ensure this plugin only initializes once
+        if (window.plugin_new_interface_with_ratings_ready) {
+            return;
+        }
+        // Set flag early to prevent race conditions with the timer
         window.plugin_new_interface_with_ratings_ready = true;
+
+        console.log('New Interface Plugin: Starting initialization...');
+
         var old_interface = Lampa.InteractionMain;
         var new_interface_component = component; // Reference the component class
 
         if (typeof Lampa.InteractionMain !== 'function') {
              console.error("New Interface Plugin Error: Lampa.InteractionMain not found.");
+             // Reset flag if failed critically
+             window.plugin_new_interface_with_ratings_ready = false;
              return; // Cannot proceed
         }
 
@@ -541,22 +540,21 @@
              }
 
             var InterfaceClass = use_new_interface ? new_interface_component : old_interface;
-            // Added check for valid class constructor
             if (typeof InterfaceClass !== 'function') {
                  console.error("New Interface Plugin Error: Resolved InterfaceClass is not a function. Falling back.", InterfaceClass);
                  InterfaceClass = old_interface;
                  if (typeof InterfaceClass !== 'function') return {}; // Critical error
             }
+             // console.log('New Interface Plugin: Instantiating InterfaceClass');
             return new InterfaceClass(object); // Instantiate chosen class
         };
 
         // --- CSS Styles ---
-        // Add the CSS needed for the ratings display
         var style_tag_id = 'new-interface-ratings-style'; // Unique ID for style tag
         if ($('#' + style_tag_id).length === 0) { // Check if style already exists
              Lampa.Template.add(style_tag_id, `
              <style id="${style_tag_id}">
-             /* Base styles from original script */
+             /* Styles from previous response */
              .new-interface .card--small.card--wide { width: 18.3em; }
              .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
              .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -569,40 +567,12 @@
              .new-interface .card-more__box { padding-bottom: 95%; }
              .new-interface .full-start__background { position: absolute; left:0; right:0; width: 100%; height: 108%; top: -6em; object-fit: cover; object-position: center center; opacity: 0; transition: opacity 0.5s ease; z-index: -1; }
              .new-interface .full-start__background.loaded { opacity: 1; }
-
-             /* *** ADDED/MODIFIED Styles for Ratings *** */
-             .new-interface .full-start__rate {
-                font-size: 1.3em;
-                margin-right: 0; /* Splitter handles spacing */
-                display: inline-flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                min-width: 3.5em;
-                vertical-align: middle;
-             }
+             .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0; display: inline-flex; flex-direction: column; align-items: center; text-align: center; min-width: 3.5em; vertical-align: middle; }
              .new-interface .full-start__rate > div:first-child { font-weight: bold; font-size: 1.1em; }
              .new-interface .full-start__rate > div:last-child { font-size: 0.8em; color: rgba(255,255,255,0.7); text-transform: uppercase; }
-
-             /* Loading state */
-             .new-interface .full-start__rate.loading {
-                 min-width: 2.5em;
-                 color: rgba(255,255,255,0.5);
-                 justify-content: center;
-                 display: inline-flex; /* Make sure loading state is visible */
-             }
-             .new-interface .full-start__rate.loading > div { display: none; } /* Hide text */
-             .new-interface .full-start__rate.loading::after {
-                 content: '.';
-                 animation: dots 1s steps(5, end) infinite;
-                 display: inline-block;
-                 width: 1em;
-                 text-align: left;
-                 font-size: 1.1em;
-                 font-weight: bold;
-             }
-             /* *** End Added/Modified Styles *** */
-
+             .new-interface .full-start__rate.loading { min-width: 2.5em; color: rgba(255,255,255,0.5); justify-content: center; display: inline-flex; }
+             .new-interface .full-start__rate.loading > div { display: none; }
+             .new-interface .full-start__rate.loading::after { content: '.'; animation: dots 1s steps(5, end) infinite; display: inline-block; width: 1em; text-align: left; font-size: 1.1em; font-weight: bold; }
              .new-interface .card__promo { display: none; }
              .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }
              .new-interface .card.card--wide .card-watched { display: none !important; }
@@ -610,41 +580,55 @@
              body.light--version .new-interface-info { height: 25.3em; }
              body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
              body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
-
-             /* Keyframes for loading dots */
-             @keyframes dots {
-                 0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
-                 40% { color: rgba(255,255,255,0.5); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
-                 60% { text-shadow: .25em 0 0 rgba(255,255,255,0.5), .5em 0 0 rgba(0,0,0,0); }
-                 80%, 100% { text-shadow: .25em 0 0 rgba(255,255,255,0.5), .5em 0 0 rgba(255,255,255,0.5); }
-             }
+             @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); } 40% { color: rgba(255,255,255,0.5); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); } 60% { text-shadow: .25em 0 0 rgba(255,255,255,0.5), .5em 0 0 rgba(0,0,0,0); } 80%, 100% { text-shadow: .25em 0 0 rgba(255,255,255,0.5), .5em 0 0 rgba(255,255,255,0.5); } }
              </style>
              `);
              $('body').append(Lampa.Template.get(style_tag_id, {}, true));
         }
-    } // --- End startPlugin ---
+        console.log('New Interface Plugin: Initialization complete.');
 
-    // --- Initialization Logic ---
-    // Ensure Lampa and essential parts are ready before starting the plugin
-    if (window.Lampa && Lampa.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && !window.plugin_new_interface_with_ratings_ready) {
-        startPlugin();
-    } else if (!window.plugin_new_interface_with_ratings_ready) {
-        // Wait for Lampa to be ready if it's not yet
-        var Lampa_init_timer = setInterval(function() {
-            if (window.Lampa && Lampa.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB) {
-                clearInterval(Lampa_init_timer);
-                if (!window.plugin_new_interface_with_ratings_ready) { // Final check
-                   startPlugin();
-                }
-            }
-        }, 250); // Check periodically
-        // Safeguard timeout
-        setTimeout(function() {
-            if (!window.plugin_new_interface_with_ratings_ready) {
-                clearInterval(Lampa_init_timer);
-                console.error("New Interface Plugin: Timed out waiting for Lampa init.");
-            }
-        }, 15000); // 15 second timeout
+    } // --- End startPlugin function ---
+
+
+    // *** MODIFIED Initialization Logic ***
+    // Function to check prerequisites and initialize
+    function checkAndInitialize() {
+        // Prerequisite 1: Lampa core objects must be ready
+        var lampaReady = window.Lampa && Lampa.Api && Lampa.Utils && Lampa.Storage && Lampa.Template && Lampa.TMDB && Lampa.InteractionMain;
+        // Prerequisite 2: The ExternalRatingsFetcher plugin must be loaded and ready
+        var fetcherReady = window.ExternalRatingsFetcher && typeof window.ExternalRatingsFetcher.fetch === 'function';
+
+        if (lampaReady && fetcherReady) {
+            console.log('New Interface Plugin: Lampa and Fetcher are ready. Initializing...');
+            startPlugin(); // Call the main initialization function
+            return true; // Indicate success
+        }
+        // console.log('New Interface Plugin: Waiting for prerequisites...', {lampaReady, fetcherReady});
+        return false; // Indicate prerequisites not met
     }
+
+    // Polling mechanism
+    if (!checkAndInitialize()) { // If not ready immediately, start polling
+        var checkInterval = 250; // ms
+        var maxWaitTime = 15000; // 15 seconds
+        var timeWaited = 0;
+
+        console.log('New Interface Plugin: Prerequisites not met. Starting polling...');
+
+        var initIntervalTimer = setInterval(function() {
+            timeWaited += checkInterval;
+            if (checkAndInitialize()) { // If ready now
+                clearInterval(initIntervalTimer); // Stop polling
+            } else if (timeWaited >= maxWaitTime) { // If timed out
+                clearInterval(initIntervalTimer); // Stop polling
+                console.error('New Interface Plugin Error: Timed out waiting for Lampa and/or ExternalRatingsFetcher plugin.');
+                // Optional: Maybe try to initialize anyway without fetcher? Or just fail.
+                // Attempt init anyway, draw function has fallback check
+                 // console.log('New Interface Plugin: Attempting initialization despite timeout...');
+                 // startPlugin(); // Might fail later if fetcher truly missing
+            }
+        }, checkInterval);
+    }
+    // *** End MODIFIED Initialization Logic ***
 
 })(); // --- End IIFE ---
