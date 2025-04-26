@@ -1,4 +1,4 @@
-// == Main Module | Final Tweaks: Zero Left Padding ==
+// == Main Module | Using User-Provided Original CSS + Essential Logo Sizing ==
 (function () {
     'use strict';
 
@@ -21,22 +21,23 @@
     // ORIGINAL FUNCTION - UNCHANGED
     function component(object) { var network = new Lampa.Reguest(); var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); var items = []; var html = $('<div class="new-interface"><img class="full-start__background"></div>'); var active = 0; var newlampa = Lampa.Manifest.app_digital >= 166; var info; var lezydata; var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; var background_img = html.find('.full-start__background'); var background_last = ''; var background_timer; this.create = function () {}; this.empty = function () { /* Original empty code */ var button; if (object.source == 'tmdb') { button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); button.find('.selector').on('hover:enter', function () { Lampa.Storage.set('source', 'cub'); Lampa.Activity.replace({ source: 'cub' }); }); } var empty = new Lampa.Empty(); html.append(empty.render(button)); this.start = empty.start; this.activity.loader(false); this.activity.toggle(); }; this.loadNext = function () { /* Original loadNext code */ var _this = this; if (this.next && !this.next_wait && items.length) { this.next_wait = true; this.next(function (new_data) { _this.next_wait = false; new_data.forEach(_this.append.bind(_this)); Lampa.Layer.visible(items[active + 1].render(true)); }, function () { _this.next_wait = false; }); } }; this.push = function () {}; this.build = function (data) { /* Original build code */ var _this2 = this; lezydata = data; info = new create(object); info.create(); scroll.minus(info.render()); data.slice(0, viewall ? data.length : 2).forEach(this.append.bind(this)); html.append(info.render()); html.append(scroll.render()); if (newlampa) { /* Original newlampa code */ Lampa.Layer.update(html); Lampa.Layer.visible(scroll.render(true)); scroll.onEnd = this.loadNext.bind(this); scroll.onWheel = function (step) { if (!Lampa.Controller.own(_this2)) _this2.start(); if (step > 0) _this2.down(); else if (active > 0) _this2.up(); }; } if (items.length > 0 && items[0] && items[0].data) { active = 0; info.update(items[active].data); this.background(items[active].data); } this.activity.loader(false); this.activity.toggle(); }; this.background = function (elem) { /* Original background code */ if (!elem || !elem.backdrop_path) return; var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); clearTimeout(background_timer); if (new_background == background_last) return; background_timer = setTimeout(function () { background_img.removeClass('loaded'); background_img[0].onload = function () { background_img.addClass('loaded'); }; background_img[0].onerror = function () { background_img.removeClass('loaded'); }; background_last = new_background; setTimeout(function () { if (background_img[0]) background_img[0].src = background_last; }, 300); }, 1000); }; this.append = function (element) { /* Original append code */ if (element.ready) return; var _this3 = this; element.ready = true; var item = new Lampa.InteractionLine(element, { url: element.url, card_small: true, cardClass: element.cardClass, genres: object.genres, object: object, card_wide: true, nomore: element.nomore }); item.create(); item.onDown = this.down.bind(this); item.onUp = this.up.bind(this); item.onBack = this.back.bind(this); item.onToggle = function () { active = items.indexOf(item); }; if (this.onMore) item.onMore = this.onMore.bind(this); item.onFocus = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; item.onHover = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; item.onFocusMore = info.empty.bind(info); scroll.append(item.render()); items.push(item); }; this.back = function () { Lampa.Activity.backward(); }; this.down = function () { active++; active = Math.min(active, items.length - 1); if (!viewall && lezydata) lezydata.slice(0, active + 2).forEach(this.append.bind(this)); items[active].toggle(); scroll.update(items[active].render()); }; this.up = function () { active--; if (active < 0) { active = 0; Lampa.Controller.toggle('head'); } else { items[active].toggle(); scroll.update(items[active].render()); } }; this.start = function () { /* Original start code */ var _this4 = this; Lampa.Controller.add('content', { link: this, toggle: function toggle() { if (_this4.activity.canRefresh()) return false; if (items.length) { items[active].toggle(); } }, update: function update() {}, left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function right() { Navigator.move('right'); }, up: function up() { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function down() { if (Navigator.canmove('down')) Navigator.move('down'); }, back: this.back }); Lampa.Controller.toggle('content'); }; this.refresh = function () { this.activity.loader(true); this.activity.need_refresh = true; }; this.pause = function () {}; this.stop = function () {}; this.render = function () { return html; }; this.destroy = function () { /* Original destroy code */ clearTimeout(background_timer); network.clear(); Lampa.Arrays.destroy(items); scroll.destroy(); if (info) info.destroy(); if (html) html.remove(); items = null; network = null; lezydata = null; info = null; html = null; }; }
 
+
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface ZeroLeftPad: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Minimal CSS+Logo: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS** - Only changed padding on .full-start__rate
-        var style_id = 'new_interface_style_zero_left_pad'; // Final style ID
+        // **MODIFIED CSS**: User's Original CSS + ESSENTIAL Logo Sizing/Alignment
+        var style_id = 'new_interface_style_original_plus_logo_sizing'; // ID for this state
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous attempts
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (exactly as original) */
+            /* User-Provided Original Base CSS */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -56,55 +57,46 @@
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
-            /* --- Rating Box Styles --- */
+            /* Original Rule for rating box */
             .new-interface .full-start__rate {
                 font-size: 1.3em;
-                margin-right: 0.6em;
-                display: inline-flex;
-                align-items: center;
-                vertical-align: middle;
-                background-color: rgba(255, 255, 255, 0.12);
-                padding: 0 0.5em 0 0; /* ** MODIFIED: Zero Left Padding ** */
-                border-radius: 8px;
-                gap: 0.5em;
-                overflow: hidden;
-                height: auto;
+                margin-right: 0.6em; /* Add spacing between rating items */
+                display: inline-flex; /* Align number and logo */
+                align-items: center;  /* Vertically center */
+                vertical-align: middle; /* Align with surrounding text */
+                /* NO background, padding, border-radius from custom CSS */
             }
-            /* Style for the Number Div (common to all ratings) */
-            .new-interface .full-start__rate > div {
-                font-weight: 600;
-                background-color: rgba(0, 0, 0, 0.4);
-                color: #ffffff;
-                padding: 0.2em 0.5em;
-                border-radius: 8px; /* Matched outer smoothness */
-                line-height: 1.3;
-                font-size: 1em;
-                order: 1;
-                display: flex;
-                align-items: center;
-            }
-             /* Specific padding for RT score number div */
-             .rt-rating-item > div.rt-score {
-                 padding-left: 0.7em;
-                 padding-right: 0.7em;
-             }
-            /* General Logo Style */
+
+            /* **ADDED**: Essential Logo Styling */
             .rating-logo {
-                height: 1.1em;
-                width: auto;
-                max-width: 35px;
-                vertical-align: middle;
-                order: 2;
-                line-height: 0;
+                height: 1.1em;       /* Control height based on parent font-size */
+                width: auto;         /* Maintain aspect ratio */
+                max-width: 35px;     /* Prevent overly wide logos */
+                vertical-align: middle; /* Ensure alignment */
+                margin-left: 0.5em;  /* Space between number and logo */
             }
-             /* Specific Logo Adjustments */
+            /* Specific Logo Adjustments */
             .tmdb-logo { height: 0.9em; }
             .rt-logo { height: 1.1em; }
-            /* --- End Rating Box Styles --- */
+             /* Minimal styling for Number Div if needed */
+             .new-interface .full-start__rate > div {
+                 /* Default styles will apply, or Lampa's base styles */
+                 /* We are not adding background/padding/border here */
+                 /* Ensure it's treated as inline for spacing */
+                 display: inline-block;
+             }
+             .rt-rating-item > div.rt-score {
+                /* Any specific style needed ONLY for RT score number? */
+                /* e.g., font-weight: 600; (if different from others) */
+                /* Keep padding adjustment if needed for wider % */
+                 padding-left: 0.1em; /* Minimal adjustment for % */
+                 padding-right: 0.1em;
+             }
+            /* --- End Added Logo Styling --- */
 
             </style>
             `);
-          $('body').append(Lampa.Template.get(style_id, {}, true));
+          $('body').append(Lampa.Template.get('new_interface_style', {}, true)); // Use original template name
         }
     }
 
