@@ -67,9 +67,9 @@
                 align-items: center;
                 vertical-align: middle;
                 background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
-                padding: 0 0.3em 0 0; /* Zero Left Padding */
+                padding: 0 0.5em 0 0; /* Zero Left Padding */
                 border-radius: 0.3em;  /* Smoother edges */
-                gap: 0.3em; /* modified was 0.5 */
+                gap: 0.5em; /* modified was 0.3 */
                 overflow: hidden;
                 height: auto;
             }
