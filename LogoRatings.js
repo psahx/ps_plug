@@ -1,4 +1,4 @@
-// == Main Module | Matched Source Colors + Zero Left Padding ==
+// == Main Module | Matched Lampa Source Colors, Padding, & Border-Radius ==
 (function () {
     'use strict';
 
@@ -25,19 +25,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface ZeroLeftPad Final: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Borders: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: Only changed padding on .full-start__rate
-        var style_id = 'new_interface_style_final_zero_left_pad'; // Final style ID
+        // **MODIFIED CSS**: Changed border-radius to match Lampa source
+        var style_id = 'new_interface_style_final_borders'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (from Height & Smoothness version) */
+            /* Base styles... (exactly as original) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -57,30 +57,30 @@
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
-            /* --- CORRECTED Rating Box Styles --- */
+            /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.3em;
-                margin-right: 0.6em;
+                font-size: 1.3em; /* Keep font size from previous working */
+                margin-right: 0.6em; /* Keep spacing from previous working */
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
-                background-color: rgba(255, 255, 255, 0.12); /* Lighter wrapper background */
-                padding: 0 0.5em 0 0; /* ** MODIFIED: T:0 R:0.5em B:0 L:0 ** */
-                border-radius: 8px;  /* Smoother edges for wrapper */
-                gap: 0.5em; /* Space between number div and logo */
+                background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
+                padding: 0 0.5em 0 0; /* Zero Left Padding */
+                border-radius: 0.3em;  /* ** MODIFIED: Lampa Source smoothness ** */
+                gap: 0.5em; /* Keep gap */
                 overflow: hidden;
                 height: auto;
             }
             /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
                 font-weight: 600;
-                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
+                background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
                 color: #ffffff;
-                padding: 0.2em 0.5em; /* Padding INSIDE the dark box */
-                border-radius: 8px; /* Matched outer smoothness */
-                line-height: 1.3;   /* Control line height */
+                padding: 0.2em 0.5em;
+                border-radius: 0.3em; /* ** MODIFIED: Lampa Source smoothness ** */
+                line-height: 1.3;
                 font-size: 1em;
-                order: 1; /* Number first */
+                order: 1;
                 display: flex;
                 align-items: center;
             }
@@ -91,11 +91,11 @@
              }
             /* General Logo Style */
             .rating-logo {
-                height: 1.1em;
+                height: 1.1em; /* Keep logo sizing */
                 width: auto;
                 max-width: 35px;
                 vertical-align: middle;
-                order: 2; /* Logo second */
+                order: 2;
                 line-height: 0;
             }
              /* Specific Logo Adjustments */
