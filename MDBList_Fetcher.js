@@ -1,7 +1,7 @@
 // == MDBList Ratings Fetcher ==
 // Purpose: Fetches various ratings from MDBList API (api.mdblist.com)
 //          Handles caching and provides results via callback.
-//          Allows API key configuration via Lampa Settings > Other.
+//          Allows API key configuration via Lampa Settings > More.
 
 (function(window) {
     'use strict';
@@ -9,7 +9,7 @@
     // --- Configuration ---
     var config = {
         api_url: 'https://api.mdblist.com/tmdb/', // Base URL for MDBList TMDB endpoint
-        // api_key is now configured via Lampa Settings -> Other
+        // api_key is now configured via Lampa Settings -> More
         cache_time: 60 * 60 * 12 * 1000, // 12 hours cache duration
         cache_key: 'mdblist_ratings_cache', // Unique storage key for ratings data
         cache_limit: 500, // Max items in cache
@@ -29,10 +29,10 @@
     }
 
     // --- Settings UI Registration ---
-    // Add input field to Lampa Settings > Other
+    // Add input field to Lampa Settings > More
     if (window.Lampa && Lampa.SettingsApi) {
         Lampa.SettingsApi.addParam({
-            component: 'other', // Place setting under the 'Other' category
+            component: 'more', // <--- Changed from 'other' to 'more'
             param: {
                 name: 'mdblist_api_key', // Storage key for the API key
                 type: 'input',          // Input field type
@@ -131,9 +131,10 @@
         // 2. Get API Key from Storage
         var apiKey = Lampa.Storage.get('mdblist_api_key');
         if (!apiKey) {
-            // console.error("MDBLIST_Fetcher: MDBList API Key not found in Lampa Storage (Settings > Other).");
+            // console.error("MDBLIST_Fetcher: MDBList API Key not found in Lampa Storage (Settings > More).");
             // No need to cache this error, as it depends on user config
-            callback({ error: "MDBList API Key not configured in Other settings" });
+            // Updated error message to reflect 'More' section
+            callback({ error: "MDBList API Key not configured in More settings" });
             return;
         }
 
@@ -209,7 +210,7 @@
 // == MDBList Ratings Fetcher ==
 // Purpose: Fetches various ratings from MDBList API (api.mdblist.com)
 //          Handles caching and provides results via callback.
-//          Allows API key configuration via Lampa Settings > Other.
+//          Allows API key configuration via Lampa Settings > More.
 
 (function(window) {
     'use strict';
@@ -217,7 +218,7 @@
     // --- Configuration ---
     var config = {
         api_url: 'https://api.mdblist.com/tmdb/', // Base URL for MDBList TMDB endpoint
-        // api_key is now configured via Lampa Settings -> Other
+        // api_key is now configured via Lampa Settings -> More
         cache_time: 60 * 60 * 12 * 1000, // 12 hours cache duration
         cache_key: 'mdblist_ratings_cache', // Unique storage key for ratings data
         cache_limit: 500, // Max items in cache
@@ -237,10 +238,10 @@
     }
 
     // --- Settings UI Registration ---
-    // Add input field to Lampa Settings > Other
+    // Add input field to Lampa Settings > More
     if (window.Lampa && Lampa.SettingsApi) {
         Lampa.SettingsApi.addParam({
-            component: 'other', // Place setting under the 'Other' category
+            component: 'more', // <--- Changed from 'other' to 'more'
             param: {
                 name: 'mdblist_api_key', // Storage key for the API key
                 type: 'input',          // Input field type
@@ -339,9 +340,10 @@
         // 2. Get API Key from Storage
         var apiKey = Lampa.Storage.get('mdblist_api_key');
         if (!apiKey) {
-            // console.error("MDBLIST_Fetcher: MDBList API Key not found in Lampa Storage (Settings > Other).");
+            // console.error("MDBLIST_Fetcher: MDBList API Key not found in Lampa Storage (Settings > More).");
             // No need to cache this error, as it depends on user config
-            callback({ error: "MDBList API Key not configured in Other settings" });
+            // Updated error message to reflect 'More' section
+            callback({ error: "MDBList API Key not configured in More settings" });
             return;
         }
 
