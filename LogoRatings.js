@@ -1,4 +1,4 @@
-// == Main Module | Pivot Point + Lampa Font Sizes ONLY ==
+// == Main Module | Pivot Point + Final Font Weight Change ==
 (function () {
     'use strict';
 
@@ -25,21 +25,22 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Pivot+Fonts: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Font Weight: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: ONLY font-size and related attributes changed
-        var style_id = 'new_interface_style_pivot_fonts'; // Style ID for this version
+        // **MODIFIED CSS**: Changed ONLY font-weight in the number div rule
+        var style_id = 'new_interface_style_pivot_font_weight_fix'; // Style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (kept from pivot point script) */
+            /* Base styles... (from pivot point script) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
+            /* ... rest of base styles identical to pivot script ... */
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
             .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
             .new-interface-info__head span { color: #fff; }
@@ -57,10 +58,11 @@
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
+
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.45em;        /* ** MODIFIED: Lampa Source base size ** */
-                margin-right: 1em;        /* ** MODIFIED: Lampa Source spacing ** */
+                font-size: 1.45em;        /* Lampa Source base size */
+                margin-right: 1em;        /* Lampa Source spacing */
                 /* --- UNCHANGED from pivot point below --- */
                 display: inline-flex;
                 align-items: center;
@@ -74,10 +76,10 @@
             }
             /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
-                font-size: 0.9em;         /* ** MODIFIED: Smaller relative size ** */
-                justify-content: center;  /* ** ADDED: From source analysis ** */
+                font-weight: normal;      /* ** MODIFIED: Set to normal weight ** */
+                font-size: 0.9em;         /* Smaller relative size */
+                justify-content: center;  /* From source analysis */
                  /* --- UNCHANGED from pivot point below --- */
-                font-weight: 600;
                 background-color: rgba(0, 0, 0, 0.4); /* Darker background */
                 color: #ffffff;
                 padding: 0.2em 0.5em;
