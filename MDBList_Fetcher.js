@@ -37,6 +37,7 @@
                 name: 'mdblist_api_key', // Storage key for the API key
                 type: 'input',          // Input field type
                 'default': '',          // Default value (empty)
+                values: {},            // Making sure theres something in there
                 placeholder: 'Enter your MDBList API Key' // Placeholder text
             },
             field: {
