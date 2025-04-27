@@ -1,4 +1,4 @@
-// == Main Module | Adjusted Number Box Padding ==
+// == Main Module | Adjusted Number Box Padding | Removed the margin between elements ==
 (function () {
     'use strict';
 
@@ -62,7 +62,7 @@
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
                 font-size: 1.45em;        /* Lampa Source base size */
-                margin-right: 1em;        /* Lampa Source spacing */
+                margin-right: 0em;        /* modified was 1em */
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
