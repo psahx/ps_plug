@@ -1,4 +1,4 @@
-// == Main Module | Matched Lampa Source Text Size ==
+// == Main Module | Matched Lampa Source Text/Placement Attributes ONLY ==
 (function () {
     'use strict';
 
@@ -25,13 +25,13 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Match Text Attr: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Match Text Final: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: Changed only font-size and related logo heights
-        var style_id = 'new_interface_style_source_text'; // Final style ID
+        // **MODIFIED CSS**: Changed ONLY font-size and margin-right
+        var style_id = 'new_interface_style_final_text_placement'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
@@ -59,15 +59,15 @@
 
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.45em;       /* ** MODIFIED: Lampa Source base size ** */
-                margin-right: 0.6em;     /* Keep spacing from previous working */
+                font-size: 1.45em;        /* ** MODIFIED: Lampa Source base size ** */
+                margin-right: 1em;         /* ** MODIFIED: Lampa Source spacing ** */
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
                 background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
-                padding: 0 0.4em;          /* Keep padding based on source analysis */
-                border-radius: 0.3em;      /* Lampa Source smoothness */
-                gap: 0.5em;                /* Keep gap */
+                padding: 0 0.4em;              /* Keep padding based on Lampa source analysis */
+                border-radius: 0.3em;          /* Lampa Source smoothness */
+                gap: 0.5em;                    /* Keep gap */
                 overflow: hidden;
                 height: auto;
             }
@@ -88,27 +88,26 @@
             }
              /* Specific padding for RT score */
              .rt-rating-item > div.rt-score {
-                 padding-left: 0.6em;
+                 padding-left: 0.6em; /* Keep wider padding */
                  padding-right: 0.6em;
              }
-            /* General Logo Style */
+            /* General Logo Style - UNCHANGED from previous base */
             .rating-logo {
-                height: 1.0em;    /* ** MODIFIED: Adjusted relative height ** */
+                height: 1.1em;
                 width: auto;
-                max-width: 38px;  /* ** MODIFIED: Adjusted max width ** */
+                max-width: 35px;
                 vertical-align: middle;
                 order: 2;
                 line-height: 0;
             }
-             /* Specific Logo Adjustments */
-            .tmdb-logo { height: 0.7em; } /* ** MODIFIED: Adjusted relative height ** */
-            .rt-logo { height: 1.0em; }  /* ** MODIFIED: Adjusted relative height ** */
+             /* Specific Logo Adjustments - UNCHANGED from previous base */
+            .tmdb-logo { height: 0.9em; }
+            .rt-logo { height: 1.1em; }
             /* --- End Rating Box Styles --- */
 
             </style>
             `);
-          // Use original template name
-          $('body').append(Lampa.Template.get('new_interface_style', {}, true));
+          $('body').append(Lampa.Template.get(style_id, {}, true));
         }
     }
 
