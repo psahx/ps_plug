@@ -69,7 +69,7 @@
                 background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
                 padding: 0 0.3em 0 0; /* Zero Left Padding */
                 border-radius: 0.3em;  /* Smoother edges */
-                gap: 0.5em;
+                gap: 0.3em; /* modified was 0.5 */
                 overflow: hidden;
                 height: auto;
             }
@@ -90,8 +90,8 @@
             }
              /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
-                 padding-left: 0.8em;  /* ** MODIFIED: Wider L padding (was 0.7em) ** */
-                 padding-right: 0.8em; /* ** MODIFIED: Wider R padding (was 0.7em) ** */
+                 padding-left: 1em;  /* ** MODIFIED: Wider L padding (was 0.8em) ** */
+                 padding-right: 1em; /* ** MODIFIED: Wider R padding (was 0.8em) ** */
              }
             /* General Logo Style - UNCHANGED from pivot point */
             .rating-logo {
