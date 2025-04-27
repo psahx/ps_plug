@@ -1,4 +1,4 @@
-// == Main Module | Adjusted Number Box Padding | Removed the margin between elements | changed logo max width ==
+// == Main Module | Working in order | Tweaking Fonts ==
 (function () {
     'use strict';
 
@@ -61,7 +61,7 @@
 
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.45em;        /* Lampa Source base size */
+                font-size: 1.3em;        /* Lampa Source base size is 1.3, we had it 1.45 */
                 margin-right: 0em;        /* modified was 1em */
                 display: inline-flex;
                 align-items: center;
@@ -76,7 +76,7 @@
             /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
                 font-weight: normal;      /* Normal weight */
-                font-size: 0.9em;         /* Smaller relative size */
+                font-size: 1em;         /* Changing back to original from 0.9 */
                 justify-content: center;  /* From source analysis */
                 background-color: rgba(0, 0, 0, 0.4); /* Darker background */
                 color: #ffffff;
