@@ -67,7 +67,7 @@
                 align-items: center;
                 vertical-align: middle;
                 background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
-                padding: 0 0.2em 0 0; /* Zero Left Padding */
+                padding: 0 0.3em 0 0; /* Zero Left Padding */
                 border-radius: 0.3em;  /* Smoother edges */
                 gap: 0.5em; /* modified was 0.3 */
                 overflow: hidden;
@@ -97,7 +97,7 @@
             .rating-logo {
                 height: 1.1em;
                 width: auto;
-                max-width: 55px; /* changed from 35 */
+                max-width: 75px; /* changed from 55 */
                 vertical-align: middle;
                 order: 2;
                 line-height: 0;
