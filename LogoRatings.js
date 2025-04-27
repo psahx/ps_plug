@@ -1,4 +1,4 @@
-// == Main Module | Using User-Provided Original CSS + Essential Logo Sizing ==
+// == Main Module | Using Lampa Source CSS Rules ==
 (function () {
     'use strict';
 
@@ -25,19 +25,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Minimal CSS+Logo: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Apply Source CSS: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: User's Original CSS + ESSENTIAL Logo Sizing/Alignment
-        var style_id = 'new_interface_style_original_plus_logo_sizing'; // ID for this state
+        // **MODIFIED CSS**: Using Lampa Source rules + Logo Sizing
+        var style_id = 'new_interface_style_lampa_source_plus_logos'; // ID for this state
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous attempts
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* User-Provided Original Base CSS */
+            /* Original Base CSS Rules Provided by User */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -57,42 +57,55 @@
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
-            /* Original Rule for rating box */
-            .new-interface .full-start__rate {
-                font-size: 1.3em;
-                margin-right: 0.6em; /* Add spacing between rating items */
-                display: inline-flex; /* Align number and logo */
-                align-items: center;  /* Vertically center */
-                vertical-align: middle; /* Align with surrounding text */
-                /* NO background, padding, border-radius from custom CSS */
+            /* --- Rating Box Styles based on Lampa Source CSS --- */
+            /* Rule 1 Applied to .full-start__rate */
+            .full-start__rate {
+                background: rgba(0, 0, 0, 0.15); /* Original background */
+                border-radius: 0.3em;          /* Original slightly rounded corners */
+                display: inline-flex;          /* Use inline-flex for Number+Logo */
+                align-items: center;
+                font-size: 1.45em;             /* Original base size */
+                margin-right: 1em;             /* Original spacing */
+                vertical-align: middle;        /* Align with other details items */
+                padding: 0.1em 0.4em;          /* Add some padding inside the wrapper */
+                gap: 0.5em;                    /* Space between number and logo */
             }
-
-            /* **ADDED**: Essential Logo Styling */
+            /* Rule 2 Applied to Number Div (.full-start__rate > div:first-child) */
+            .full-start__rate > div { /* Targets the first div (Number/Score) */
+                /* Original had fixed W/H, using padding instead */
+                padding: 0.15em 0.4em; /* Padding inside number box */
+                flex-shrink: 0;
+                background: rgba(0, 0, 0, 0.25); /* Use slightly darker background for contrast */
+                border-radius: 0.3em;          /* Original radius */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;              /* Make number bold */
+                color: white;                  /* Ensure text is white */
+                line-height: 1.2;              /* Adjust line height */
+                font-size: 0.9em;              /* Slightly smaller than parent */
+                order: 1;                      /* Number first */
+            }
+            /* Rule 3 Applied to Logo (Implicitly last child) + Sizing */
             .rating-logo {
-                height: 1.1em;       /* Control height based on parent font-size */
-                width: auto;         /* Maintain aspect ratio */
-                max-width: 35px;     /* Prevent overly wide logos */
-                vertical-align: middle; /* Ensure alignment */
-                margin-left: 0.5em;  /* Space between number and logo */
+                /* Original label had font-size: 0.7em; padding: 0 0.5em; */
+                /* We apply sizing and alignment instead */
+                height: 1.1em;
+                width: auto;
+                max-width: 35px;
+                vertical-align: middle;
+                order: 2;                      /* Logo second */
+                line-height: 0; /* Prevent logo affecting overall height */
             }
-            /* Specific Logo Adjustments */
-            .tmdb-logo { height: 0.9em; }
+             /* Specific Logo Adjustments */
+            .tmdb-logo { height: 0.8em; } /* Adjusted TMDB height */
             .rt-logo { height: 1.1em; }
-             /* Minimal styling for Number Div if needed */
-             .new-interface .full-start__rate > div {
-                 /* Default styles will apply, or Lampa's base styles */
-                 /* We are not adding background/padding/border here */
-                 /* Ensure it's treated as inline for spacing */
-                 display: inline-block;
-             }
+             /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
-                /* Any specific style needed ONLY for RT score number? */
-                /* e.g., font-weight: 600; (if different from others) */
-                /* Keep padding adjustment if needed for wider % */
-                 padding-left: 0.1em; /* Minimal adjustment for % */
-                 padding-right: 0.1em;
+                 padding-left: 0.6em; /* Adjust RT padding slightly if needed */
+                 padding-right: 0.6em;
              }
-            /* --- End Added Logo Styling --- */
+            /* --- End Rating Box Styles --- */
 
             </style>
             `);
