@@ -1,4 +1,4 @@
-// == Main Module | Using User-Provided Original CSS ==
+// == Main Module | Final Style Tweaks: Height & Inner Smoothness ==
 (function () {
     'use strict';
 
@@ -10,7 +10,7 @@
     // --- create function (Info Panel Handler) ---
     // UNCHANGED create function...
     function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id]; if (window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && data.id && data.method) { mdblistRatingsPending[data.id] = true; window.MDBLIST_Fetcher.fetch(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
-      this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_IOS-OSX_App_Icon.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); };
+      this.draw = function (data) { /* UNCHANGED draw function from previous step */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_IOS-OSX_App_Icon.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); };
       this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
       this.render = function () { return html; }; this.empty = function () {};
       this.destroy = function () { /* UNCHANGED destroy function */ html.remove(); loaded = {}; html = null; mdblistRatingsCache = {}; mdblistRatingsPending = {}; };
@@ -33,20 +33,87 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Use Original CSS: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Style Fix 3: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED**: Using exact CSS provided by user
-        var style_id = 'new_interface_style_user_provided'; // Use a specific ID
+        // **MODIFIED CSS** - Adjusting padding and border-radius
+        var style_id = 'new_interface_style_final_height_smooth'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous attempts
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
-            // Using the exact template content provided by the user
-            Lampa.Template.add('new_interface_style', "\n        <style data-id=\"" + style_id + "\">\n        .new-interface .card--small.card--wide {\n            width: 18.3em;\n        }\n        \n        .new-interface-info {\n            position: relative;\n            padding: 1.5em;\n            height: 24em;\n        }\n        \n        .new-interface-info__body {\n            width: 80%;\n            padding-top: 1.1em;\n        }\n        \n        .new-interface-info__head {\n            color: rgba(255, 255, 255, 0.6);\n            margin-bottom: 1em;\n            font-size: 1.3em;\n            min-height: 1em;\n        }\n        \n        .new-interface-info__head span {\n            color: #fff;\n        }\n        \n        .new-interface-info__title {\n            font-size: 4em;\n            font-weight: 600;\n            margin-bottom: 0.3em;\n            overflow: hidden;\n            -o-text-overflow: \".\";\n            text-overflow: \".\";\n            display: -webkit-box;\n            -webkit-line-clamp: 1;\n            line-clamp: 1;\n            -webkit-box-orient: vertical;\n            margin-left: -0.03em;\n            line-height: 1.3;\n        }\n        \n        .new-interface-info__details {\n            margin-bottom: 1.6em;\n            display: -webkit-box;\n            display: -webkit-flex;\n            display: -moz-box;\n            display: -ms-flexbox;\n            display: flex;\n            -webkit-box-align: center;\n            -webkit-align-items: center;\n            -moz-box-align: center;\n            -ms-flex-align: center;\n            align-items: center;\n            -webkit-flex-wrap: wrap;\n            -ms-flex-wrap: wrap;\n            flex-wrap: wrap;\n            min-height: 1.9em;\n            font-size: 1.1em;\n        }\n        \n        .new-interface-info__split {\n            margin: 0 1em;\n            font-size: 0.7em;\n        }\n        \n        .new-interface-info__description {\n            font-size: 1.2em;\n            font-weight: 300;\n            line-height: 1.5;\n            overflow: hidden;\n            -o-text-overflow: \".\";\n            text-overflow: \".\";\n            display: -webkit-box;\n            -webkit-line-clamp: 4;\n            line-clamp: 4;\n            -webkit-box-orient: vertical;\n            width: 70%;\n        }\n        \n        .new-interface .card-more__box {\n            padding-bottom: 95%;\n        }\n        \n        .new-interface .full-start__background {\n            height: 108%;\n            top: -6em;\n        }\n        \n        .new-interface .full-start__rate {\n            font-size: 1.3em;\n            margin-right: 0;\n        }\n        \n        .new-interface .card__promo {\n            display: none;\n        }\n        \n        .new-interface .card.card--wide+.card-more .card-more__box {\n            padding-bottom: 95%;\n        }\n        \n        .new-interface .card.card--wide .card-watched {\n            display: none !important;\n        }\n        \n        body.light--version .new-interface-info__body {\n            width: 69%;\n            padding-top: 1.5em;\n        }\n        \n        body.light--version .new-interface-info {\n            height: 25.3em;\n        }\n\n        body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view{\n            animation: animation-card-focus 0.2s\n        }\n        body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view{\n            animation: animation-trigger-enter 0.2s forwards\n        }\n        </style>\n    ");
-            // Append using the correct template name ('new_interface_style') and ensure it's marked as HTML
-            $('body').append(Lampa.Template.get('new_interface_style', {}, true));
+            Lampa.Template.add(style_id, `
+            <style data-id="${style_id}">
+            /* Base styles... (exactly as original) */
+            .new-interface .card--small.card--wide { width: 18.3em; }
+            .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
+            .new-interface-info__body { width: 80%; padding-top: 1.1em; }
+            .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
+            .new-interface-info__head span { color: #fff; }
+            .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
+            .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; }
+            .new-interface-info__split { margin: 0 1em; font-size: 0.7em; }
+            .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
+            .new-interface .card-more__box { padding-bottom: 95%; }
+            .new-interface .full-start__background { height: 108%; top: -6em; }
+            .new-interface .card__promo { display: none; }
+            .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }
+            .new-interface .card.card--wide .card-watched { display: none !important; }
+            body.light--version .new-interface-info__body { width: 69%; padding-top: 1.5em; }
+            body.light--version .new-interface-info { height: 25.3em; }
+            body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
+            body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
+
+            /* --- CORRECTED Rating Box Styles --- */
+            .new-interface .full-start__rate {
+                font-size: 1.3em;
+                margin-right: 0.6em;
+                display: inline-flex;
+                align-items: center; /* Center items vertically within the line */
+                vertical-align: middle;
+                background-color: rgba(255, 255, 255, 0.12); /* Lighter wrapper background */
+                padding: 0 0.5em; /* NO vertical padding, YES horizontal padding */
+                border-radius: 8px;  /* Smoother edges for wrapper */
+                gap: 0.5em; /* Space between number div and logo */
+                overflow: hidden; /* Clip inner content */
+                height: auto; /* Let content dictate height */
+            }
+            /* Style for the Number Div (common to all ratings) */
+            .new-interface .full-start__rate > div {
+                font-weight: 600;
+                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
+                color: #ffffff;
+                padding: 0.2em 0.5em; /* Padding INSIDE the dark box */
+                border-radius: 8px; /* ** MATCH outer smoothness ** */
+                line-height: 1.3;   /* Control line height */
+                font-size: 1em;
+                order: 1; /* Number first */
+                display: flex; /* Ensure vertical centering if text wraps unexpectedly */
+                align-items: center;
+            }
+             /* Specific padding for RT score number div */
+             .rt-rating-item > div { /* Targets the div containing the score% */
+                 padding-left: 0.7em;
+                 padding-right: 0.7em;
+             }
+            /* General Logo Style */
+            .rating-logo {
+                height: 1.1em;
+                width: auto;
+                max-width: 35px;
+                vertical-align: middle; /* Helps alignment */
+                order: 2; /* Logo second */
+                line-height: 0; /* Prevent logo affecting line box height */
+            }
+             /* Specific Logo Adjustments */
+            .tmdb-logo { height: 0.9em; }
+            .rt-logo { height: 1.1em; }
+            /* --- End Rating Box Styles --- */
+
+            </style>
+            `);
+          $('body').append(Lampa.Template.get(style_id, {}, true));
         }
     }
 
