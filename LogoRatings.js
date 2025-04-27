@@ -1,4 +1,4 @@
-// == Main Module | Matched Lampa Source Colors/Opacity ==
+// == Main Module | Matched Source Colors + Zero Left Padding ==
 (function () {
     'use strict';
 
@@ -25,19 +25,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Match Source Color: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface ZeroLeftPad Final: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: Changed background-color to match Lampa Source
-        var style_id = 'new_interface_style_source_color'; // Final style ID
+        // **MODIFIED CSS**: Only changed padding on .full-start__rate
+        var style_id = 'new_interface_style_final_zero_left_pad'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (exactly as original) */
+            /* Base styles... (from Height & Smoothness version) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -59,48 +59,48 @@
 
             /* --- CORRECTED Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.3em; /* Keep from base script */
-                margin-right: 0.6em; /* Keep from base script */
+                font-size: 1.3em;
+                margin-right: 0.6em;
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
-                background: rgba(0, 0, 0, 0.15); /* ** MODIFIED: Lampa Source background ** */
-                padding: 0 0.5em; /* Keep from base script (horizontal only) */
-                border-radius: 8px;  /* Keep from base script (smoother) */
-                gap: 0.5em; /* Keep from base script */
+                background-color: rgba(255, 255, 255, 0.12); /* Lighter wrapper background */
+                padding: 0 0.5em 0 0; /* ** MODIFIED: T:0 R:0.5em B:0 L:0 ** */
+                border-radius: 8px;  /* Smoother edges for wrapper */
+                gap: 0.5em; /* Space between number div and logo */
                 overflow: hidden;
                 height: auto;
             }
             /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
-                font-weight: 600; /* Keep from base script */
-                background: rgba(0, 0, 0, 0.15); /* ** MODIFIED: Lampa Source background ** */
-                color: #ffffff; /* Keep from base script */
-                padding: 0.2em 0.5em; /* Keep from base script */
-                border-radius: 8px; /* Keep from base script (smoother) */
-                line-height: 1.3;   /* Keep from base script */
-                font-size: 1em; /* Keep from base script */
-                order: 1;
+                font-weight: 600;
+                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
+                color: #ffffff;
+                padding: 0.2em 0.5em; /* Padding INSIDE the dark box */
+                border-radius: 8px; /* Matched outer smoothness */
+                line-height: 1.3;   /* Control line height */
+                font-size: 1em;
+                order: 1; /* Number first */
                 display: flex;
                 align-items: center;
             }
              /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
-                 padding-left: 0.7em; /* Keep from base script */
+                 padding-left: 0.7em; /* Keep wider padding */
                  padding-right: 0.7em;
              }
             /* General Logo Style */
             .rating-logo {
-                height: 1.1em; /* Keep from base script */
-                width: auto; /* Keep from base script */
-                max-width: 35px; /* Keep from base script */
+                height: 1.1em;
+                width: auto;
+                max-width: 35px;
                 vertical-align: middle;
-                order: 2;
+                order: 2; /* Logo second */
                 line-height: 0;
             }
              /* Specific Logo Adjustments */
-            .tmdb-logo { height: 0.9em; } /* Keep from base script */
-            .rt-logo { height: 1.1em; } /* Keep from base script */
+            .tmdb-logo { height: 0.9em; }
+            .rt-logo { height: 1.1em; }
             /* --- End Rating Box Styles --- */
 
             </style>
