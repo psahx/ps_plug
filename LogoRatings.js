@@ -1,4 +1,4 @@
-// == Main Module | Adjusted Font Weight ==
+// == Main Module | Matched Lampa Source Colors, Padding, & Border-Radius ==
 (function () {
     'use strict';
 
@@ -25,19 +25,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Font Weight Fix: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Borders: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: Changed ONLY font-weight
-        var style_id = 'new_interface_style_final_font_weight'; // Final style ID
+        // **MODIFIED CSS**: Changed border-radius to match Lampa source
+        var style_id = 'new_interface_style_final_borders'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (kept from pivot point script) */
+            /* Base styles... (exactly as original) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -59,48 +59,46 @@
 
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.45em;       /* Lampa Source base size */
-                margin-right: 1em;        /* Lampa Source spacing */
+                font-size: 1.3em; /* Keep font size from previous working */
+                margin-right: 0.6em; /* Keep spacing from previous working */
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
                 background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
-                padding: 0 0.4em;             /* Keep padding based on Lampa source analysis */
-                border-radius: 0.3em;         /* Lampa Source smoothness */
-                gap: 0.5em;                   /* Keep gap */
+                padding: 0 0.5em 0 0; /* Zero Left Padding */
+                border-radius: 0.3em;  /* ** MODIFIED: Lampa Source smoothness ** */
+                gap: 0.5em; /* Keep gap */
                 overflow: hidden;
                 height: auto;
             }
-            /* Style for the Number Div */
+            /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
-                font-weight: normal;          /* ** MODIFIED: Set to normal weight (was 600) ** */
+                font-weight: 600;
                 background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
-                color: #ffffff;               /* Keep */
-                padding: 0.15em 0.4em;        /* Keep Lampa Source padding */
-                border-radius: 0.3em;         /* Keep Lampa Source smoothness */
-                line-height: 1.2;             /* Keep */
-                font-size: 0.9em;             /* Keep smaller relative size */
+                color: #ffffff;
+                padding: 0.2em 0.5em;
+                border-radius: 0.3em; /* ** MODIFIED: Lampa Source smoothness ** */
+                line-height: 1.3;
+                font-size: 1em;
                 order: 1;
                 display: flex;
                 align-items: center;
-                justify-content: center;      /* Keep from source analysis */
-                flex-shrink: 0;               /* Keep from source analysis */
             }
-             /* Specific padding for RT score */
+             /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
-                 padding-left: 0.6em;         /* Keep */
-                 padding-right: 0.6em;
+                 padding-left: 0.7em; /* Keep wider padding */
+                 padding-right: 0.7em;
              }
-            /* General Logo Style - UNCHANGED from pivot point */
+            /* General Logo Style */
             .rating-logo {
-                height: 1.1em;
+                height: 1.1em; /* Keep logo sizing */
                 width: auto;
                 max-width: 35px;
                 vertical-align: middle;
                 order: 2;
                 line-height: 0;
             }
-             /* Specific Logo Adjustments - UNCHANGED from pivot point */
+             /* Specific Logo Adjustments */
             .tmdb-logo { height: 0.9em; }
             .rt-logo { height: 1.1em; }
             /* --- End Rating Box Styles --- */
