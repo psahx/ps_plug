@@ -90,8 +90,8 @@
             }
              /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
-                 padding-left: 1em;  /* ** MODIFIED: Wider L padding (was 0.8em) ** */
-                 padding-right: 1em; /* ** MODIFIED: Wider R padding (was 0.8em) ** */
+                 padding-left: 1.2em;  /* ** MODIFIED: Wider L padding (was 1em) ** */
+                 padding-right: 1.2em; /* ** MODIFIED: Wider R padding (was 1em) ** */
              }
             /* General Logo Style - UNCHANGED from pivot point */
             .rating-logo {
