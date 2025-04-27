@@ -1,4 +1,4 @@
-// == Main Module | Adjusted Number Box Padding | Removed the margin between elements ==
+// == Main Module | Adjusted Number Box Padding | Removed the margin between elements | changed logo max width ==
 (function () {
     'use strict';
 
@@ -97,7 +97,7 @@
             .rating-logo {
                 height: 1.1em;
                 width: auto;
-                max-width: 35px;
+                max-width: 55px; /* changed from 35 */
                 vertical-align: middle;
                 order: 2;
                 line-height: 0;
