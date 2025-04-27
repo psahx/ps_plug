@@ -67,7 +67,7 @@
                 align-items: center;
                 vertical-align: middle;
                 background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
-                padding: 0 0.5em 0 0; /* Zero Left Padding */
+                padding: 0 0.3em 0 0; /* Zero Left Padding */
                 border-radius: 0.3em;  /* Smoother edges */
                 gap: 0.5em;
                 overflow: hidden;
@@ -80,7 +80,7 @@
                 justify-content: center;  /* From source analysis */
                 background-color: rgba(0, 0, 0, 0.4); /* Darker background */
                 color: #ffffff;
-                padding: 0.2em 0.4em;     /* ** MODIFIED: Narrower L/R padding (was 0.5em) ** */
+                padding: 0.1em 0.3em;     /* ** MODIFIED: Narrower L/R padding (was 0.5em) ** */
                 border-radius: 0.3em;       /* Smoother edges */
                 line-height: 1.3;
                 order: 1;
