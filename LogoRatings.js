@@ -39,7 +39,7 @@
             <style data-id="${style_id}">
             /* Base styles... (kept from pivot point script) */
             .new-interface .card--small.card--wide { width: 18.3em; }
-            .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
+            .new-interface-info { position: relative; padding: 1.5em; height: 20em; } /* was 24em*/
             /* ... rest of base styles identical to pivot script ... */
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
             .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
