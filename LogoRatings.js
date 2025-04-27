@@ -1,4 +1,4 @@
-// == Main Module | Matched Lampa Source Colors, Padding, & Border-Radius ==
+// == Main Module | Pivot Point + Lampa Font Sizes ONLY ==
 (function () {
     'use strict';
 
@@ -8,7 +8,7 @@
     // -----------------------------
 
     // --- create function (Info Panel Handler) ---
-    // UNCHANGED create function...
+    // UNCHANGED create function... (from user provided script)
     function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id]; if (window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && data.id && data.method) { mdblistRatingsPending[data.id] = true; window.MDBLIST_Fetcher.fetch(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
       this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_IOS-OSX_App_Icon.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); };
       this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
@@ -25,19 +25,19 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Borders: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Pivot+Fonts: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: Changed border-radius to match Lampa source
-        var style_id = 'new_interface_style_final_borders'; // Final style ID
+        // **MODIFIED CSS**: ONLY font-size and related attributes changed
+        var style_id = 'new_interface_style_pivot_fonts'; // Style ID for this version
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (exactly as original) */
+            /* Base styles... (kept from pivot point script) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
@@ -59,46 +59,50 @@
 
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.3em; /* Keep font size from previous working */
-                margin-right: 0.6em; /* Keep spacing from previous working */
+                font-size: 1.45em;        /* ** MODIFIED: Lampa Source base size ** */
+                margin-right: 1em;        /* ** MODIFIED: Lampa Source spacing ** */
+                /* --- UNCHANGED from pivot point below --- */
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
-                background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
+                background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
                 padding: 0 0.5em 0 0; /* Zero Left Padding */
-                border-radius: 0.3em;  /* ** MODIFIED: Lampa Source smoothness ** */
-                gap: 0.5em; /* Keep gap */
+                border-radius: 8px;  /* Smoother edges */
+                gap: 0.5em;
                 overflow: hidden;
                 height: auto;
             }
             /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
+                font-size: 0.9em;         /* ** MODIFIED: Smaller relative size ** */
+                justify-content: center;  /* ** ADDED: From source analysis ** */
+                 /* --- UNCHANGED from pivot point below --- */
                 font-weight: 600;
-                background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
+                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
                 color: #ffffff;
                 padding: 0.2em 0.5em;
-                border-radius: 0.3em; /* ** MODIFIED: Lampa Source smoothness ** */
+                border-radius: 8px; /* Smoother edges */
                 line-height: 1.3;
-                font-size: 1em;
                 order: 1;
                 display: flex;
                 align-items: center;
+                flex-shrink: 0; /* Added from source analysis */
             }
              /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
                  padding-left: 0.7em; /* Keep wider padding */
                  padding-right: 0.7em;
              }
-            /* General Logo Style */
+            /* General Logo Style - UNCHANGED from pivot point */
             .rating-logo {
-                height: 1.1em; /* Keep logo sizing */
+                height: 1.1em;
                 width: auto;
                 max-width: 35px;
                 vertical-align: middle;
                 order: 2;
                 line-height: 0;
             }
-             /* Specific Logo Adjustments */
+             /* Specific Logo Adjustments - UNCHANGED from pivot point */
             .tmdb-logo { height: 0.9em; }
             .rt-logo { height: 1.1em; }
             /* --- End Rating Box Styles --- */
