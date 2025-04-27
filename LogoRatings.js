@@ -1,4 +1,4 @@
-// == Main Module | Matched Lampa Source Text/Placement Attributes ONLY ==
+// == Main Module | Corrected Text/Placement on Confirmed Base ==
 (function () {
     'use strict';
 
@@ -25,13 +25,13 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Match Text Final: Missing Lampa components"); return; }
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Final Text Placement: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
-        // **MODIFIED CSS**: Changed ONLY font-size and margin-right
-        var style_id = 'new_interface_style_final_text_placement'; // Final style ID
+        // **MODIFIED CSS**: Changed font-size and margin-right ONLY
+        var style_id = 'new_interface_style_final_text_placement_v2'; // Final style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
              $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
@@ -59,39 +59,39 @@
 
             /* --- Rating Box Styles --- */
             .new-interface .full-start__rate {
-                font-size: 1.45em;        /* ** MODIFIED: Lampa Source base size ** */
-                margin-right: 1em;         /* ** MODIFIED: Lampa Source spacing ** */
+                font-size: 1.45em;       /* ** MODIFIED: Lampa Source base size ** */
+                margin-right: 1em;        /* ** MODIFIED: Lampa Source spacing ** */
                 display: inline-flex;
                 align-items: center;
                 vertical-align: middle;
-                background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
-                padding: 0 0.4em;              /* Keep padding based on Lampa source analysis */
-                border-radius: 0.3em;          /* Lampa Source smoothness */
-                gap: 0.5em;                    /* Keep gap */
+                background: rgba(0, 0, 0, 0.15); /* Keep Lampa Source background */
+                padding: 0 0.4em;             /* Keep Lampa Source padding */
+                border-radius: 0.3em;         /* Keep Lampa Source smoothness */
+                gap: 0.5em;                   /* Keep gap for spacing */
                 overflow: hidden;
                 height: auto;
             }
             /* Style for the Number Div */
             .new-interface .full-start__rate > div {
-                font-weight: 600;
-                background: rgba(0, 0, 0, 0.15); /* Lampa Source background */
-                color: #ffffff;
-                padding: 0.15em 0.4em;
-                border-radius: 0.3em;    /* Lampa Source smoothness */
-                line-height: 1.2;
-                font-size: 0.9em;         /* ** MODIFIED: Smaller relative size ** */
+                font-weight: 600;             /* Keep */
+                background: rgba(0, 0, 0, 0.15); /* Keep Lampa Source background */
+                color: #ffffff;               /* Keep */
+                padding: 0.15em 0.4em;        /* Keep Lampa Source padding */
+                border-radius: 0.3em;         /* Keep Lampa Source smoothness */
+                line-height: 1.2;             /* Keep */
+                font-size: 0.9em;             /* ** MODIFIED: Smaller relative size ** */
                 order: 1;
                 display: flex;
                 align-items: center;
-                justify-content: center; /* Added from source */
-                flex-shrink: 0;
+                justify-content: center;      /* Keep from source analysis */
+                flex-shrink: 0;               /* Keep from source analysis */
             }
              /* Specific padding for RT score */
              .rt-rating-item > div.rt-score {
-                 padding-left: 0.6em; /* Keep wider padding */
+                 padding-left: 0.6em;         /* Keep */
                  padding-right: 0.6em;
              }
-            /* General Logo Style - UNCHANGED from previous base */
+            /* General Logo Style - UNCHANGED from the base */
             .rating-logo {
                 height: 1.1em;
                 width: auto;
@@ -100,7 +100,7 @@
                 order: 2;
                 line-height: 0;
             }
-             /* Specific Logo Adjustments - UNCHANGED from previous base */
+             /* Specific Logo Adjustments - UNCHANGED from the base */
             .tmdb-logo { height: 0.9em; }
             .rt-logo { height: 1.1em; }
             /* --- End Rating Box Styles --- */
