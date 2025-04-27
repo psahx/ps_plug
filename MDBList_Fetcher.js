@@ -21,9 +21,9 @@
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
             mdblist_api_key_desc: {
-                ru: "Введите ваш API ключ с сайта api.mdblist.com (требуется для MDBLIST_Fetcher)",
-                en: "Enter your API key from api.mdblist.com (required for MDBLIST_Fetcher)",
-                uk: "Введіть ваш API ключ з сайту api.mdblist.com (потрібно для MDBLIST_Fetcher)"
+                ru: "Введите ваш API ключ с сайта MDBList.com (требуется для MDBLIST_Fetcher)",
+                en: "Enter your API key from MDBList.com (required for MDBLIST_Fetcher)",
+                uk: "Введіть ваш API ключ з сайту MDBList.com (потрібно для MDBLIST_Fetcher)"
             }
         });
     }
