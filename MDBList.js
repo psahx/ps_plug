@@ -2,7 +2,7 @@
 // Purpose: Inject CSS and verify identification of the target CUB/New Interface component.
 //          Uses limited polling after activity_ready. Does NOT apply patches yet.
 // Strategy: Wrap Lampa.InteractionMain, use Listener + Polling Check for init trigger.
-// Version: 1.2 (Polling Init Trigger)
+// Version: 1.2 (Polling Init Trigger) 
 (function (window) {
     'use strict';
 
