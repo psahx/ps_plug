@@ -1,16 +1,18 @@
 // == Lampa Plugin: Interface Patcher - Step 1 ==
 // Purpose: Inject CSS and verify identification of the target CUB/New Interface component.
-//          Does NOT apply any functional patches yet.
+//          Does NOT apply any functional patches yet. Includes enhanced logging.
 // Strategy: Wrap Lampa.InteractionMain, use Listener + Element Check for init trigger.
+// Version: 1.1 (Enhanced Logging)
 (function (window) {
     'use strict';
 
-    const PLUGIN_NAME = "InterfacePatcher Step 1 v1.0";
+    const PLUGIN_NAME = "InterfacePatcher Step 1 v1.1 (Logging)"; // Added version/note
 
     // --- Lampa Readiness Check ---
+    // Ensure essential Lampa components exist before proceeding far
     if (!window.Lampa || !window.Lampa.Listener || !window.Lampa.InteractionMain || !window.Lampa.Template || !window.Lampa.Storage || !window.Lampa.Api || !window.Lampa.Utils || !window.Lampa.Lang || !window.Lampa.Reguest || !window.Lampa.Account || !window.Lampa.Manifest) {
-        console.error(`${PLUGIN_NAME}: Required Lampa components missing at script start.`);
-        // Attempt to continue, but core functionality might fail later
+        console.error(`${PLUGIN_NAME}: Required Lampa components missing at script start. Functionality may be impaired.`);
+        // Allow script to continue to potentially catch listener events, but core logic might fail.
     } else {
         console.log(`${PLUGIN_NAME}: Base Lampa components found.`);
     }
@@ -21,9 +23,8 @@
     const TARGET_INFO_ELEMENT_SELECTOR = '.new-interface-info'; // Unique element to confirm target interface presence
 
     // --- CSS Injection Function ---
-    // Uses CSS rules from the "Modified Interface" code provided previously
     function injectCSS() {
-        // Ensure Lampa components needed are loaded before proceeding
+        // Delay check for $ until function is called
         if (!window.Lampa || !Lampa.Template || !window.$) {
              console.error(`${PLUGIN_NAME}: Cannot inject CSS - Lampa.Template or jQuery ($) not ready.`);
              return;
@@ -31,7 +32,7 @@
         console.log(`${PLUGIN_NAME}: Attempting CSS injection...`);
         try {
             if ($('style[data-id="' + STYLE_ID + '"]').length) {
-                 console.log(`${PLUGIN_NAME}: CSS already injected.`);
+                 console.log(`${PLUGIN_NAME}: CSS already injected (ID: ${STYLE_ID}).`);
                  return;
              }
             // CSS content copied from the relevant <style> block of the "Modified Interface" code
@@ -93,96 +94,60 @@
     }
 
     // --- Wrapper and Initialization Logic ---
-    let originalInteractionMainFactory = null; // Stores the original/CUB factory function
-    let pluginInitializationAttempted = false; // Track if init was tried
-    let pluginInitializationSucceeded = false; // Track if init succeeded (wrapping done)
+    let originalInteractionMainFactory = null;
+    let pluginInitializationAttempted = false;
+    let pluginInitializationSucceeded = false;
+    let activityReadyCounter = 0; // Counter for debugging
 
-    // This function will replace Lampa.InteractionMain
+    // This function will replace Lampa.InteractionMain IF initPlugin succeeds
     function ourWrappedFactory(object) {
-         console.log(`${PLUGIN_NAME}: Wrapped factory called for source:`, object?.source);
+         console.log(`${PLUGIN_NAME}: Wrapped factory executing for source:`, object?.source);
          let instance = null;
          try {
-            // Ensure the factory captured during init is valid
-            if (!originalInteractionMainFactory) {
-                throw new Error("Original factory function was not captured during init.");
-            }
-            // Call the captured factory (should be the one set by CUB Interface script)
+            if (!originalInteractionMainFactory) { throw new Error("Original factory not captured."); }
             instance = originalInteractionMainFactory(object);
              console.log(`${PLUGIN_NAME}: Original factory executed. Returned instance:`, !!instance);
-         } catch (e) {
-             console.error(`${PLUGIN_NAME}: Error calling original InteractionMain factory from wrapper`, e);
-             return instance; // Return whatever we got (likely null or error state)
-         }
+         } catch (e) { console.error(`${PLUGIN_NAME}: Error calling original InteractionMain factory from wrapper`, e); return instance; }
 
-         // If instance creation failed, return immediately
-         if (!instance) {
-             console.warn(`${PLUGIN_NAME}: Original factory returned no instance.`);
-             return instance;
-         }
+         if (!instance) { console.warn(`${PLUGIN_NAME}: Original factory returned null instance.`); return instance; }
 
-         // Perform Identification Checks
-         let conditionsMet = false;
-         let isCorrectInstance = false;
+         let conditionsMet = false; let isCorrectInstance = false;
          try {
-            // 1. Predictive checks (should this instance be the CUB interface?)
-            conditionsMet = (object.source == 'tmdb' || object.source == 'cub') &&
-                            (window.innerWidth >= 767) &&
-                            Lampa.Account.hasPremium() &&
-                            (Lampa.Manifest.app_digital >= 153);
-
-            // 2. Verification check (does the created instance look like the CUB interface?)
-            if (instance.render) { // Check if render method exists
+            conditionsMet = (object.source == 'tmdb' || object.source == 'cub') && (window.innerWidth >= 767) && Lampa.Account.hasPremium() && (Lampa.Manifest.app_digital >= 153);
+            if (instance.render) {
                  const renderedEl = instance.render();
-                 // Check if it's a jQuery object and has the target class
                  isCorrectInstance = renderedEl && typeof renderedEl.hasClass === 'function' && renderedEl.hasClass(TARGET_CLASS);
-            } else {
-                 console.warn(`${PLUGIN_NAME}: Instance missing render() method for verification.`);
-            }
-            console.log(`${PLUGIN_NAME}: Instance identification check: conditionsMet=${conditionsMet}, isCorrectInstance=${isCorrectInstance}`);
+            } else { console.warn(`${PLUGIN_NAME}: Instance missing render() method for verification.`); }
+            console.log(`${PLUGIN_NAME}: Wrapper Identification check: conditionsMet=${conditionsMet}, isCorrectInstance=${isCorrectInstance}`);
+         } catch (e) { console.error(`${PLUGIN_NAME}: Error during identification checks in wrapper`, e); }
 
-         } catch (e) {
-             console.error(`${PLUGIN_NAME}: Error during identification checks in wrapper`, e);
-             // Fail safe - don't patch if checks error out
-             conditionsMet = false;
-             isCorrectInstance = false;
-         }
-
-         // **STEP 1 Action:** Log potential patching, but DO NOT patch.
          if (conditionsMet && isCorrectInstance) {
             console.log(`%c${PLUGIN_NAME}: Target instance identified. [PATCHING SKIPPED - STEP 1]`, 'color: blue; font-weight: bold;');
-            // In future steps, the patching logic will be inserted here.
          } else {
              console.log(`${PLUGIN_NAME}: Instance is NOT the target OR conditions not met. No patch needed.`);
          }
-
-         // Return the original, unmodified instance in this step
-         return instance;
+         return instance; // Return original instance
     }
 
     // Function to perform the core initialization (capturing and wrapping Lampa.InteractionMain)
     function initPlugin() {
-        // Prevent multiple successful initializations or attempts after critical failure
-        if (pluginInitializationSucceeded || pluginInitializationAttempted) {
-             console.log(`${PLUGIN_NAME}: Init called but already initialized or attempted.`);
-             return;
-        }
-        pluginInitializationAttempted = true; // Mark that we are trying now
+        if (pluginInitializationSucceeded) { console.log(`${PLUGIN_NAME}: Init called but already succeeded.`); return; }
+         // Allow re-attempt if previous attempt failed before succeeding
+         pluginInitializationAttempted = true;
         console.log(`${PLUGIN_NAME}: initPlugin() called. Attempting to wrap Lampa.InteractionMain...`);
-
         try {
-            // Check Lampa.InteractionMain right before wrapping
             if (typeof Lampa.InteractionMain === 'function') {
-                originalInteractionMainFactory = Lampa.InteractionMain; // Capture the current factory function
-                Lampa.InteractionMain = ourWrappedFactory; // Replace it with our wrapper
-                pluginInitializationSucceeded = true; // Mark success
+                originalInteractionMainFactory = Lampa.InteractionMain;
+                Lampa.InteractionMain = ourWrappedFactory;
+                pluginInitializationSucceeded = true; // Mark success *only* if wrap succeeds
                 console.log(`%c${PLUGIN_NAME}: Successfully captured and wrapped Lampa.InteractionMain.`, 'color: green; font-weight: bold;');
             } else {
                 console.error(`${PLUGIN_NAME}: Lampa.InteractionMain is not a function at init time! Cannot wrap.`);
-                // Do not set succeeded flag
+                // Do not set succeeded flag, attempt remains true
             }
         } catch (e) {
              console.error(`${PLUGIN_NAME}: CRITICAL Error during initPlugin execution (wrapping Lampa.InteractionMain):`, e);
-             // Do not set succeeded flag
+             // Do not set succeeded flag, attempt remains true
         }
     }
 
@@ -191,36 +156,46 @@
     Lampa.Listener.follow('app', (e) => {
         if (e.type == 'ready') {
             console.log(`${PLUGIN_NAME}: App ready event received.`);
-            // Inject CSS as soon as app is ready
-            injectCSS();
+            injectCSS(); // Inject CSS as soon as app is ready
 
-            // Listen for activities becoming ready to trigger the core initialization check
+            // Listen for activities becoming ready to potentially trigger initialization
             Lampa.Listener.follow('activity_ready', (activityEvent) => {
-                 console.debug(`${PLUGIN_NAME}: Activity ready event received.`);
-                 // Only try to initialize if it hasn't succeeded or failed critically before
-                 if (pluginInitializationSucceeded || pluginInitializationAttempted) {
-                     // console.debug(`${PLUGIN_NAME}: Initialization already done or attempted, skipping activity check.`);
+                 activityReadyCounter++;
+                 console.log(`%c${PLUGIN_NAME}: Activity ready event #${activityReadyCounter} received. Init Status: {Succeeded: ${pluginInitializationSucceeded}, Attempted: ${pluginInitializationAttempted}}`, 'color: magenta');
+
+                 if (pluginInitializationSucceeded) { // Don't proceed if already successfully initialized
+                     // console.debug(`${PLUGIN_NAME}: Initialization already succeeded, skipping activity check.`);
                      return;
                  }
+                 // Allow attempt even if previous attempt flag is true, in case conditions are met now
 
                  try {
-                    // Check required event properties safely
+                    console.debug(`${PLUGIN_NAME}: Checking activity... Event data snapshot:`, { activityExists: !!activityEvent?.activity, renderExists: typeof activityEvent?.activity?.render === 'function', componentName: activityEvent?.activity?.component });
                     if (activityEvent && activityEvent.activity && typeof activityEvent.activity.render === 'function') {
                          const activityRendered = activityEvent.activity.render();
-                         // Check if the specific target element exists in this activity's DOM
-                         const targetElementFound = activityRendered && activityRendered.find(TARGET_INFO_ELEMENT_SELECTOR).length > 0;
-                          console.debug(`${PLUGIN_NAME}: Checking activity DOM... Target element (${TARGET_INFO_ELEMENT_SELECTOR}) found: ${targetElementFound}`);
+                         console.debug(`${PLUGIN_NAME}: Activity render() result:`, activityRendered ? `[${activityRendered[0]?.tagName}]` : activityRendered);
 
-                         if (targetElementFound) {
-                             console.log(`${PLUGIN_NAME}: Target element found in activity, calling initPlugin().`);
-                             initPlugin(); // Attempt the core initialization (wrapping)
+                         if (activityRendered) {
+                             const targetElement = activityRendered.find(TARGET_INFO_ELEMENT_SELECTOR);
+                             const targetElementFound = targetElement.length > 0;
+                             console.debug(`${PLUGIN_NAME}: Checking DOM for '${TARGET_INFO_ELEMENT_SELECTOR}'. Found count: ${targetElement.length}`);
+
+                             if (targetElementFound) {
+                                 console.log(`%c${PLUGIN_NAME}: Target element FOUND in activity, calling initPlugin().`, 'color: green');
+                                 initPlugin(); // Attempt the core initialization (wrapping)
+                             } else {
+                                 // console.debug(`${PLUGIN_NAME}: Target element NOT found in this activity.`);
+                             }
+                         } else {
+                              console.warn(`${PLUGIN_NAME}: activity.render() returned null or undefined object.`);
                          }
                     } else {
                          console.warn(`${PLUGIN_NAME}: Activity object or render method missing in activity_ready event payload.`);
                     }
                 } catch (error) {
                     console.error(`${PLUGIN_NAME}: Error in activity_ready listener check:`, error);
-                    pluginInitializationAttempted = true; // Mark attempt as failed if the check errors out, prevent retries
+                    // Consider setting pluginInitializationAttempted = true here if the check itself fails critically?
+                    // For now, let's allow retries on subsequent activity_ready events unless initPlugin itself fails.
                 }
             });
         }
