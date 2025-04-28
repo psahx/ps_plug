@@ -1,4 +1,4 @@
-// == MDBList Ratings Fetcher ==
+// == MDBList Ratings Fetcher == Version without KEY ACK ==
 // Purpose: Fetches various ratings from MDBList API (api.mdblist.com)
 //          Handles caching and provides results via callback.
 //          Allows API key configuration via Lampa Settings > Additional Ratings.
@@ -21,18 +21,15 @@
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
             mdblist_api_key_desc: {
-                ru: "Введите ваш API ключ с сайта MDBList.com (требуется для MDBLIST_Fetcher)", // <-- Changed domain
-                en: "Enter your API key from MDBList.com (required for MDBLIST_Fetcher)", // <-- Changed domain
-                uk: "Введіть ваш API ключ з сайту MDBList.com (потрібно для MDBLIST_Fetcher)" // <-- Changed domain
+                ru: "Введите ваш API ключ с сайта api.mdblist.com (требуется для MDBLIST_Fetcher)",
+                en: "Enter your API key from api.mdblist.com (required for MDBLIST_Fetcher)",
+                uk: "Введіть ваш API ключ з сайту api.mdblist.com (потрібно для MDBLIST_Fetcher)"
             }
         });
     }
 
     // --- Settings UI Registration ---
-    // Variable to hold the display element for the API Key value
-    let apiKeyDisplayElement = null;
-
-    if (window.Lampa && Lampa.SettingsApi && Lampa.Storage) {
+    if (window.Lampa && Lampa.SettingsApi) {
         // 1. Add the new Settings Category
         Lampa.SettingsApi.addComponent({
             component: 'additional_ratings', // Internal name for the component
@@ -40,52 +37,27 @@
             icon: '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24" xml:space="preserve" width="32" height="32" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>' // Simple placeholder icon
         });
 
-        // Function to update the display text based on stored key
-        const updateApiKeyDisplayText = () => {
-            if (apiKeyDisplayElement) {
-                let current_value = Lampa.Storage.get('mdblist_api_key', '');
-                let display_text = current_value ? 'Change your API Key' : 'Enter your MDBList API Key';
-                apiKeyDisplayElement.text(display_text);
-            }
-        };
-
         // 2. Add the API Key parameter under the new category
         Lampa.SettingsApi.addParam({
-            component: 'additional_ratings', // Target the new component
+            component: 'additional_ratings', // <-- Target the new component
             param: {
                 name: 'mdblist_api_key', // Storage key for the API key
                 type: 'input',          // Input field type
                 'default': '',          // Default value (empty)
                 values: {},             // Keep this from previous attempt, just in case
-                placeholder: 'Enter your MDBList API Key' // Placeholder text (used by Input popup)
+                placeholder: 'Enter your MDBList API Key' // Placeholder text
             },
             field: {
                 name: 'MDBList API Key', // Display name in settings
                 description: Lampa.Lang.translate('mdblist_api_key_desc') // Use translated description
             },
-            // Add onRender to set the initial display text
-            onRender: function(item) {
-                // Find the specific element that displays the value
-                let valueElement = $(item).find('.settings-param__value');
-                if (valueElement.length) {
-                    apiKeyDisplayElement = valueElement; // Store reference
-                    updateApiKeyDisplayText(); // Set initial text
-                } else {
-                    // Fallback or logging if structure is unexpected
-                    console.log("MDBLIST_Fetcher: Could not find .settings-param__value in item:", item);
-                    apiKeyDisplayElement = null;
-                }
-            },
-            // Enhance onChange to update the display text after saving
             onChange: function() {
-                // Lampa seems to handle saving before calling onChange for 'input'
-                // We just need to update our display and notify Lampa
-                updateApiKeyDisplayText(); // Update display text
-                Lampa.Settings.update(); // Notify Lampa settings might have changed
+                // Optional: Clear cache if API key changes? For now, just update settings.
+                Lampa.Settings.update();
             }
         });
     } else {
-        console.error("MDBLIST_Fetcher: Lampa.SettingsApi or Lampa.Storage not available. Cannot create API Key setting.");
+        console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
     }
 
     // --- Network Instance ---
