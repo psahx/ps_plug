@@ -84,7 +84,7 @@
         // Add Tumbler for Rotten Tomatoes (Critics / Tomatometer)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_tomatoes', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_tomatoes', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
             field: { name: 'Show Rotten Tomatoes (Critics)' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -92,7 +92,7 @@
         // Add Tumbler for Rotten Tomatoes (Audience / Popcorn)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_audience', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_audience', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
             field: { name: 'Show Rotten Tomatoes (Audience)' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -100,7 +100,7 @@
         // Add Tumbler for Metacritic
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_metacritic', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_metacritic', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
             field: { name: 'Show Metacritic Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -108,7 +108,7 @@
         // Add Tumbler for Trakt
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_trakt', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_trakt', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
             field: { name: 'Show Trakt Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -116,7 +116,7 @@
         // Add Tumbler for Letterboxd
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_letterboxd', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_letterboxd', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
             field: { name: 'Show Letterboxd Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -124,7 +124,7 @@
         // Add Tumbler for Roger Ebert
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_rogerebert', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_rogerebert', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
             field: { name: 'Show Roger Ebert Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
