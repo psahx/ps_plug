@@ -68,15 +68,23 @@
         // Add Tumbler for TMDB
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_tmdb', type: 'tumbler', 'default': 'true' },
+            param: { name: 'show_rating_tmdb', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show TMDB Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for KinoPoisk (for future integration)
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_kp', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            field: { name: 'Show KinoPoisk Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
         // Add Tumbler for Rotten Tomatoes (Critics / Tomatometer)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_tomatoes', type: 'tumbler', 'default': 'true' },
+            param: { name: 'show_rating_tomatoes', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show Rotten Tomatoes (Critics)' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -84,7 +92,7 @@
         // Add Tumbler for Rotten Tomatoes (Audience / Popcorn)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_audience', type: 'tumbler', 'default': 'false' },
+            param: { name: 'show_rating_audience', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show Rotten Tomatoes (Audience)' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -92,7 +100,7 @@
         // Add Tumbler for Metacritic
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_metacritic', type: 'tumbler', 'default': 'false' },
+            param: { name: 'show_rating_metacritic', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show Metacritic Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -100,7 +108,7 @@
         // Add Tumbler for Trakt
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_trakt', type: 'tumbler', 'default': 'false' },
+            param: { name: 'show_rating_trakt', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show Trakt Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -108,7 +116,7 @@
         // Add Tumbler for Letterboxd
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_letterboxd', type: 'tumbler', 'default': 'false' },
+            param: { name: 'show_rating_letterboxd', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show Letterboxd Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -116,19 +124,10 @@
         // Add Tumbler for Roger Ebert
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_rogerebert', type: 'tumbler', 'default': 'false' },
+            param: { name: 'show_rating_rogerebert', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
             field: { name: 'Show Roger Ebert Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
-
-        // Add Tumbler for KinoPoisk (for future integration)
-        Lampa.SettingsApi.addParam({
-            component: 'additional_ratings',
-            param: { name: 'show_rating_kp', type: 'tumbler', 'default': 'false' },
-            field: { name: 'Show KinoPoisk Rating' },
-            onChange: function() { Lampa.Settings.update(); }
-        });
-
 
     } else {
         console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
