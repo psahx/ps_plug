@@ -1,3 +1,11 @@
+// ==LampaPlugin==
+// @name        MDBList in Style
+// @author      PSAHX
+// @version     1.0.0
+// @description Description.
+// ==/LampaPlugin==
+
+
 // == Main Module | Working in order | Merging MDBList ==
 (function () {
     'use strict';
