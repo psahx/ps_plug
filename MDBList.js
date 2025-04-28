@@ -5,6 +5,12 @@
 // @description Description.
 // ==/LampaPlugin==
 
+// Name: MDBList in Style
+// Author: PSAHX
+// Version: 1.0.0
+// Description: A brief description...
+
+
 
 // == Main Module | Working in order | Merging MDBList ==
 (function () {
