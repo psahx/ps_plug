@@ -64,6 +64,22 @@
             field: { name: 'Show IMDb Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
+                // ** Experimental: Manually trigger Params init for the tumbler **
+        if (window.Lampa && Lampa.Params) { // Check if Params object exists
+            try {
+                console.log("Attempting manual Params.trigger for show_rating_imdb...");
+                Params.trigger('show_rating_imdb', 'true'); // Use same name and default as in addParam
+                console.log("Manual Params.trigger for show_rating_imdb executed.");
+            } catch (e) {
+                console.error("Error calling manual Params.trigger:", e);
+            }
+        } else {
+            console.warn("Lampa.Params object not found for manual trigger.");
+        }
+        // ** End Experimental code **
+
+        // The next addParam call (for TMDB tumbler) should follow here...
+
 
         // Add Tumbler for TMDB
         Lampa.SettingsApi.addParam({
