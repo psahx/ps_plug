@@ -58,10 +58,10 @@
             component: 'additional_ratings', // Target the correct section
             param: {
                 name: 'show_ratings_select', // Storage key for this setting
-                type: 'select_multi',        // Type for multiple selection
-                'default': 'imdb,tmdb,rt',   // Default enabled ratings (comma-separated values)
+                type: 'separator',        // Type for multiple selection
+              //  'default': 'imdb,tmdb,rt',   // Default enabled ratings (comma-separated values)
                 // List of available providers
-                list: [
+              /*  list: [
                     {title:'IMDb', value:'imdb'},
                     {title:'TMDB', value:'tmdb'},
                     {title:'Rotten Tomatoes (Critics)', value:'tomatoes'}, // Use 'tomatoes' from API list
@@ -72,7 +72,7 @@
                     {title:'Roger Ebert', value:'rogerebert'},
                     {title:'KinoPoisk', value:'kp'}             // Keep for later KP integration
                     // We are excluding mal, score, score_average from the UI for now as not explicitly requested for display
-                ]
+                ] */
 
             },
             field: {
