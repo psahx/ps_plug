@@ -53,37 +53,82 @@
             }
         });
 
-        // 3. Add Multi-select for Rating Providers
-        Lampa.SettingsApi.addParam({
-            component: 'additional_ratings', // Target the correct section
-            param: {
-                name: 'show_ratings_select', // Storage key for this setting
-                type: 'separator',        // Type for multiple selection
-              //  'default': 'imdb,tmdb,rt',   // Default enabled ratings (comma-separated values)
-                // List of available providers
-              /*  list: [
-                    {title:'IMDb', value:'imdb'},
-                    {title:'TMDB', value:'tmdb'},
-                    {title:'Rotten Tomatoes (Critics)', value:'tomatoes'}, // Use 'tomatoes' from API list
-                    {title:'Rotten Tomatoes (Audience)', value:'audience'}, // Use 'audience' from API list
-                    {title:'Metacritic', value:'metacritic'},   // Use 'metacritic' from API list
-                    {title:'Trakt', value:'trakt'},
-                    {title:'Letterboxd', value:'letterboxd'},
-                    {title:'Roger Ebert', value:'rogerebert'},
-                    {title:'KinoPoisk', value:'kp'}             // Keep for later KP integration
-                    // We are excluding mal, score, score_average from the UI for now as not explicitly requested for display
-                ] */
+        // 3. Add Tumblers for Rating Providers
+        
+        // -- Rating Provider Toggles --
 
-            },
-            field: {
-                name: 'Show Ratings From', // Setting label
-                description: 'Select which rating providers to display on the info panel' // Help text
-            },
-            onChange: function() {
-                // Update settings storage. A UI refresh might be needed elsewhere to see changes immediately.
-                Lampa.Settings.update();
-            }
+        // Add Tumbler for IMDb
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_imdb', type: 'tumbler', 'default': 'true' },
+            field: { name: 'Show IMDb Rating' },
+            onChange: function() { Lampa.Settings.update(); }
         });
+
+        // Add Tumbler for TMDB
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_tmdb', type: 'tumbler', 'default': 'true' },
+            field: { name: 'Show TMDB Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for Rotten Tomatoes (Critics / Tomatometer)
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_tomatoes', type: 'tumbler', 'default': 'true' },
+            field: { name: 'Show Rotten Tomatoes (Critics)' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for Rotten Tomatoes (Audience / Popcorn)
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_audience', type: 'tumbler', 'default': 'false' },
+            field: { name: 'Show Rotten Tomatoes (Audience)' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for Metacritic
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_metacritic', type: 'tumbler', 'default': 'false' },
+            field: { name: 'Show Metacritic Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for Trakt
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_trakt', type: 'tumbler', 'default': 'false' },
+            field: { name: 'Show Trakt Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for Letterboxd
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_letterboxd', type: 'tumbler', 'default': 'false' },
+            field: { name: 'Show Letterboxd Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for Roger Ebert
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_rogerebert', type: 'tumbler', 'default': 'false' },
+            field: { name: 'Show Roger Ebert Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
+        // Add Tumbler for KinoPoisk (for future integration)
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',
+            param: { name: 'show_rating_kp', type: 'tumbler', 'default': 'false' },
+            field: { name: 'Show KinoPoisk Rating' },
+            onChange: function() { Lampa.Settings.update(); }
+        });
+
 
     } else {
         console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
