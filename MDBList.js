@@ -17,9 +17,9 @@
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
             mdblist_api_key_desc: {
-                ru: "Введите ваш API ключ с сайта api.mdblist.com (требуется для MDBLIST_Fetcher)",
-                en: "Enter your API key from api.mdblist.com (required for MDBLIST_Fetcher)",
-                uk: "Введіть ваш API ключ з сайту api.mdblist.com (потрібно для MDBLIST_Fetcher)"
+                ru: "Введите ваш API ключ с сайта MDBList.com",
+                en: "Enter your API key from MDBList.com",
+                uk: "Введіть ваш API ключ з сайту MDBList.com"
             }
         });
     }
@@ -61,7 +61,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_imdb', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
-            field: { name: 'Show IMDb Rating' },
+            field: { name: 'IMDb Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -69,7 +69,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_tmdb', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
-            field: { name: 'Show TMDB Rating' },
+            field: { name: 'TMDB Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -77,7 +77,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_kp', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
-            field: { name: 'Show KinoPoisk Rating' },
+            field: { name: 'KinoPoisk Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -85,7 +85,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_tomatoes', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
-            field: { name: 'Show Rotten Tomatoes (Critics)' },
+            field: { name: 'Rotten Tomatoes (Critics)' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -93,7 +93,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_audience', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
-            field: { name: 'Show Rotten Tomatoes (Audience)' },
+            field: { name: 'Rotten Tomatoes (Audience)' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -101,7 +101,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_metacritic', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
-            field: { name: 'Show Metacritic Rating' },
+            field: { name: 'Metacritic Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -109,7 +109,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_trakt', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
-            field: { name: 'Show Trakt Rating' },
+            field: { name: 'Trakt Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -117,7 +117,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_letterboxd', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
-            field: { name: 'Show Letterboxd Rating' },
+            field: { name: 'Letterboxd Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
@@ -125,7 +125,7 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
             param: { name: 'show_rating_rogerebert', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
-            field: { name: 'Show Roger Ebert Rating' },
+            field: { name: 'Roger Ebert Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
 
