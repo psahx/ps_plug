@@ -52,6 +52,39 @@
                 Lampa.Settings.update();
             }
         });
+
+        // 3. Add Multi-select for Rating Providers
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings', // Target the correct section
+            param: {
+                name: 'show_ratings_select', // Storage key for this setting
+                type: 'select_multi',        // Type for multiple selection
+                'default': 'imdb,tmdb,rt',   // Default enabled ratings (comma-separated values)
+                // List of available providers
+                list: [
+                    {title:'IMDb', value:'imdb'},
+                    {title:'TMDB', value:'tmdb'},
+                    {title:'Rotten Tomatoes (Critics)', value:'tomatoes'}, // Use 'tomatoes' from API list
+                    {title:'Rotten Tomatoes (Audience)', value:'audience'}, // Use 'audience' from API list
+                    {title:'Metacritic', value:'metacritic'},   // Use 'metacritic' from API list
+                    {title:'Trakt', value:'trakt'},
+                    {title:'Letterboxd', value:'letterboxd'},
+                    {title:'Roger Ebert', value:'rogerebert'},
+                    {title:'KinoPoisk', value:'kp'}             // Keep for later KP integration
+                    // We are excluding mal, score, score_average from the UI for now as not explicitly requested for display
+                ]
+
+            },
+            field: {
+                name: 'Show Ratings From', // Setting label
+                description: 'Select which rating providers to display on the info panel' // Help text
+            },
+            onChange: function() {
+                // Update settings storage. A UI refresh might be needed elsewhere to see changes immediately.
+                Lampa.Settings.update();
+            }
+        });
+
     } else {
         console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
     }
