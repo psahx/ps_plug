@@ -325,6 +325,8 @@
             const showTrakt = (traktStored === true || traktStored === 'true');
             let letterboxdStored = Lampa.Storage.get('show_rating_letterboxd', false);
             const showLetterboxd = (letterboxdStored === true || letterboxdStored === 'true');
+            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false); 
+            const showRogerebert = (rogerEbertStored === true || rogerEbertStored === 'true');
 
 
             // --- Build Head (Keep original logic) ---
@@ -465,6 +467,33 @@
                     }
                 }
             }
+                        
+            // ** 8. Roger Ebert Rating **
+            if (showRogerebert) {
+                // Check using the 'rogerebert' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.rogerebert != null) {
+                    // Attempt to parse the score
+                    let parsedScore = parseFloat(mdblistResult.rogerebert);
+
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        // Ebert ratings are usually 0-4 stars, format to one decimal place
+                        let score = parsedScore.toFixed(1);
+
+                        // Only display non-negative scores
+                        if (parsedScore >= 0) {
+                            details.push(
+                                '<div class="full-start__rate rogerebert-rating-item">' + // Specific class
+                                    // Display score formatted to one decimal
+                                    '<div class="rogerebert-score">' + score + '</div>' + // Specific class
+                                    '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + // Specific class
+                                '</div>'
+                            );
+                        }
+                    }
+                }
+            }
+
 
 
 
