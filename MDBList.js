@@ -289,177 +289,125 @@
     // UNCHANGED create function...
     function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id];  if (/*window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && */data.id && data.method) { mdblistRatingsPending[data.id] = true; /*window.MDBLIST_Fetcher.fetch*/fetchRatings(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
      //working string// /* this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); }; */
-      this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */
-            var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); // Renamed 'create' to avoid conflict if 'create' is used elsewhere
-            var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
-            var head = [];
-            var details = [];
-            var countries = Lampa.Api.sources.tmdb.parseCountries(data);
-            var pg = Lampa.Api.sources.tmdb.parsePG(data);
-
-            // --- Logo URLs (Keep original definitions) ---
-            const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
-            const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
-            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg';
-            const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg';
-
-            // --- Rating Toggles State (Read from Lampa Storage) ---
-            // Use loose equality (== true) to handle boolean true OR string 'true' from storage
-            const showImdb = Lampa.Storage.get('show_rating_imdb', true) == true; // Default is true
-            const showTmdb = Lampa.Storage.get('show_rating_tmdb', true) == true; // Default is true
-            const showTomatoes = Lampa.Storage.get('show_rating_tomatoes', false) == true; // Default is false
-
-            // --- Build Head (Keep original logic) ---
-            if (create_year !== '0000') head.push('<span>' + create_year + '</span>'); // Use renamed variable
-            if (countries.length > 0) head.push(countries.join(', '));
-
-            // --- Get MDBList Ratings from Cache (Keep original logic) ---
-            var mdblistResult = mdblistRatingsCache[data.id];
-
-            // --- Build Details (Conditionally Add Ratings using original structure) ---
-
-            // 1. IMDb Rating (Wrap original block in toggle check)
-            if (showImdb) {
-                 // Retrieve score using original logic inside the check
-                 var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
-                 // Keep original push logic exactly, including implicit check (displaying 0.0 if no rating)
-                 // This line is directly from your original code:
-                 details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>');
-                 // If you want to hide 0.0, we would add 'if (imdbRating !== '0.0')' around the details.push
-            }
-
-            // 2. TMDB Rating (Wrap original block in toggle check)
-            if (showTmdb) {
-                 // Keep original push logic exactly, which includes the 'vote' variable calculated earlier
-                 // This line is directly from your original code:
-                 details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>');
-                 // This implicitly hides if vote is 0.0 only if parseFloat results in 0.0 being skipped by later logic,
-                 // but usually '0.0' would still be displayed. If you want to hide 0.0, add 'if (vote !== '0.0')' around details.push
-            }
-
-            // 3. Rotten Tomatoes (Critics / Tomatometer) (Wrap original block in toggle check)
-            if (showTomatoes) {
-                 // Keep original logic for checking data, calculating score/logo, and pushing details inside the check
-                 // This block is directly from your original code:
-                 if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
-                     let score = mdblistResult.tomatoes;
-                     let logoUrl = '';
-                     if (score >= 60) {
-                         logoUrl = rtFreshLogoUrl;
-                     } else if (score >= 0) {
-                         logoUrl = rtRottenLogoUrl;
-                     }
-                     if (logoUrl) {
-                         details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>');
-                     }
-                 }
-            }
-
-            // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
-            // These lines are directly from your original code:
-            if (data.genres && data.genres.length > 0) {
-                details.push(data.genres.map(function (item) {
-                    return Lampa.Utils.capitalizeFirstLetter(item.name);
-                }).join(' | '));
-            }
-            if (data.runtime) {
-                details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
-            }
-            if (pg) {
-                details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
-            }
-
-            // --- Update HTML (Keep original structure) ---
-            // These lines are directly from your original code:
-            html.find('.new-interface-info__head').empty().append(head.join(', '));
-            html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
-      }; // This closing brace marks the end of the function block to replace
-      
         this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */
-            var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); // Renamed 'create' to avoid conflict if 'create' is used elsewhere
+            var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
             var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
             var head = [];
             var details = [];
             var countries = Lampa.Api.sources.tmdb.parseCountries(data);
             var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
-            // --- Logo URLs (Keep original definitions) ---
+            // --- Logo URLs ---
             const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
             const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
-            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg';
+            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_ Tomatoes.svg'; // Note: Original had space, corrected if typo
             const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg';
+            // ** Logos provided by user **
+            const rtAudienceFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_positive_audience.svg';
+            const rtAudienceSpilledLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_negative_audience.svg';
+            const metacriticLogoUrl = 'https://psahx.github.io/ps_plug/Metacritic_M.png';
 
             // --- Rating Toggles State (Read from Lampa Storage) ---
-            // Use loose equality (== true) to handle boolean true OR string 'true' from storage
-            const showImdb = Lampa.Storage.get('show_rating_imdb', true) == true; // Default is true
-            const showTmdb = Lampa.Storage.get('show_rating_tmdb', true) == true; // Default is true
-            const showTomatoes = Lampa.Storage.get('show_rating_tomatoes', false) == true; // Default is false
+            let imdbStored = Lampa.Storage.get('show_rating_imdb', true);
+            const showImdb = (imdbStored === true || imdbStored === 'true');
+            let tmdbStored = Lampa.Storage.get('show_rating_tmdb', true);
+            const showTmdb = (tmdbStored === true || tmdbStored === 'true');
+            let tomatoesStored = Lampa.Storage.get('show_rating_tomatoes', false);
+            const showTomatoes = (tomatoesStored === true || tomatoesStored === 'true');
+            // ** NEW Toggles **
+            let audienceStored = Lampa.Storage.get('show_rating_audience', false);
+            const showAudience = (audienceStored === true || audienceStored === 'true');
+            let metacriticStored = Lampa.Storage.get('show_rating_metacritic', false);
+            const showMetacritic = (metacriticStored === true || metacriticStored === 'true');
 
             // --- Build Head (Keep original logic) ---
-            if (create_year !== '0000') head.push('<span>' + create_year + '</span>'); // Use renamed variable
+            if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
             if (countries.length > 0) head.push(countries.join(', '));
 
             // --- Get MDBList Ratings from Cache (Keep original logic) ---
             var mdblistResult = mdblistRatingsCache[data.id];
 
-            // --- Build Details (Conditionally Add Ratings using original structure) ---
+            // --- Build Details (Conditionally Add Ratings) ---
 
-            // 1. IMDb Rating (Wrap original block in toggle check)
+            // 1. IMDb Rating
             if (showImdb) {
-                 // Retrieve score using original logic inside the check
                  var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
-                 // Keep original push logic exactly, including implicit check (displaying 0.0 if no rating)
-                 // This line is directly from your original code:
+                 // Displaying 0.0 is INTENTIONAL as per user request
                  details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>');
-                 // If you want to hide 0.0, we would add 'if (imdbRating !== '0.0')' around the details.push
             }
 
-            // 2. TMDB Rating (Wrap original block in toggle check)
+            // 2. TMDB Rating
             if (showTmdb) {
-                 // Keep original push logic exactly, which includes the 'vote' variable calculated earlier
-                 // This line is directly from your original code:
+                 // Displaying 0.0 is INTENTIONAL as per user request
                  details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>');
-                 // This implicitly hides if vote is 0.0 only if parseFloat results in 0.0 being skipped by later logic,
-                 // but usually '0.0' would still be displayed. If you want to hide 0.0, add 'if (vote !== '0.0')' around details.push
             }
 
-            // 3. Rotten Tomatoes (Critics / Tomatometer) (Wrap original block in toggle check)
+            // 3. Rotten Tomatoes (Critics / Tomatometer)
             if (showTomatoes) {
-                 // Keep original logic for checking data, calculating score/logo, and pushing details inside the check
-                 // This block is directly from your original code:
                  if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
                      let score = mdblistResult.tomatoes;
                      let logoUrl = '';
-                     if (score >= 60) {
-                         logoUrl = rtFreshLogoUrl;
-                     } else if (score >= 0) {
-                         logoUrl = rtRottenLogoUrl;
-                     }
+                     if (score >= 60) { logoUrl = rtFreshLogoUrl; }
+                     else if (score >= 0) { logoUrl = rtRottenLogoUrl; }
                      if (logoUrl) {
-                         details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>');
+                         details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>');
                      }
                  }
             }
 
-            // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
-            // These lines are directly from your original code:
-            if (data.genres && data.genres.length > 0) {
-                details.push(data.genres.map(function (item) {
-                    return Lampa.Utils.capitalizeFirstLetter(item.name);
-                }).join(' | '));
-            }
-            if (data.runtime) {
-                details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
-            }
-            if (pg) {
-                details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
+            // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
+            if (showAudience) {
+                // Check MDBList key 'audience'
+                if (mdblistResult && typeof mdblistResult.audience === 'number' && mdblistResult.audience !== null) {
+                    let score = mdblistResult.audience; // Assume percentage 0-100
+                    let logoUrl = '';
+                    // Use Fresh (>=60%) or Spilled (<60%) Popcorn logo based on user-provided URLs
+                    if (score >= 60) {
+                        logoUrl = rtAudienceFreshLogoUrl;
+                    } else if (score >= 0) { // Handle 0 score case
+                        logoUrl = rtAudienceSpilledLogoUrl;
+                    }
+                    // Only add if we have a valid logo (i.e., score is >= 0)
+                    if (logoUrl) {
+                        details.push(
+                            '<div class="full-start__rate rt-audience-rating-item">' + // Specific class
+                                '<div class="rt-audience-score">' + score + '%</div>' + // Specific class, show percentage
+                                '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' + // Specific class
+                            '</div>'
+                        );
+                    }
+                }
             }
 
+            // ** 5. Metacritic Rating **
+            if (showMetacritic) {
+                // Check MDBList key 'metacritic'
+                if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) {
+                     let score = mdblistResult.metacritic; // Assume 0-100 score
+                     // Basic display: Score number + generic logo
+                      if (score >= 0) { // Only display non-negative scores
+                         details.push(
+                            '<div class="full-start__rate metacritic-rating-item">' + // Specific class
+                                '<div class="metacritic-score">' + score + '</div>' + // Specific class, show number only
+                                // Use user-provided Metacritic logo URL
+                                '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + // Specific class
+                            '</div>'
+                         );
+                      }
+                }
+            }
+
+            // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
+            if (data.genres && data.genres.length > 0) { details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); }
+            if (data.runtime) { details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); }
+            if (pg) { details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); }
+
             // --- Update HTML (Keep original structure) ---
-            // These lines are directly from your original code:
             html.find('.new-interface-info__head').empty().append(head.join(', '));
             html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
-      }; // This closing brace marks the end of the function block to replace
+      };
+                       
+    // This closing brace marks the end of the function block to replace
                        
         this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
         this.render = function () { return html; }; this.empty = function () {};
