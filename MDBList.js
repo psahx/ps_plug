@@ -354,23 +354,16 @@
                  }
             }
 
-            
-            // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
+             // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
             if (showAudience) {
-                // ** Optional Debugging: Uncomment the line below to see the raw data received **
-                 console.log("MDBList Result (for RT Audience Check):", JSON.stringify(mdblistResult)); // Log the whole result
-
-                // ** MODIFIED Check: Use != null to check for both null and undefined **
-                if (mdblistResult && mdblistResult.audience != null) {
-                    // ** Optional Debugging: Uncomment the line below to see the specific audience value **
-                     console.log("Found audience value:", mdblistResult.audience, "| Type:", typeof mdblistResult.audience);
-
-                    // Attempt to parse the score, allowing for strings like "75"
-                    let parsedScore = parseFloat(mdblistResult.audience);
+                // Check using the 'popcorn' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.popcorn != null) {
+                    // Attempt to parse the score from the 'popcorn' key
+                    let parsedScore = parseFloat(mdblistResult.popcorn);
 
                     // Check if parsing resulted in a valid number
                     if (!isNaN(parsedScore)) {
-                        let score = parsedScore; // Use the successfully parsed score
+                        let score = parsedScore;
                         let logoUrl = '';
 
                         // Determine logo based on score
@@ -382,26 +375,15 @@
 
                         // Only add if we have a valid logo (i.e., score is >= 0)
                         if (logoUrl) {
-                            // ** Optional Debugging: Uncomment the line below to confirm addition **
-                             console.log("Adding RT Audience HTML. Score:", score);
                             details.push(
                                 '<div class="full-start__rate rt-audience-rating-item">' +
-                                    // Display score without % as requested
+                                    // Display score without % as you requested previously
                                     '<div class="rt-audience-score">' + score + '</div>' +
                                     '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' +
                                 '</div>'
                             );
-                        } else {
-                             // ** Optional Debugging: Log if logo wasn't assigned (e.g., negative score) **
-                             console.log("RT Audience score is valid but no logo assigned (score < 0?). Score:", score);
                         }
-                    } else {
-                         // ** Optional Debugging: Log if parsing failed **
-                          console.log("RT Audience value could not be parsed as number:", mdblistResult.audience);
                     }
-                } else {
-                     // ** Optional Debugging: Log if key is missing, null, or undefined **
-                      console.log("RT Audience key missing, null, or undefined in mdblistResult.");
                 }
             }
             
