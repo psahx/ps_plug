@@ -499,10 +499,11 @@
                 flex-shrink: 0;
             }
              /* Specific padding for RT score number div */
-             .rt-rating-item > div.rt-score {
-                 padding-left: 0em;  /* ** MODIFIED:  (was 1.2em) ** */
-                 padding-right: 0em; /* ** MODIFIED:  (was 1.2em) ** */
-             }
+            /* .rt-rating-item > div.rt-score { */
+              /*   padding-left: 0em;  /* ** MODIFIED:  (was 1.2em) ** */. */
+               /*  padding-right: 0em; /* ** MODIFIED:  (was 1.2em) ** */ */
+         /*    } */
+         
             /* General Logo Style - UNCHANGED from pivot point */
             .rating-logo {
                 height: 1.1em;
