@@ -300,9 +300,8 @@
             // --- Logo URLs ---
             const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
             const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
-            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_ Tomatoes.svg'; // Note: Original had space, corrected if typo
+            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; 
             const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg';
-            // ** Logos provided by user **
             const rtAudienceFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_positive_audience.svg';
             const rtAudienceSpilledLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_negative_audience.svg';
             const metacriticLogoUrl = 'https://psahx.github.io/ps_plug/Metacritic_M.png';
