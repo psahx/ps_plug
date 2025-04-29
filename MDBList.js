@@ -393,15 +393,15 @@
                             );
                         } else {
                              // ** Optional Debugging: Log if logo wasn't assigned (e.g., negative score) **
-                             // console.log("RT Audience score is valid but no logo assigned (score < 0?). Score:", score);
+                             console.log("RT Audience score is valid but no logo assigned (score < 0?). Score:", score);
                         }
                     } else {
                          // ** Optional Debugging: Log if parsing failed **
-                         // console.log("RT Audience value could not be parsed as number:", mdblistResult.audience);
+                          console.log("RT Audience value could not be parsed as number:", mdblistResult.audience);
                     }
                 } else {
                      // ** Optional Debugging: Log if key is missing, null, or undefined **
-                     // console.log("RT Audience key missing, null, or undefined in mdblistResult.");
+                      console.log("RT Audience key missing, null, or undefined in mdblistResult.");
                 }
             }
             
