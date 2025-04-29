@@ -349,33 +349,46 @@
                      if (score >= 60) { logoUrl = rtFreshLogoUrl; }
                      else if (score >= 0) { logoUrl = rtRottenLogoUrl; }
                      if (logoUrl) {
-                         details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>');
+                         details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>');
                      }
                  }
             }
 
             // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
             if (showAudience) {
-                // Check MDBList key 'audience'
-                if (mdblistResult && typeof mdblistResult.audience === 'number' && mdblistResult.audience !== null) {
-                    let score = mdblistResult.audience; // Assume percentage 0-100
-                    let logoUrl = '';
-                    // Use Fresh (>=60%) or Spilled (<60%) Popcorn logo based on user-provided URLs
-                    if (score >= 60) {
-                        logoUrl = rtAudienceFreshLogoUrl;
-                    } else if (score >= 0) { // Handle 0 score case
-                        logoUrl = rtAudienceSpilledLogoUrl;
+                // Check if the audience score exists and is not null
+                if (mdblistResult && mdblistResult.audience !== null) {
+                    // Attempt to parse the score, allowing for strings like "75"
+                    let parsedScore = parseFloat(mdblistResult.audience);
+
+                    // Check if parsing resulted in a valid number (handles strings and numbers)
+                    if (!isNaN(parsedScore)) {
+                        let score = parsedScore; // Use the successfully parsed score
+                        let logoUrl = '';
+
+                        // Determine logo based on score (using user-provided URLs)
+                        if (score >= 60) {
+                            logoUrl = rtAudienceFreshLogoUrl;
+                        } else if (score >= 0) { // Handle 0 score case
+                            logoUrl = rtAudienceSpilledLogoUrl;
+                        }
+
+                        // Only add if we have a valid logo (i.e., score is >= 0)
+                        if (logoUrl) {
+                            details.push(
+                                '<div class="full-start__rate rt-audience-rating-item">' +
+                                    // Displaying score with % for Audience (standard)
+                                    '<div class="rt-audience-score">' + score + '</div>' +
+                                    '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' +
+                                '</div>'
+                            );
+                        }
                     }
-                    // Only add if we have a valid logo (i.e., score is >= 0)
-                    if (logoUrl) {
-                        details.push(
-                            '<div class="full-start__rate rt-audience-rating-item">' + // Specific class
-                                '<div class="rt-audience-score">' + score + '%</div>' + // Specific class, show percentage
-                                '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' + // Specific class
-                            '</div>'
-                        );
-                    }
+                    // Optional else for debugging: Could add console.log here if !isNaN(parsedScore) fails
+                    // else { console.log("RT Audience score is not a number:", mdblistResult.audience); }
                 }
+                // Optional else for debugging: Could add console.log here if key is missing or null
+                // else { console.log("RT Audience key missing or null."); }
             }
 
             // ** 5. Metacritic Rating **
@@ -487,8 +500,8 @@
             }
              /* Specific padding for RT score number div */
              .rt-rating-item > div.rt-score {
-                 padding-left: 1.2em;  /* ** MODIFIED: Wider L padding (was 1em) ** */
-                 padding-right: 1.2em; /* ** MODIFIED: Wider R padding (was 1em) ** */
+                 padding-left: 0em;  /* ** MODIFIED:  (was 1.2em) ** */
+                 padding-right: 0em; /* ** MODIFIED:  (was 1.2em) ** */
              }
             /* General Logo Style - UNCHANGED from pivot point */
             .rating-logo {
