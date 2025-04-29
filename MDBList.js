@@ -1,7 +1,7 @@
 // == Main Module | Working in order | Merging MDBList ==
 (function () {
     'use strict';
-
+// added for manifest
     var manifest = {
       type: "other", // Type of plugin
       version: "1.0.0", // Version number
@@ -13,6 +13,7 @@
     function add() {
       Lampa.Manifest.plugins = manifest;
     };
+// end added for manifest
       
     // --- Fetcher Configuration ---
     var config = {
@@ -318,6 +319,13 @@
         if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Adjust Padding: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
+        //added for manifest
+        if (window.appready) add();else {
+        Lampa.Listener.follow("app", function (e) {
+          if (e.type === "ready") add();
+        });
+      }
+        // edn added for manifest
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
         // **MODIFIED CSS**: Adjusted padding for number divs
