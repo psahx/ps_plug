@@ -1,16 +1,10 @@
-// ==LampaPlugin==
-// @name        MDBList in Style
-// @author      PSAHX
-// @version     1.0.0
-// @description Description.
-// ==/LampaPlugin==
-
-// Name: MDBList in Style
-// Author: PSAHX
-// Version: 1.0.0
-// Description: A brief description...
-
-
+var manifest = {
+      type: "other", // Type of plugin
+      version: "1.0.0", // Version number
+      author: '@p_s_aaa', // <<<< AUTHOR!
+      name: "Ratings In Style", // <<<< NAME!
+      description: "MDBList Rating in the New Interface", // Description
+    };
 
 // == Main Module | Working in order | Merging MDBList ==
 (function () {
