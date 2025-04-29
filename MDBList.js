@@ -358,12 +358,12 @@
             // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
             if (showAudience) {
                 // ** Optional Debugging: Uncomment the line below to see the raw data received **
-                // console.log("MDBList Result (for RT Audience Check):", JSON.stringify(mdblistResult)); // Log the whole result
+                 console.log("MDBList Result (for RT Audience Check):", JSON.stringify(mdblistResult)); // Log the whole result
 
                 // ** MODIFIED Check: Use != null to check for both null and undefined **
                 if (mdblistResult && mdblistResult.audience != null) {
                     // ** Optional Debugging: Uncomment the line below to see the specific audience value **
-                    // console.log("Found audience value:", mdblistResult.audience, "| Type:", typeof mdblistResult.audience);
+                     console.log("Found audience value:", mdblistResult.audience, "| Type:", typeof mdblistResult.audience);
 
                     // Attempt to parse the score, allowing for strings like "75"
                     let parsedScore = parseFloat(mdblistResult.audience);
@@ -383,7 +383,7 @@
                         // Only add if we have a valid logo (i.e., score is >= 0)
                         if (logoUrl) {
                             // ** Optional Debugging: Uncomment the line below to confirm addition **
-                            // console.log("Adding RT Audience HTML. Score:", score);
+                             console.log("Adding RT Audience HTML. Score:", score);
                             details.push(
                                 '<div class="full-start__rate rt-audience-rating-item">' +
                                     // Display score without % as requested
