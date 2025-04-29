@@ -305,6 +305,10 @@
             const rtAudienceFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_positive_audience.svg';
             const rtAudienceSpilledLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_negative_audience.svg';
             const metacriticLogoUrl = 'https://psahx.github.io/ps_plug/Metacritic_M.png';
+            const traktLogoUrl = 'https://psahx.github.io/ps_plug/Trakt.svg';
+            const letterboxdLogoUrl = 'https://psahx.github.io/ps_plug/letterboxd-decal-dots-pos-rgb.svg';
+            const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
+            const kpLogoUrl = 'https://psahx.github.io/ps_plug/kinopoisk-icon-main.svg';
 
             // --- Rating Toggles State (Read from Lampa Storage) ---
             let imdbStored = Lampa.Storage.get('show_rating_imdb', true);
@@ -313,11 +317,13 @@
             const showTmdb = (tmdbStored === true || tmdbStored === 'true');
             let tomatoesStored = Lampa.Storage.get('show_rating_tomatoes', false);
             const showTomatoes = (tomatoesStored === true || tomatoesStored === 'true');
-            // ** NEW Toggles **
             let audienceStored = Lampa.Storage.get('show_rating_audience', false);
             const showAudience = (audienceStored === true || audienceStored === 'true');
             let metacriticStored = Lampa.Storage.get('show_rating_metacritic', false);
             const showMetacritic = (metacriticStored === true || metacriticStored === 'true');
+            let traktStored = Lampa.Storage.get('show_rating_trakt', false);
+            const showTrakt = (traktStored === true || traktStored === 'true');
+
 
             // --- Build Head (Keep original logic) ---
             if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
@@ -404,6 +410,33 @@
                       }
                 }
             }
+
+        
+            // ** 6. Trakt Rating **
+            if (showTrakt) {
+                // Check using the 'trakt' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.trakt != null) {
+                    // Attempt to parse the score
+                    let parsedScore = parseFloat(mdblistResult.trakt);
+
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        let score = parsedScore; // Keep as number (likely 0-100)
+
+                        // Only display non-negative scores
+                        if (score >= 0) {
+                            details.push(
+                                '<div class="full-start__rate trakt-rating-item">' + // Specific class
+                                    // Display score number only (no % as requested)
+                                    '<div class="trakt-score">' + score + '</div>' + // Specific class
+                                    '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + // Specific class
+                                '</div>'
+                            );
+                        }
+                    }
+                }
+            }
+
 
             // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
             if (data.genres && data.genres.length > 0) { details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); }
