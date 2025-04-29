@@ -84,7 +84,7 @@
         // Add Tumbler for Rotten Tomatoes (Critics / Tomatometer)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_tomatoes', type: "trigger", "default": false },
+            param: { name: 'show_rating_tomatoes', type: "tumbler", "default": false },
             field: { name: 'Rotten Tomatoes (Critics)' },
             onChange: function() { Lampa.Settings.update(); }
         });
