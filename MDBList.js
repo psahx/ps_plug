@@ -73,14 +73,6 @@
             onChange: function() { Lampa.Settings.update(); }
         });
 
-        // Add Tumbler for KinoPoisk (for future integration)
-        Lampa.SettingsApi.addParam({
-            component: 'additional_ratings',
-            param: { name: 'show_rating_kp', type: "trigger", "default": true },
-            field: { name: 'KinoPoisk Rating' },
-            onChange: function() { Lampa.Settings.update(); }
-        });
-
         // Add Tumbler for Rotten Tomatoes (Critics / Tomatometer)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
@@ -308,7 +300,6 @@
             const traktLogoUrl = 'https://psahx.github.io/ps_plug/Trakt.svg';
             const letterboxdLogoUrl = 'https://psahx.github.io/ps_plug/letterboxd-decal-dots-pos-rgb.svg';
             const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
-            const kpLogoUrl = 'https://psahx.github.io/ps_plug/kinopoisk-icon-main.svg';
 
             // --- Rating Toggles State (Read from Lampa Storage) ---
             let imdbStored = Lampa.Storage.get('show_rating_imdb', true);
