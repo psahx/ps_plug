@@ -281,18 +281,21 @@
     // UNCHANGED create function...
     function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id];  if (/*window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && */data.id && data.method) { mdblistRatingsPending[data.id] = true; /*window.MDBLIST_Fetcher.fetch*/fetchRatings(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
      //working string// /* this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); }; */
-        this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */
+                // Replace the existing 'draw' function within 'create'
+        this.draw = function (data) {
             var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
             var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
             var head = [];
-            var details = [];
+            // ** Initialize separate arrays for layout lines **
+            var lineOneDetails = []; // To hold Ratings, Runtime, PG
+            var genreDetails = [];   // To hold only Genres string
             var countries = Lampa.Api.sources.tmdb.parseCountries(data);
             var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
-            // --- Logo URLs ---
+            // --- Logo URLs --- (Unchanged - keep all)
             const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
             const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
-            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; 
+            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg';
             const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg';
             const rtAudienceFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_positive_audience.svg';
             const rtAudienceSpilledLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_negative_audience.svg';
@@ -300,12 +303,14 @@
             const traktLogoUrl = 'https://psahx.github.io/ps_plug/Trakt.svg';
             const letterboxdLogoUrl = 'https://psahx.github.io/ps_plug/letterboxd-decal-dots-pos-rgb.svg';
             const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
+            const kpLogoUrl = 'https://psahx.github.io/ps_plug/kinopoisk-icon-main.svg'; // Unused
 
-            // --- Rating Toggles State (Read from Lampa Storage) ---
+            // --- Rating Toggles State --- (Unchanged - read all needed for line 1)
             let imdbStored = Lampa.Storage.get('show_rating_imdb', true);
             const showImdb = (imdbStored === true || imdbStored === 'true');
             let tmdbStored = Lampa.Storage.get('show_rating_tmdb', true);
             const showTmdb = (tmdbStored === true || tmdbStored === 'true');
+            // No need to read KP toggle anymore
             let tomatoesStored = Lampa.Storage.get('show_rating_tomatoes', false);
             const showTomatoes = (tomatoesStored === true || tomatoesStored === 'true');
             let audienceStored = Lampa.Storage.get('show_rating_audience', false);
@@ -316,189 +321,81 @@
             const showTrakt = (traktStored === true || traktStored === 'true');
             let letterboxdStored = Lampa.Storage.get('show_rating_letterboxd', false);
             const showLetterboxd = (letterboxdStored === true || letterboxdStored === 'true');
-            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false); 
+            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false);
             const showRogerebert = (rogerEbertStored === true || rogerEbertStored === 'true');
 
-
-            // --- Build Head (Keep original logic) ---
+            // --- Build Head --- (Unchanged)
             if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
             if (countries.length > 0) head.push(countries.join(', '));
 
-            // --- Get MDBList Ratings from Cache (Keep original logic) ---
+            // --- Get MDBList Rating Results --- (Unchanged)
             var mdblistResult = mdblistRatingsCache[data.id];
 
-            // --- Build Details (Conditionally Add Ratings) ---
-
-            // 1. IMDb Rating
+            // --- Build Line 1 Details (Ratings) ---
+            // Push all active rating divs into lineOneDetails
             if (showImdb) {
-                 var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
-                 // Displaying 0.0 is INTENTIONAL as per user request
-                 details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>');
+                var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
+                lineOneDetails.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>');
             }
-
-            // 2. TMDB Rating
             if (showTmdb) {
-                 // Displaying 0.0 is INTENTIONAL as per user request
-                 details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>');
+                lineOneDetails.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>');
             }
-
-            // 3. Rotten Tomatoes (Critics / Tomatometer)
             if (showTomatoes) {
-                 if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
-                     let score = mdblistResult.tomatoes;
-                     let logoUrl = '';
-                     if (score >= 60) { logoUrl = rtFreshLogoUrl; }
-                     else if (score >= 0) { logoUrl = rtRottenLogoUrl; }
-                     if (logoUrl) {
-                         details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>');
-                     }
-                 }
+                 if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { lineOneDetails.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>'); } }
             }
-
-             // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
             if (showAudience) {
-                // Check using the 'popcorn' key, ensuring it's not null or undefined
-                if (mdblistResult && mdblistResult.popcorn != null) {
-                    // Attempt to parse the score from the 'popcorn' key
-                    let parsedScore = parseFloat(mdblistResult.popcorn);
-
-                    // Check if parsing resulted in a valid number
-                    if (!isNaN(parsedScore)) {
-                        let score = parsedScore;
-                        let logoUrl = '';
-
-                        // Determine logo based on score
-                        if (score >= 60) {
-                            logoUrl = rtAudienceFreshLogoUrl;
-                        } else if (score >= 0) { // Handle 0 score case
-                            logoUrl = rtAudienceSpilledLogoUrl;
-                        }
-
-                        // Only add if we have a valid logo (i.e., score is >= 0)
-                        if (logoUrl) {
-                            details.push(
-                                '<div class="full-start__rate rt-audience-rating-item">' +
-                                    // Display score without % as you requested previously
-                                    '<div class="rt-audience-score">' + score + '</div>' +
-                                    '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' +
-                                '</div>'
-                            );
-                        }
-                    }
-                }
+                 if (mdblistResult && mdblistResult.popcorn != null) { let parsedScore = parseFloat(mdblistResult.popcorn); if (!isNaN(parsedScore)) { let score = parsedScore; let logoUrl = ''; if (score >= 60) { logoUrl = rtAudienceFreshLogoUrl; } else if (score >= 0) { logoUrl = rtAudienceSpilledLogoUrl; } if (logoUrl) { lineOneDetails.push('<div class="full-start__rate rt-audience-rating-item">' + '<div class="rt-audience-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' + '</div>'); } } }
             }
-            
-            // ** 5. Metacritic Rating **
             if (showMetacritic) {
-                // Check MDBList key 'metacritic'
-                if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) {
-                     let score = mdblistResult.metacritic; // Assume 0-100 score
-                     // Basic display: Score number + generic logo
-                      if (score >= 0) { // Only display non-negative scores
-                         details.push(
-                            '<div class="full-start__rate metacritic-rating-item">' + // Specific class
-                                '<div class="metacritic-score">' + score + '</div>' + // Specific class, show number only
-                                // Use user-provided Metacritic logo URL
-                                '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + // Specific class
-                            '</div>'
-                         );
-                      }
-                }
+                 if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) { let score = mdblistResult.metacritic; if (score >= 0) { lineOneDetails.push('<div class="full-start__rate metacritic-rating-item">' + '<div class="metacritic-score">' + score + '</div>' + '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + '</div>'); } }
             }
-
-        
-            // ** 6. Trakt Rating **
             if (showTrakt) {
-                // Check using the 'trakt' key, ensuring it's not null or undefined
-                if (mdblistResult && mdblistResult.trakt != null) {
-                    // Attempt to parse the score
-                    let parsedScore = parseFloat(mdblistResult.trakt);
-
-                    // Check if parsing resulted in a valid number
-                    if (!isNaN(parsedScore)) {
-                        let score = parsedScore; // Keep as number (likely 0-100)
-
-                        // Only display non-negative scores
-                        if (score >= 0) {
-                            details.push(
-                                '<div class="full-start__rate trakt-rating-item">' + // Specific class
-                                    // Display score number only (no % as requested)
-                                    '<div class="trakt-score">' + score + '</div>' + // Specific class
-                                    '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + // Specific class
-                                '</div>'
-                            );
-                        }
-                    }
-                }
+                 if (mdblistResult && mdblistResult.trakt != null) { let parsedScore = parseFloat(mdblistResult.trakt); if (!isNaN(parsedScore)) { let score = parsedScore; if (score >= 0) { lineOneDetails.push('<div class="full-start__rate trakt-rating-item">' + '<div class="trakt-score">' + score + '</div>' + '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + '</div>'); } } }
             }
-
-                        
-            // ** 7. Letterboxd Rating **
             if (showLetterboxd) {
-                // Check using the 'letterboxd' key, ensuring it's not null or undefined
-                if (mdblistResult && mdblistResult.letterboxd != null) {
-                    // Attempt to parse the score
-                    let parsedScore = parseFloat(mdblistResult.letterboxd);
-
-                    // Check if parsing resulted in a valid number
-                    if (!isNaN(parsedScore)) {
-                        // Letterboxd is usually 0.5-5 stars, format to one decimal place for display
-                        let score = parsedScore.toFixed(1);
-
-                        // Only display non-negative scores (Letterboxd ratings start > 0 typically)
-                        if (parsedScore >= 0) {
-                            details.push(
-                                '<div class="full-start__rate letterboxd-rating-item">' + // Specific class
-                                    // Display score formatted to one decimal
-                                    '<div class="letterboxd-score">' + score + '</div>' + // Specific class
-                                    '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + // Specific class
-                                '</div>'
-                            );
-                        }
-                    }
-                }
+                 if (mdblistResult && mdblistResult.letterboxd != null) { let parsedScore = parseFloat(mdblistResult.letterboxd); if (!isNaN(parsedScore)) { let score = parsedScore.toFixed(1); if (parsedScore >= 0) { lineOneDetails.push('<div class="full-start__rate letterboxd-rating-item">' + '<div class="letterboxd-score">' + score + '</div>' + '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + '</div>'); } } }
             }
-                        
-            // ** 8. Roger Ebert Rating **
             if (showRogerebert) {
-                // Check using the 'rogerebert' key, ensuring it's not null or undefined
-                if (mdblistResult && mdblistResult.rogerebert != null) {
-                    // Attempt to parse the score
-                    let parsedScore = parseFloat(mdblistResult.rogerebert);
-
-                    // Check if parsing resulted in a valid number
-                    if (!isNaN(parsedScore)) {
-                        // Ebert ratings are usually 0-4 stars, format to one decimal place
-                        let score = parsedScore.toFixed(1);
-
-                        // Only display non-negative scores
-                        if (parsedScore >= 0) {
-                            details.push(
-                                '<div class="full-start__rate rogerebert-rating-item">' + // Specific class
-                                    // Display score formatted to one decimal
-                                    '<div class="rogerebert-score">' + score + '</div>' + // Specific class
-                                    '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + // Specific class
-                                '</div>'
-                            );
-                        }
-                    }
-                }
+                 if (mdblistResult && mdblistResult.rogerebert != null) { let parsedScore = parseFloat(mdblistResult.rogerebert); if (!isNaN(parsedScore)) { let score = parsedScore.toFixed(1); if (parsedScore >= 0) { lineOneDetails.push('<div class="full-start__rate rogerebert-rating-item">' + '<div class="rogerebert-score">' + score + '</div>' + '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + '</div>'); } } }
             }
 
 
+            // --- Build Line 1 Details (Runtime, PG) ---
+            // Push Runtime and PG into lineOneDetails array
+            if (data.runtime) {
+                lineOneDetails.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
+            }
+            if (pg) {
+                lineOneDetails.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
+            }
 
+            // --- Build Genre Details ---
+            // Push ONLY the Genres string into genreDetails array
+            if (data.genres && data.genres.length > 0) {
+                genreDetails.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
+            }
 
-            // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
-            if (data.genres && data.genres.length > 0) { details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); }
-            if (data.runtime) { details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); }
-            if (pg) { details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); }
-
-            // --- Update HTML (Keep original structure) ---
+            // --- Update HTML ---
             html.find('.new-interface-info__head').empty().append(head.join(', '));
-            html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
-      };
-                       
-    // This closing brace marks the end of the function block to replace
+
+            // ** Construct final details HTML with specific lines **
+            let lineOneHtml = lineOneDetails.join('<span class="new-interface-info__split">&#9679;</span>');
+            // Genres string is already joined by '|', so just get the first element if it exists
+            let genresHtml = genreDetails.length > 0 ? genreDetails[0] : '';
+
+            let finalDetailsHtml = '';
+            // Add line 1 (Ratings, Runtime, PG) if it has content
+            if (lineOneDetails.length > 0) {
+                 finalDetailsHtml += `<div class="line-one-details">${lineOneHtml}</div>`;
+            }
+            // Add line 2 (Genres) if it has content
+             if (genresHtml) {
+                 finalDetailsHtml += `<div class="genre-details-line">${genresHtml}</div>`;
+             }
+
+            // Set the new HTML structure into the details element
+            html.find('.new-interface-info__details').html(finalDetailsHtml);
+        }; // End draw function
                        
         this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
         this.render = function () { return html; }; this.empty = function () {};
@@ -534,7 +431,23 @@
             .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
             .new-interface-info__head span { color: #fff; }
             .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
-            .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; }
+            /* .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; } */
+                        
+            .new-interface-info__details {
+                margin-bottom: 1.6em;
+                display: block;
+                min-height: 1.9em;
+                font-size: 1.1em;
+            }
+            .line-one-details {
+                margin-bottom: 0.6em;
+                line-height: 1.5;
+            }
+            .genre-details-line {
+                margin-top: 1em;
+                line-height: 1.5;
+            }
+
             .new-interface-info__split { margin: 0 1em; font-size: 0.7em; }
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
