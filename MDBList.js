@@ -11,165 +11,6 @@
         cache_limit: 500, // Max items in cache
         request_timeout: 10000 // 10 seconds request timeout
     };
-
-        
-    // --- KP Fetcher State & Config ---
-    var kpRatingsCache = {}; // Cache for KP ratings
-    var kpRatingsPending = {}; // Tracks pending KP requests
-    var kp_api_key = '2a4a0808-81a3-40ae-b0d3-e11335ede616'; // Hardcoded KP API Key
-    // ** Updated base URL used for IMDb ID lookup **
-    var kp_api_base_url = 'https://kinopoiskapiunofficial.tech/api/v2.2/films'; // Base for ?imdbId= lookup
-    var kp_cache_time = 60 * 60 * 24 * 1000; // 24 hours cache for KP ratings
-    var kp_cache_key = 'kp_ratings_cache'; // Unique storage key for KP ratings
-    var kp_cache_limit = 500; // Max items in KP cache (can reuse MDBList limit if desired)
-    var kp_request_timeout = 10000; // 10 seconds request timeout
-
-    // --- KP Caching Functions ---
-    function getKpCache(tmdb_id) {
-        // Ensure Lampa Storage is available for caching
-        if (!window.Lampa || !Lampa.Storage) return false;
-        var timestamp = new Date().getTime();
-        // Use a separate cache key
-        var cache = Lampa.Storage.cache(kp_cache_key, kp_cache_limit, {});
-
-        if (cache[tmdb_id]) {
-            // Check if cache entry has expired
-            if ((timestamp - cache[tmdb_id].timestamp) > kp_cache_time) {
-                delete cache[tmdb_id];
-                Lampa.Storage.set(kp_cache_key, cache);
-                // console.log("KP_Fetcher: Cache expired for TMDB ID:", tmdb_id);
-                return false;
-            }
-            // console.log("KP_Fetcher: Cache hit for TMDB ID:", tmdb_id);
-            // Return cached data, e.g., { kp: 7.8, error: null }
-            return cache[tmdb_id].data;
-        }
-        // console.log("KP_Fetcher: Cache miss for TMDB ID:", tmdb_id);
-        return false;
-    }
-
-    function setKpCache(tmdb_id, data) {
-        // Ensure Lampa Storage is available
-        if (!window.Lampa || !Lampa.Storage) return;
-        var timestamp = new Date().getTime();
-        var cache = Lampa.Storage.cache(kp_cache_key, kp_cache_limit, {});
-        // Store data along with a timestamp
-        cache[tmdb_id] = {
-            timestamp: timestamp,
-            data: data // e.g., { kp: 7.8, error: null } or { kp: null, error: '...' }
-        };
-        Lampa.Storage.set(kp_cache_key, cache);
-        // console.log("KP_Fetcher: Cached data for TMDB ID:", tmdb_id, data);
-    }
-
-        
-    // --- KP Fetching Logic (Revised based on original script analysis) ---
-    /**
-     * Fetches KP rating using IMDb ID lookup via kinopoiskapiunofficial.tech.
-     * @param {object} movieData - Object containing movie details. Requires 'id' (TMDB ID for cache key) and 'imdb_id' (for lookup).
-     * @param {function} callback - Function to call with the result object { kp: 7.5, error: null } or { kp: null, error: '...' }.
-     */
-    function fetchKpRating(movieData, callback) {
-        // Check required components
-        if (!network || !window.Lampa || !Lampa.Storage) {
-            console.error("KP_Fetcher: Missing Lampa component (Network/Storage).");
-            if (callback) callback({ kp: null, error: "Lampa component missing" });
-            return;
-        }
-        // Validate input: Need TMDB ID for caching, IMDb ID for lookup, and callback
-        if (!movieData || !movieData.id || !movieData.imdb_id || !callback) {
-            // If IMDb ID is missing, we cannot perform this lookup method.
-            if (callback) callback({ kp: null, error: (movieData && movieData.id && !movieData.imdb_id) ? "IMDb ID missing for KP lookup" : "Invalid input data" });
-            return;
-        }
-
-        var tmdb_id = movieData.id; // Used for caching key
-        var imdb_id = movieData.imdb_id; // Used for API lookup
-
-        // 1. Check KP Cache (using TMDB ID as the key)
-        var cached_rating = getKpCache(tmdb_id);
-        if (cached_rating) {
-            callback(cached_rating);
-            return;
-        }
-
-        // 2. Check if Pending
-        if (kpRatingsPending[tmdb_id]) {
-            return; // Exit if already fetching
-        }
-        kpRatingsPending[tmdb_id] = true;
-
-        // 3. Prepare API Request URL (Using IMDb ID lookup)
-        // Target: https://kinopoiskapiunofficial.tech/api/v2.2/films?imdbId=tt1234567
-        var films_api_url = 'https://kinopoiskapiunofficial.tech/api/v2.2/films'; // Base endpoint
-        // Use Lampa.Utils to safely add URL component
-        var api_url = Lampa.Utils.addUrlComponent(films_api_url, 'imdbId=' + encodeURIComponent(imdb_id));
-
-        // console.log("KP_Fetcher: Fetching via IMDb ID from URL:", api_url);
-
-        // 4. Make Network Request
-        network.clear();
-        network.timeout(kp_request_timeout);
-        network.headers({ 'X-API-KEY': kp_api_key, 'Content-Type': 'application/json' });
-
-        network.silent(api_url, function (response) {
-            // --- Success Callback ---
-            var kpResult = { kp: null, error: null };
-            var foundFilmData = null;
-
-            // This endpoint might return an object with 'items' array or 'films' array
-            // We assume the first result is the correct one if an array is returned.
-            if (response && response.items && Array.isArray(response.items) && response.items.length > 0) {
-                 foundFilmData = response.items[0];
-            } else if (response && response.films && Array.isArray(response.films) && response.films.length > 0) {
-                 foundFilmData = response.films[0];
-            // Sometimes the API might directly return the film object if the match is unique? Check for rating key directly.
-            } else if (response && response.ratingKinopoisk != null) {
-                 foundFilmData = response;
-            }
-
-            // Now check the found film data for the rating
-            if (foundFilmData && foundFilmData.ratingKinopoisk != null) {
-                let parsedRating = parseFloat(foundFilmData.ratingKinopoisk);
-                if (!isNaN(parsedRating)) {
-                    kpResult.kp = parsedRating; // Store the KP rating
-                    // console.log("KP_Fetcher: Success via IMDb ID for TMDB ID:", tmdb_id, "KP Rating:", kpResult.kp);
-                } else {
-                    kpResult.error = "Invalid KP rating format";
-                    console.error("KP_Fetcher: Found film via IMDb, but couldn't parse ratingKinopoisk:", foundFilmData.ratingKinopoisk);
-                }
-            } else if (response && (response.message || response.status === 404)) {
-                // Handle specific API errors like 'Not Found' or message
-                 kpResult.error = "KP API Error: " + (response.message || "Not Found (404)");
-                 // Don't log as error if simply not found
-                 // console.log("KP_Fetcher: API Error/Not Found for IMDb ID lookup:", imdb_id, kpResult.error);
-            }
-            else {
-                // Film not found via IMDb ID, or rating missing in the found data
-                kpResult.error = "KP rating not found via IMDb ID";
-                // console.log("KP_Fetcher: KP rating not found via IMDb ID:", imdb_id, "Response:", JSON.stringify(response));
-            }
-
-            // Cache the result (using TMDB ID)
-            setKpCache(tmdb_id, kpResult);
-            delete kpRatingsPending[tmdb_id]; // Mark as no longer pending
-            callback(kpResult); // Call the original callback
-
-        }, function (xhr, status) {
-            // --- Error Callback (Network level) ---
-            var errorMessage = "KP request failed (IMDb ID lookup)";
-            if (status) { errorMessage += " (Status: " + status + ")"; }
-            console.error("KP_Fetcher:", errorMessage, "for IMDb ID:", imdb_id);
-            var errorResult = { kp: null, error: errorMessage };
-            // Cache the error (using TMDB ID)
-            if (status !== 401 && status !== 403 && status !== 429) {
-                 setKpCache(tmdb_id, errorResult);
-            }
-            delete kpRatingsPending[tmdb_id]; // Mark as no longer pending
-            callback(errorResult); // Call the original callback
-        }); // End network.silent
-    } // End fetchKpRating (Revised)
-
     
     // --- Language Strings ---
     // Add description for the settings menu item
@@ -446,78 +287,20 @@
 
     // --- create function (Info Panel Handler) ---
     // UNCHANGED create function...
-    function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); };         this.update = function (data) {
-            var _this = this; // Reference to the 'create' instance for callbacks
-
-            // Basic UI updates (unchanged)
-            html.find('.new-interface-info__head,.new-interface-info__details').text('---');
-            html.find('.new-interface-info__title').text(data.title);
-            html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
-            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
-
-            // *** Cache Check/Deletion is handled INSIDE fetchRatings/fetchKpRating ***
-
-            // Check if we have the necessary info to fetch ratings
-            if (data.id && data.method) {
-
-                // Construct the URL key used by 'this.load' to check if main TMDB details are loaded
-                var tmdb_url_key = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
-
-                // --- Define Callbacks ---
-
-                // Callback function after MDBList fetch completes (or returns from cache)
-                var mdbCallback = function(mdblistResult) {
-                    // Store the result (cached or fresh) in the MDBList in-memory cache for 'draw'
-                    mdblistRatingsCache[data.id] = mdblistResult;
-                    // If main TMDB data is already loaded, redraw to show updated MDBList ratings
-                    if (loaded && loaded[tmdb_url_key]) {
-                        _this.draw(loaded[tmdb_url_key]);
-                    }
-                };
-
-                // Callback function after KP fetch completes (or returns from cache)
-                var kpCallback = function(kpResult) {
-                    // Store the result (cached or fresh) in the KP in-memory cache for 'draw'
-                    kpRatingsCache[data.id] = kpResult;
-                     // If main TMDB data is already loaded, redraw to show updated KP rating
-                    if (loaded && loaded[tmdb_url_key]) {
-                        _this.draw(loaded[tmdb_url_key]);
-                    }
-                };
-
-                // --- Trigger Fetch Processes ---
-                // These functions will first check their respective caches (getCache/getKpCache)
-                // and will only make an API call if the data isn't fresh in the cache.
-
-                // Trigger MDBList fetch
-                fetchRatings(data, mdbCallback);
-
-                // Trigger KP fetch (fetchKpRating checks internally if imdb_id exists)
-                fetchKpRating(data, kpCallback);
-
-            } else if (!data.method) {
-                // Optional warning if method is missing (e.g., during development)
-                console.warn("CREATE UPDATE: data.method missing for item", data.id);
-            }
-
-            // Trigger the fetch for main TMDB details (title, overview, genres, runtime etc.) (Unchanged)
-            // This 'load' function calls _this.draw() internally once its data arrives.
-            this.load(data);
-        };
-
-
-        this.draw = function (data) {
+    function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id];  if (/*window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && */data.id && data.method) { mdblistRatingsPending[data.id] = true; /*window.MDBLIST_Fetcher.fetch*/fetchRatings(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
+     //working string// /* this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */ var create = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4); var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); var head = []; var details = []; var countries = Lampa.Api.sources.tmdb.parseCountries(data); var pg = Lampa.Api.sources.tmdb.parsePG(data); const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png'; const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg'; const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg'; if (create !== '0000') head.push('<span>' + create + '</span>'); if (countries.length > 0) head.push(countries.join(', ')); var mdblistResult = mdblistRatingsCache[data.id]; var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '%</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Status" draggable="false">' + '</div>'); } } if (data.genres && data.genres.length > 0) details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); if (data.runtime) details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); if (pg) details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); html.find('.new-interface-info__head').empty().append(head.join(', ')); html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>')); }; */
+        this.draw = function (data) { /* UNCHANGED draw function (Number+Logo Order) */
             var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
-            var vote = parseFloat((data.vote_average || 0) + '').toFixed(1); // TMDB vote average
+            var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
             var head = [];
             var details = [];
             var countries = Lampa.Api.sources.tmdb.parseCountries(data);
             var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
-            // --- Logo URLs --- (Should include all logos defined earlier)
+            // --- Logo URLs ---
             const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
             const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
-            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg';
+            const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg'; 
             const rtRottenLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_rotten.svg';
             const rtAudienceFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_positive_audience.svg';
             const rtAudienceSpilledLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes_negative_audience.svg';
@@ -527,15 +310,11 @@
             const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
             const kpLogoUrl = 'https://psahx.github.io/ps_plug/kinopoisk-icon-main.svg';
 
-            // --- Rating Toggles State ---
+            // --- Rating Toggles State (Read from Lampa Storage) ---
             let imdbStored = Lampa.Storage.get('show_rating_imdb', true);
             const showImdb = (imdbStored === true || imdbStored === 'true');
             let tmdbStored = Lampa.Storage.get('show_rating_tmdb', true);
             const showTmdb = (tmdbStored === true || tmdbStored === 'true');
-            // ** NEW: KP Toggle Read **
-            let kpStored = Lampa.Storage.get('show_rating_kp', true); // Default true from settings
-            const showKp = (kpStored === true || kpStored === 'true');
-            // ... (keep all other existing toggle reads for RT, Audience, Metacritic, Trakt, Letterboxd, Ebert)
             let tomatoesStored = Lampa.Storage.get('show_rating_tomatoes', false);
             const showTomatoes = (tomatoesStored === true || tomatoesStored === 'true');
             let audienceStored = Lampa.Storage.get('show_rating_audience', false);
@@ -546,147 +325,193 @@
             const showTrakt = (traktStored === true || traktStored === 'true');
             let letterboxdStored = Lampa.Storage.get('show_rating_letterboxd', false);
             const showLetterboxd = (letterboxdStored === true || letterboxdStored === 'true');
-            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false);
+            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false); 
             const showRogerebert = (rogerEbertStored === true || rogerEbertStored === 'true');
 
 
-            // --- Build Head --- (Unchanged)
+            // --- Build Head (Keep original logic) ---
             if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
             if (countries.length > 0) head.push(countries.join(', '));
 
-            // --- Get Rating Results from In-Memory Caches ---
-            var mdblistResult = mdblistRatingsCache[data.id]; // From MDBList fetch result {imdb:.., popcorn:.., etc}
-            var kpResult = kpRatingsCache[data.id];       // From KP fetch result {kp:.., error:..}
+            // --- Get MDBList Ratings from Cache (Keep original logic) ---
+            var mdblistResult = mdblistRatingsCache[data.id];
 
             // --- Build Details (Conditionally Add Ratings) ---
 
-            // 1. IMDb Rating (from MDBList)
+            // 1. IMDb Rating
             if (showImdb) {
                  var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
+                 // Displaying 0.0 is INTENTIONAL as per user request
                  details.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>');
             }
 
-            // 2. TMDB Rating (from main TMDB data)
+            // 2. TMDB Rating
             if (showTmdb) {
+                 // Displaying 0.0 is INTENTIONAL as per user request
                  details.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>');
             }
 
-            // ** 3. KinoPoisk (KP) Rating (from KP fetch) **
-            // Check toggle AND if kpResult exists AND fetch was successful (no error) AND rating is present
-            if (showKp && kpResult && kpResult.error === null && kpResult.kp != null) {
-                 // KP ratings can have many decimals, parse and format to one for consistency
-                 let parsedKpScore = parseFloat(kpResult.kp);
-                 if (!isNaN(parsedKpScore) && parsedKpScore >= 0) { // Check if valid number and non-negative
-                      let score = parsedKpScore.toFixed(1);
-                      details.push(
-                         '<div class="full-start__rate kp-rating-item">' + // Specific class
-                             '<div class="kp-score">' + score + '</div>' + // Specific class
-                             '<img src="' + kpLogoUrl + '" class="rating-logo kp-logo" alt="KP" draggable="false">' + // Specific class & logo
-                         '</div>'
-                      );
-                  }
-            }
-
-            // ** Renumbered ** 4. Rotten Tomatoes (Critics / Tomatometer) (from MDBList)
+            // 3. Rotten Tomatoes (Critics / Tomatometer)
             if (showTomatoes) {
                  if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) {
                      let score = mdblistResult.tomatoes;
                      let logoUrl = '';
-                     if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; }
+                     if (score >= 60) { logoUrl = rtFreshLogoUrl; }
+                     else if (score >= 0) { logoUrl = rtRottenLogoUrl; }
                      if (logoUrl) {
                          details.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>');
                      }
                  }
             }
 
-            // ** Renumbered ** 5. Rotten Tomatoes (Audience / Popcorn Score) (from MDBList)
+             // ** 4. Rotten Tomatoes (Audience / Popcorn Score) **
             if (showAudience) {
-                 if (mdblistResult && mdblistResult.popcorn != null) {
-                     let parsedScore = parseFloat(mdblistResult.popcorn);
-                     if (!isNaN(parsedScore)) {
-                         let score = parsedScore; let logoUrl = '';
-                         if (score >= 60) { logoUrl = rtAudienceFreshLogoUrl; } else if (score >= 0) { logoUrl = rtAudienceSpilledLogoUrl; }
-                         if (logoUrl) {
-                             details.push('<div class="full-start__rate rt-audience-rating-item">' + '<div class="rt-audience-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' + '</div>');
-                         }
-                     }
-                 }
-            }
+                // Check using the 'popcorn' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.popcorn != null) {
+                    // Attempt to parse the score from the 'popcorn' key
+                    let parsedScore = parseFloat(mdblistResult.popcorn);
 
-            // ** Renumbered ** 6. Metacritic Rating (from MDBList)
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        let score = parsedScore;
+                        let logoUrl = '';
+
+                        // Determine logo based on score
+                        if (score >= 60) {
+                            logoUrl = rtAudienceFreshLogoUrl;
+                        } else if (score >= 0) { // Handle 0 score case
+                            logoUrl = rtAudienceSpilledLogoUrl;
+                        }
+
+                        // Only add if we have a valid logo (i.e., score is >= 0)
+                        if (logoUrl) {
+                            details.push(
+                                '<div class="full-start__rate rt-audience-rating-item">' +
+                                    // Display score without % as you requested previously
+                                    '<div class="rt-audience-score">' + score + '</div>' +
+                                    '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' +
+                                '</div>'
+                            );
+                        }
+                    }
+                }
+            }
+            
+            // ** 5. Metacritic Rating **
             if (showMetacritic) {
-                 if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) {
-                      let score = mdblistResult.metacritic;
-                       if (score >= 0) {
-                          details.push('<div class="full-start__rate metacritic-rating-item">' + '<div class="metacritic-score">' + score + '</div>' + '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + '</div>');
-                       }
-                 }
+                // Check MDBList key 'metacritic'
+                if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) {
+                     let score = mdblistResult.metacritic; // Assume 0-100 score
+                     // Basic display: Score number + generic logo
+                      if (score >= 0) { // Only display non-negative scores
+                         details.push(
+                            '<div class="full-start__rate metacritic-rating-item">' + // Specific class
+                                '<div class="metacritic-score">' + score + '</div>' + // Specific class, show number only
+                                // Use user-provided Metacritic logo URL
+                                '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + // Specific class
+                            '</div>'
+                         );
+                      }
+                }
             }
 
-            // ** Renumbered ** 7. Trakt Rating (from MDBList)
+        
+            // ** 6. Trakt Rating **
             if (showTrakt) {
-                 if (mdblistResult && mdblistResult.trakt != null) {
-                     let parsedScore = parseFloat(mdblistResult.trakt);
-                     if (!isNaN(parsedScore)) {
-                         let score = parsedScore;
-                         if (score >= 0) {
-                             details.push('<div class="full-start__rate trakt-rating-item">' + '<div class="trakt-score">' + score + '</div>' + '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + '</div>');
-                         }
-                     }
-                 }
+                // Check using the 'trakt' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.trakt != null) {
+                    // Attempt to parse the score
+                    let parsedScore = parseFloat(mdblistResult.trakt);
+
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        let score = parsedScore; // Keep as number (likely 0-100)
+
+                        // Only display non-negative scores
+                        if (score >= 0) {
+                            details.push(
+                                '<div class="full-start__rate trakt-rating-item">' + // Specific class
+                                    // Display score number only (no % as requested)
+                                    '<div class="trakt-score">' + score + '</div>' + // Specific class
+                                    '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + // Specific class
+                                '</div>'
+                            );
+                        }
+                    }
+                }
             }
 
-            // ** Renumbered ** 8. Letterboxd Rating (from MDBList)
+                        
+            // ** 7. Letterboxd Rating **
             if (showLetterboxd) {
-                 if (mdblistResult && mdblistResult.letterboxd != null) {
-                     let parsedScore = parseFloat(mdblistResult.letterboxd);
-                     if (!isNaN(parsedScore)) {
-                         let score = parsedScore.toFixed(1);
-                         if (parsedScore >= 0) {
-                             details.push('<div class="full-start__rate letterboxd-rating-item">' + '<div class="letterboxd-score">' + score + '</div>' + '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + '</div>');
-                         }
-                     }
-                 }
-            }
+                // Check using the 'letterboxd' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.letterboxd != null) {
+                    // Attempt to parse the score
+                    let parsedScore = parseFloat(mdblistResult.letterboxd);
 
-            // ** Renumbered ** 9. Roger Ebert Rating (from MDBList)
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        // Letterboxd is usually 0.5-5 stars, format to one decimal place for display
+                        let score = parsedScore.toFixed(1);
+
+                        // Only display non-negative scores (Letterboxd ratings start > 0 typically)
+                        if (parsedScore >= 0) {
+                            details.push(
+                                '<div class="full-start__rate letterboxd-rating-item">' + // Specific class
+                                    // Display score formatted to one decimal
+                                    '<div class="letterboxd-score">' + score + '</div>' + // Specific class
+                                    '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + // Specific class
+                                '</div>'
+                            );
+                        }
+                    }
+                }
+            }
+                        
+            // ** 8. Roger Ebert Rating **
             if (showRogerebert) {
-                 if (mdblistResult && mdblistResult.rogerebert != null) {
-                     let parsedScore = parseFloat(mdblistResult.rogerebert);
-                     if (!isNaN(parsedScore)) {
-                         let score = parsedScore.toFixed(1);
-                         if (parsedScore >= 0) {
-                             details.push('<div class="full-start__rate rogerebert-rating-item">' + '<div class="rogerebert-score">' + score + '</div>' + '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + '</div>');
-                         }
-                     }
-                 }
+                // Check using the 'rogerebert' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.rogerebert != null) {
+                    // Attempt to parse the score
+                    let parsedScore = parseFloat(mdblistResult.rogerebert);
+
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        // Ebert ratings are usually 0-4 stars, format to one decimal place
+                        let score = parsedScore.toFixed(1);
+
+                        // Only display non-negative scores
+                        if (parsedScore >= 0) {
+                            details.push(
+                                '<div class="full-start__rate rogerebert-rating-item">' + // Specific class
+                                    // Display score formatted to one decimal
+                                    '<div class="rogerebert-score">' + score + '</div>' + // Specific class
+                                    '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + // Specific class
+                                '</div>'
+                            );
+                        }
+                    }
+                }
             }
 
-            // --- Add Genres, Runtime, PG Rating --- (Unchanged)
+
+
+
+            // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
             if (data.genres && data.genres.length > 0) { details.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); }
             if (data.runtime) { details.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); }
             if (pg) { details.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); }
 
-            // --- Update HTML --- (Unchanged)
+            // --- Update HTML (Keep original structure) ---
             html.find('.new-interface-info__head').empty().append(head.join(', '));
             html.find('.new-interface-info__details').html(details.join('<span class="new-interface-info__split">&#9679;</span>'));
-      }; // End draw function
+      };
+                       
+    // This closing brace marks the end of the function block to replace
                        
         this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
         this.render = function () { return html; }; this.empty = function () {};
-        this.destroy = function () {
-            // Original cleanup
-            html.remove();
-            loaded = {}; // Clear TMDB details cache used by this instance
-            html = null;
-            mdblistRatingsCache = {}; // Clear MDBList cache used by this instance
-            mdblistRatingsPending = {}; // Clear MDBList pending flags used by this instance
-
-            // ** ADDED: Clear KP in-memory cache/pending for this instance **
-            kpRatingsCache = {};
-            kpRatingsPending = {};
-        };
-
+        this.destroy = function () { /* UNCHANGED destroy function */ html.remove(); loaded = {}; html = null; mdblistRatingsCache = {}; mdblistRatingsPending = {}; };
     }
 
 
