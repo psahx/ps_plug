@@ -1,4 +1,8 @@
-var manifest = {
+// == Main Module | Working in order | Merging MDBList ==
+(function () {
+    'use strict';
+
+    var manifest = {
       type: "other", // Type of plugin
       version: "1.0.0", // Version number
       author: '@p_s_aaa', // <<<< AUTHOR!
@@ -6,10 +10,10 @@ var manifest = {
       description: "MDBList Rating in the New Interface", // Description
     };
 
-// == Main Module | Working in order | Merging MDBList ==
-(function () {
-    'use strict';
-
+    function add() {
+      Lampa.Manifest.plugins = manifest;
+    };
+      
     // --- Fetcher Configuration ---
     var config = {
         api_url: 'https://api.mdblist.com/tmdb/', // Base URL for MDBList TMDB endpoint
