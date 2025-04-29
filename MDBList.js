@@ -323,6 +323,8 @@
             const showMetacritic = (metacriticStored === true || metacriticStored === 'true');
             let traktStored = Lampa.Storage.get('show_rating_trakt', false);
             const showTrakt = (traktStored === true || traktStored === 'true');
+            let letterboxdStored = Lampa.Storage.get('show_rating_letterboxd', false);
+            const showLetterboxd = (letterboxdStored === true || letterboxdStored === 'true');
 
 
             // --- Build Head (Keep original logic) ---
@@ -436,6 +438,34 @@
                     }
                 }
             }
+
+                        
+            // ** 7. Letterboxd Rating **
+            if (showLetterboxd) {
+                // Check using the 'letterboxd' key, ensuring it's not null or undefined
+                if (mdblistResult && mdblistResult.letterboxd != null) {
+                    // Attempt to parse the score
+                    let parsedScore = parseFloat(mdblistResult.letterboxd);
+
+                    // Check if parsing resulted in a valid number
+                    if (!isNaN(parsedScore)) {
+                        // Letterboxd is usually 0.5-5 stars, format to one decimal place for display
+                        let score = parsedScore.toFixed(1);
+
+                        // Only display non-negative scores (Letterboxd ratings start > 0 typically)
+                        if (parsedScore >= 0) {
+                            details.push(
+                                '<div class="full-start__rate letterboxd-rating-item">' + // Specific class
+                                    // Display score formatted to one decimal
+                                    '<div class="letterboxd-score">' + score + '</div>' + // Specific class
+                                    '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + // Specific class
+                                '</div>'
+                            );
+                        }
+                    }
+                }
+            }
+
 
 
             // --- Add Genres, Runtime, PG Rating (Keep original structure) ---
