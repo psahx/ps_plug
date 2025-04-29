@@ -1,19 +1,58 @@
 // == Main Module | Working in order | Merging MDBList ==
 (function () {
     'use strict';
+
+    
 // added for manifest
     var manifest = {
       type: "other", // Type of plugin
       version: "1.0.0", // Version number
       author: '@p_s_aaa', // <<<< AUTHOR!
       name: "Ratings In Style", // <<<< NAME!
-      description: "MDBList Rating in the New Interface", // Description
+      description: "MDBList Ratings in the New Interface", // Description
     };
 
     function add() {
       Lampa.Manifest.plugins = manifest;
     };
+
+    // Function to handle readiness check specifically for manifest
+    function registerManifestWhenReady() {
+        // Use a unique flag for this specific task to prevent multiple runs
+        if (window.ratings_plugin_manifest_registered_flag) {
+            // console.log("RatingsInStyle: Manifest registration already initiated."); // Optional log
+            return; 
+        }
+        // Set flag immediately to prevent re-entry
+        window.ratings_plugin_manifest_registered_flag = true; 
+
+        console.log("RatingsInStyle: Checking Lampa readiness for manifest..."); // Log
+
+        // Check if Lampa is ready now
+        if (window.appready) {
+            console.log("RatingsInStyle: Lampa ready, calling add() for manifest."); // Log
+            add(); // Call the function that assigns the manifest
+        } else {
+            // If not ready, wait for the 'app' 'ready' event
+            Lampa.Listener.follow("app", function (e) {
+                if (e.type === "ready") {
+                    // Check flag again inside listener, just in case
+                    if (window.ratings_plugin_manifest_assigned) return;
+                    
+                    console.log("RatingsInStyle: Lampa ready event received, calling add() for manifest."); // Log
+                    add(); // Call the function that assigns the manifest
+                    window.ratings_plugin_manifest_assigned = true; // Mark that assignment was done
+                }
+            });
+        }
+    }
+
+    // Call the readiness check function immediately to start the process
+    registerManifestWhenReady();
+    
 // end added for manifest
+
+    
       
     // --- Fetcher Configuration ---
     var config = {
@@ -319,13 +358,6 @@
         if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Adjust Padding: Missing Lampa components"); return; }
         Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
         window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
-        //added for manifest
-        if (window.appready) add();else {
-        Lampa.Listener.follow("app", function (e) {
-          if (e.type === "ready") add();
-        });
-      }
-        // edn added for manifest
         Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
 
         // **MODIFIED CSS**: Adjusted padding for number divs
