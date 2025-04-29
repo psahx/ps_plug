@@ -13,23 +13,28 @@
     };
     
     // --- Language Strings ---
-    // Add description for the settings menu item
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
             mdblist_api_key_desc: {
                 ru: "Введите ваш API ключ с сайта MDBList.com",
                 en: "Enter your API key from MDBList.com",
                 uk: "Введіть ваш API ключ з сайту MDBList.com"
+            },
+            additional_ratings_title: {
+                 ru: "Дополнительные Рейтинги", 
+                 en: "Additional Ratings",
+                 uk: "Додаткові Рейтинги"
             }
         });
     }
+
 
     // --- Settings UI Registration ---
     if (window.Lampa && Lampa.SettingsApi) {
         // 1. Add the new Settings Category
         Lampa.SettingsApi.addComponent({
-            component: 'additional_ratings', // Internal name for the component
-            name: 'Additional Ratings',      // Display name in settings menu
+            component: 'additional_ratings',
+            name: Lampa.Lang.translate('additional_ratings_title'),
             icon: '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24" xml:space="preserve" width="32" height="32" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>' // Simple placeholder icon
         });
 
