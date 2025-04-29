@@ -1,59 +1,7 @@
 // == Main Module | Working in order | Merging MDBList ==
 (function () {
     'use strict';
-
     
-// added for manifest
-    var manifest = {
-      type: "other", // Type of plugin
-      version: "1.0.0", // Version number
-      author: '@p_s_aaa', // <<<< AUTHOR!
-      name: "Ratings In Style", // <<<< NAME!
-      description: "MDBList Ratings in the New Interface", // Description
-    };
-
-    function add() {
-      Lampa.Manifest.plugins = manifest;
-    };
-
-    // Function to handle readiness check specifically for manifest
-    function registerManifestWhenReady() {
-        // Use a unique flag for this specific task to prevent multiple runs
-        if (window.ratings_plugin_manifest_registered_flag) {
-            // console.log("RatingsInStyle: Manifest registration already initiated."); // Optional log
-            return; 
-        }
-        // Set flag immediately to prevent re-entry
-        window.ratings_plugin_manifest_registered_flag = true; 
-
-        console.log("RatingsInStyle: Checking Lampa readiness for manifest..."); // Log
-
-        // Check if Lampa is ready now
-        if (window.appready) {
-            console.log("RatingsInStyle: Lampa ready, calling add() for manifest."); // Log
-            add(); // Call the function that assigns the manifest
-        } else {
-            // If not ready, wait for the 'app' 'ready' event
-            Lampa.Listener.follow("app", function (e) {
-                if (e.type === "ready") {
-                    // Check flag again inside listener, just in case
-                    if (window.ratings_plugin_manifest_assigned) return;
-                    
-                    console.log("RatingsInStyle: Lampa ready event received, calling add() for manifest."); // Log
-                    add(); // Call the function that assigns the manifest
-                    window.ratings_plugin_manifest_assigned = true; // Mark that assignment was done
-                }
-            });
-        }
-    }
-
-    // Call the readiness check function immediately to start the process
-    registerManifestWhenReady();
-    
-// end added for manifest
-
-    
-      
     // --- Fetcher Configuration ---
     var config = {
         api_url: 'https://api.mdblist.com/tmdb/', // Base URL for MDBList TMDB endpoint
@@ -112,7 +60,7 @@
         // Add Tumbler for IMDb
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_imdb', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_imdb', type: "trigger", "default": true },
             field: { name: 'IMDb Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -120,7 +68,7 @@
         // Add Tumbler for TMDB
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_tmdb', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_tmdb', type: "trigger", "default": true },
             field: { name: 'TMDB Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -128,7 +76,7 @@
         // Add Tumbler for KinoPoisk (for future integration)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_kp', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'true'},
+            param: { name: 'show_rating_kp', type: "trigger", "default": true },
             field: { name: 'KinoPoisk Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -136,7 +84,7 @@
         // Add Tumbler for Rotten Tomatoes (Critics / Tomatometer)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_tomatoes', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
+            param: { name: 'show_rating_tomatoes', type: "trigger", "default": false },
             field: { name: 'Rotten Tomatoes (Critics)' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -144,7 +92,7 @@
         // Add Tumbler for Rotten Tomatoes (Audience / Popcorn)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_audience', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
+            param: { name: 'show_rating_audience', type: "trigger", "default": false },
             field: { name: 'Rotten Tomatoes (Audience)' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -152,7 +100,7 @@
         // Add Tumbler for Metacritic
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_metacritic', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
+            param: { name: 'show_rating_metacritic', type: "trigger", "default": false },
             field: { name: 'Metacritic Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -160,7 +108,7 @@
         // Add Tumbler for Trakt
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_trakt', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
+            param: { name: 'show_rating_trakt', type: "trigger", "default": false },
             field: { name: 'Trakt Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
@@ -168,7 +116,7 @@
         // Add Tumbler for Letterboxd
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',
-            param: { name: 'show_rating_letterboxd', type: 'select', values: {'true':'On', 'false':'Off'}, 'default': 'false'},
+            param: { name: 'show_rating_letterboxd', type: "trigger", "default": false },
             field: { name: 'Letterboxd Rating' },
             onChange: function() { Lampa.Settings.update(); }
         });
