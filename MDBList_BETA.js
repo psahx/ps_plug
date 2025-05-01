@@ -473,7 +473,7 @@
                 line-height: 1.5;
             }
 
-            .new-interface-info__split { margin: 0 1em; font-size: 0.7em; }
+            .new-interface-info__split { margin: 0 0.7em; font-size: 0.7em; }
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
             .new-interface .full-start__background { height: 108%; top: -6em; }
@@ -496,7 +496,7 @@
                 background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
                 padding: 0 0.2em 0 0; /* Zero Left Padding */
                 border-radius: 0.3em;  /* Smoother edges */
-                gap: 0.5em; /* modified was 0.3 */
+                gap: 0.4em; /* modified was 0.5 */
                 overflow: hidden;
                 height: auto;
             }
@@ -507,9 +507,9 @@
                 justify-content: center;  /* From source analysis */
                 background-color: rgba(0, 0, 0, 0.4); /* Darker background */
                 color: #ffffff;
-                padding: 0.1em 0.3em;     /* ** MODIFIED: Narrower L/R padding (was 0.5em) ** */
+                padding: 0.1em 0.2em;     /* ** MODIFIED: Narrower L/R padding (was 0.3em) ** */
                 border-radius: 0.3em;       /* Smoother edges */
-                line-height: 1.3;
+                line-height: 1;          /* MODIFIED: Was 1.3 */
                 order: 1;
                 display: flex;
                 align-items: center;
