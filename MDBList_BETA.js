@@ -1,4 +1,4 @@
-// == Version 2.0.0 | Integrating WatchMode for quality and streaming ==
+// == Version 2.0.1 | Integrating WatchMode for quality and streaming ==
 (function () {
     'use strict';
     
