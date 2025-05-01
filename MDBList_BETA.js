@@ -895,55 +895,63 @@ function fetchWatchmodeDetails(movieData, callback) {
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
         }
-              
-        /**
-       * Appends a quality label element to a target UI selector.
-       * Removes any existing quality label first.
-       * @param {string} qualityString - The text to display (e.g., "4K", "HD").
-       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
-       */
-      function appendQualityElement(qualityString, selector) {
-          if (!qualityString || !selector) return;
-          try {
-              var parentElement = (typeof selector === 'string') ? $(selector) : selector; // Handle string or jQuery object
-              if (parentElement.length) {
-                  parentElement.find('.card__quality').remove(); // Remove existing first
-                  var qualityDiv = $('<div></div>')
-                      .addClass('card__quality')
-                      .text(qualityString);
-                  parentElement.append(qualityDiv);
-              }
-          } catch (e) {
-              console.error("AR_Plugin Quality: Error appending element", e);
-          }
-      }
+                
+        // --- Watchmode Quality Listener Setup ---
+        // Check if feature should be enabled based on settings
+        let qualityEnabledCheck = Lampa.Storage.get('ar_show_quality', false); // Use 'ar_' key
+        if (qualityEnabledCheck === true || qualityEnabledCheck === 'true') {
+            if (window.Lampa && Lampa.Listener) {
+                // Listener for full screen details page
+                Lampa.Listener.follow("full", function (e) {
+                    // Re-check setting in case it changed while Lampa was running
+                    let currentQualityEnabled = Lampa.Storage.get('ar_show_quality', false);
+                    if (currentQualityEnabled !== true && currentQualityEnabled !== 'true') return;
 
-      /**
-       * Parses Watchmode data to find the best quality and triggers display.
-       * @param {object} watchmodeData - The 'data' part of the watchmodeCache result ({ data: { ... }, error: null }).
-       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
-       */
-      function displayQualityLabel(watchmodeData, selector) {
-          if (!watchmodeData || !watchmodeData.sources || !Array.isArray(watchmodeData.sources)) {
-              return; // Exit if no data or sources array
-          }
+                    if (e.type === "complite" && e.object) {
+                        // Use e.object as it's more likely to contain the necessary IDs consistently
+                        let movieData = e.object;
+                        if (movieData && movieData.id) {
+                            let cachedResult = watchmodeCache[movieData.id]; // Check our Watchmode cache
+                            if (cachedResult && cachedResult.data && !cachedResult.error) {
+                                // Target element selector for the full screen poster
+                                let selector = ".full-start-new__poster";
+                                // Attempt to display the label
+                                displayQualityLabel(cachedResult.data, selector);
+                            }
+                        }
+                    }
+                });
 
-          let bestFormat = null;
-          const qualityOrder = ["4K", "HD", "SD"]; // Define quality preference
+                // Listener for card rows/lines in lists
+                Lampa.Listener.follow("line", function (e) {
+                    // Re-check setting in case it changed
+                    let currentQualityEnabled = Lampa.Storage.get('ar_show_quality', false);
+                    if (e.type === "append" && (currentQualityEnabled === true || currentQualityEnabled === 'true')) {
+                        $.each(e.items, function (_, item) {
+                            // 'item' is the Lampa.InteractionLine instance
+                            let movieCard = item.card; // The jQuery card element
+                            let movieData = item.data; // The data object for the card
 
-          // Find the best format available in the sources
-          for (const quality of qualityOrder) {
-              if (watchmodeData.sources.some(source => source.format === quality)) {
-                  bestFormat = quality;
-                  break; // Stop once the best available is found
-              }
-          }
-
-          // If a format was found, append the element
-          if (bestFormat) {
-              appendQualityElement(bestFormat, selector);
-          }
-      }
+                            if (movieData && movieData.id && movieCard && movieCard.length) {
+                                let cachedResult = watchmodeCache[movieData.id]; // Check Watchmode cache
+                                if (cachedResult && cachedResult.data && !cachedResult.error) {
+                                     // Target element selector within the card
+                                     let selector = movieCard.find(".card__view");
+                                     if(selector.length){
+                                         // Attempt to display the label
+                                         displayQualityLabel(cachedResult.data, selector);
+                                     }
+                                }
+                            }
+                        });
+                    }
+                });
+                 console.log("Watchmode Quality: Listeners Activated (using ar_show_quality).");
+            } else {
+                console.error("Watchmode Quality: Lampa.Listener not available.");
+            }
+        }
+        // --- End Watchmode Quality Listener Setup ---
     }
 
     // Original check before starting
