@@ -448,7 +448,45 @@
             html.find('.new-interface-info__details').html(finalDetailsHtml);
         }; // End draw function
                        
-        this.load = function (data) { /* UNCHANGED load function */ var _this = this; clearTimeout(timer); var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[url]) return this.draw(loaded[url]); timer = setTimeout(function () { network.clear(); network.timeout(5000); network.silent(url, function (movie) { loaded[url] = movie; if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; _this.draw(movie); }); }, 300); };
+        this.load = function (data) {
+            var _this = this;
+            clearTimeout(timer);
+
+            // ** MODIFIED: Add 'external_ids' to append_to_response **
+            // This tells the TMDB API to include IMDb ID, TVDB ID etc. in the response
+            var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
+
+            // Check Lampa's TMDB cache (unchanged)
+            if (loaded[url]) {
+                 // If already loaded, just ensure draw is called with the full data
+                 // (which should now include imdb_id if fetched previously)
+                 return this.draw(loaded[url]);
+            }
+
+            // Fetch main TMDB details if not cached
+            timer = setTimeout(function () {
+                network.clear();
+                network.timeout(5000); // Keep TMDB timeout short
+                network.silent(url, function (movie) { // 'movie' is the detailed data from TMDB
+
+                     // ** ADDED: Extract and store imdb_id directly onto the movie object **
+                     // We check if external_ids and external_ids.imdb_id exist before assigning
+                     movie.imdb_id = movie.external_ids ? movie.external_ids.imdb_id : null;
+
+                     // Store the enhanced movie object (now potentially with imdb_id) in the cache
+                     loaded[url] = movie;
+
+                     // Ensure method is set (unchanged)
+                     if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
+
+                     // Call draw with the complete data (including imdb_id if available)
+                     _this.draw(movie);
+
+                }); // End TMDB success callback
+            }, 300); // End setTimeout
+        }; // End this.load
+
+                       
         this.render = function () { return html; }; this.empty = function () {};
         this.destroy = function () { /* UNCHANGED destroy function */ html.remove(); loaded = {}; html = null; mdblistRatingsCache = {}; mdblistRatingsPending = {}; };
     }
