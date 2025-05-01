@@ -35,6 +35,7 @@
                  en: "Additional Ratings",
                  uk: "Додаткові Рейтинги"
             },
+
             select_ratings_button_name: {
                  en: "Select Rating Providers",
                  ru: "Выбрать Источники Рейтингов",
@@ -49,16 +50,6 @@
                  en: "Select Ratings",
                  ru: "Выбор Рейтингов",
                  uk: "Вибір Рейтингів"
-            },
-            ar_show_quality_name: { // Renamed key
-                 en: "Show Quality Label",
-                 ru: "Показывать Метку Качества",
-                 uk: "Показувати Мітку Якості"
-            },
-            ar_show_quality_desc: { // Renamed key
-                 en: "Displays highest available streaming quality (4K, HD, SD) from Watchmode on posters/cards.",
-                 ru: "Отображает наивысшее доступное качество стриминга (4K, HD, SD) из Watchmode на постере/карточке.",
-                 uk: "Відображає найвищу доступну якість стрімінгу (4K, HD, SD) з Watchmode на постері/картці."
             },
             watchmode_api_key_desc: {
                  en: "Required for Quality/Streaming info. Get free key: api.watchmode.com/requestApiKey/",
@@ -138,24 +129,6 @@
                 showRatingProviderSelection();
             }
         });
-        
-        // 5. Add Toggle for Watchmode Quality Label
-            Lampa.SettingsApi.addParam({
-                component: 'additional_ratings',
-                param: {
-                    name: 'ar_show_quality', // Renamed storage key using 'ar_' prefix
-                    type: 'trigger',
-                    'default': false // Default OFF
-                },
-                field: {
-                    name: Lampa.Lang.translate('ar_show_quality_name'), // Use renamed lang key
-                    description: Lampa.Lang.translate('ar_show_quality_desc') // Use renamed lang key
-                },
-                onChange: function() {
-                    Lampa.Settings.update();
-                    // We might need to add logic later to re-check listeners if setting changes
-                }
-            });
 
     } else {
         console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
@@ -437,56 +410,8 @@ function fetchWatchmodeDetails(movieData, callback) {
     var mdblistRatingsCache = {};
     var mdblistRatingsPending = {};
     // -----------------------------
-          
-    /**
-       * Appends a quality label element to a target UI selector.
-       * Removes any existing quality label first.
-       * @param {string} qualityString - The text to display (e.g., "4K", "HD").
-       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
-       */
-      function appendQualityElement(qualityString, selector) {
-          if (!qualityString || !selector) return;
-          try {
-              var parentElement = (typeof selector === 'string') ? $(selector) : selector; // Handle string or jQuery object
-              if (parentElement.length) {
-                  parentElement.find('.card__quality').remove(); // Remove existing first
-                  var qualityDiv = $('<div></div>')
-                      .addClass('card__quality')
-                      .text(qualityString);
-                  parentElement.append(qualityDiv);
-              }
-          } catch (e) {
-              console.error("AR_Plugin Quality: Error appending element", e);
-          }
-      }
 
-      /**
-       * Parses Watchmode data to find the best quality and triggers display.
-       * @param {object} watchmodeData - The 'data' part of the watchmodeCache result ({ data: { ... }, error: null }).
-       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
-       */
-      function displayQualityLabel(watchmodeData, selector) {
-          if (!watchmodeData || !watchmodeData.sources || !Array.isArray(watchmodeData.sources)) {
-              return; // Exit if no data or sources array
-          }
 
-          let bestFormat = null;
-          const qualityOrder = ["4K", "HD", "SD"]; // Define quality preference
-
-          // Find the best format available in the sources
-          for (const quality of qualityOrder) {
-              if (watchmodeData.sources.some(source => source.format === quality)) {
-                  bestFormat = quality;
-                  break; // Stop once the best available is found
-              }
-          }
-
-          // If a format was found, append the element
-          if (bestFormat) {
-              appendQualityElement(bestFormat, selector);
-          }
-      }
-    
     // Function to display the multi-select dialog for rating providers
     function showRatingProviderSelection() {
         // Define the available rating providers
@@ -551,40 +476,68 @@ function fetchWatchmodeDetails(movieData, callback) {
     // UNCHANGED create function...
     function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; 
 
+        this.update = function (data) {
+            var _this = this; // Reference to the 'create' instance
 
+            // Basic UI updates (unchanged)
+            html.find('.new-interface-info__head,.new-interface-info__details').text('---');
+            html.find('.new-interface-info__title').text(data.title);
+            html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
+            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
 
-    this.update = function (data) {
-    var _this = this;
+            // *** Cache Check/Deletion is handled INSIDE the fetch functions ***
+            // (Removed the cache delete lines that were here in the original baseline)
 
-    // Basic UI updates
-    html.find('.new-interface-info__head,.new-interface-info__details').text('---');
-    html.find('.new-interface-info__title').text(data.title);
-    // ... rest of UI updates ...
-    Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
+            // Check if we have the necessary info to fetch ratings/details
+            if (data.id && data.method) {
 
-    // *** CORRECTED: REMOVED erroneous cache/pending deletion lines ***
-    //delete mdblistRatingsCache[data.id]; // REMOVED
-    //delete mdblistRatingsPending[data.id]; // REMOVED
+                // Construct the URL key used by 'this.load' to check if main TMDB details are loaded
+                // Ensure 'external_ids' remains in append_to_response from the previous step
+                var tmdb_url_key = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
 
-    if (data.id && data.method) {
-        var tmdb_url_key = Lampa.TMDB.api(/* ... url including external_ids ... */);
+                // --- Define Callbacks ---
 
-        // MDBList Callback
-        var mdbCallback = function(mdblistResult) {
-            mdblistRatingsCache[data.id] = mdblistResult;
-            if (loaded && loaded[tmdb_url_key]) { _this.draw(loaded[tmdb_url_key]); }
-        };
+                // Callback function after MDBList fetch completes (or returns from cache)
+                var mdbCallback = function(mdblistResult) {
+                    // Store the result (cached or fresh) in the MDBList in-memory cache
+                    mdblistRatingsCache[data.id] = mdblistResult;
+                    // If main TMDB data is already loaded by 'this.load', redraw the panel
+                    if (loaded && loaded[tmdb_url_key]) {
+                        _this.draw(loaded[tmdb_url_key]);
+                    }
+                };
 
-        // --- Trigger MDBList Fetch ONLY ---
-        // Watchmode fetch will be triggered inside 'load' after imdb_id is confirmed
-        fetchRatings(data, mdbCallback);
+                // ** NEW: Callback function after Watchmode fetch completes (or returns from cache) **
+                var watchmodeCallback = function(watchmodeResult) {
+                    // Store the result { data: ..., error: ... } (cached or fresh) in the Watchmode in-memory cache
+                    watchmodeCache[data.id] = watchmodeResult;
+                     // If main TMDB data is already loaded by 'this.load', redraw the panel
+                    if (loaded && loaded[tmdb_url_key]) {
+                        _this.draw(loaded[tmdb_url_key]);
+                    }
+                };
 
-    } else if (!data.method) { /* ... warning ... */ }
+                // --- Trigger Fetch Processes ---
+                // These functions will first check their respective caches (getCache/getWatchmodeCache)
+                // and will only make an API call if the data isn't fresh in the cache.
 
-    // Trigger main TMDB detail load (this will also trigger Watchmode fetch in its callback)
-    this.load(data);
-}; // End corrected update function
+                // Trigger MDBList fetch
+                fetchRatings(data, mdbCallback);
 
+                // ** NEW: Trigger Watchmode Fetch **
+                // (fetchWatchmodeDetails checks internally if data.imdb_id exists before calling API)
+                fetchWatchmodeDetails(data, watchmodeCallback);
+
+            } else if (!data.method) {
+                // Optional warning if required data is missing
+                console.warn("CREATE UPDATE: data.method missing for item", data.id);
+            }
+
+            // Trigger the fetch for main TMDB details (unchanged - now includes imdb_id)
+            // The 'load' function calls _this.draw() internally once its data arrives.
+            this.load(data);
+        }; // End update function
+               
     
     
         this.draw = function (data) {
@@ -702,73 +655,43 @@ function fetchWatchmodeDetails(movieData, callback) {
             html.find('.new-interface-info__details').html(finalDetailsHtml);
         }; // End draw function
                        
-        
+        this.load = function (data) {
+            var _this = this;
+            clearTimeout(timer);
 
+            // ** MODIFIED: Add 'external_ids' to append_to_response **
+            // This tells the TMDB API to include IMDb ID, TVDB ID etc. in the response
+            var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
 
-this.load = function (data) {
-    var _this = this;
-    clearTimeout(timer);
+            // Check Lampa's TMDB cache (unchanged)
+            if (loaded[url]) {
+                 // If already loaded, just ensure draw is called with the full data
+                 // (which should now include imdb_id if fetched previously)
+                 return this.draw(loaded[url]);
+            }
 
-    // Request external_ids from TMDB
-    var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
+            // Fetch main TMDB details if not cached
+            timer = setTimeout(function () {
+                network.clear();
+                network.timeout(5000); // Keep TMDB timeout short
+                network.silent(url, function (movie) { // 'movie' is the detailed data from TMDB
 
-    // Check TMDB cache
-    if (loaded[url]) {
-        // Item details already loaded, draw them
-         _this.draw(loaded[url]);
-         // ** ALSO trigger Watchmode fetch here if needed (for consistency) **
-         // Check if Watchmode data is missing/stale and not pending
-         if (!getWatchmodeCache(loaded[url].id) && !watchmodePending[loaded[url].id]) {
-              // console.log("LOAD (Cache Hit): Triggering Watchmode fetch for", loaded[url].id);
-              // Need a callback, define inline or reuse if possible
-              fetchWatchmodeDetails(loaded[url], function(watchmodeResult){
-                  watchmodeCache[loaded[url].id] = watchmodeResult;
-                  // Redraw again once watchmode data is potentially ready
-                  _this.draw(loaded[url]);
-              });
-         }
-         return; // Return after drawing from cache
-    }
+                     // ** ADDED: Extract and store imdb_id directly onto the movie object **
+                     // We check if external_ids and external_ids.imdb_id exist before assigning
+                     movie.imdb_id = movie.external_ids ? movie.external_ids.imdb_id : null;
 
-    // Fetch main TMDB details if not cached
-    timer = setTimeout(function () {
-        network.clear();
-        network.timeout(5000);
-        network.silent(url, function (movie) { // 'movie' is the detailed data from TMDB
+                     // Store the enhanced movie object (now potentially with imdb_id) in the cache
+                     loaded[url] = movie;
 
-             // Add imdb_id to the movie object
-             movie.imdb_id = movie.external_ids ? movie.external_ids.imdb_id : null;
+                     // Ensure method is set (unchanged)
+                     if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
 
-             // Store the enhanced movie object in the TMDB cache
-             loaded[url] = movie;
+                     // Call draw with the complete data (including imdb_id if available)
+                     _this.draw(movie);
 
-             // Ensure method is set
-             if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
-
-             // ** Define Watchmode Callback for this scope **
-             var watchmodeCallback = function(watchmodeResult) {
-                 watchmodeCache[movie.id] = watchmodeResult; // Store result
-                 // Re-draw now that Watchmode data might be ready
-                 // The listeners for quality might fire before this, using the newly cached data
-                 // Or this draw might be needed if listeners already fired
-                  // console.log("Watchmode Callback inside Load: Triggering draw", movie.id);
-                 _this.draw(movie); // Use the 'movie' object from the TMDB callback closure
-             };
-
-             // ** Trigger Watchmode Fetch HERE, after we have movie.imdb_id **
-             // console.log("LOAD (New Fetch): Triggering Watchmode fetch for", movie.id);
-             fetchWatchmodeDetails(movie, watchmodeCallback); // Pass the 'movie' object
-
-             // Call draw the first time with the main TMDB details (includes imdb_id now)
-             // console.log("LOAD (New Fetch): Triggering initial draw for", movie.id);
-             _this.draw(movie); // This draw happens before Watchmode results arrive
-
-        }, function(xhr, status){ // Error callback for TMDB fetch
-            console.error("CREATE LOAD: Failed to load TMDB details", status);
-            // Optionally handle TMDB load error (e.g., show error in UI)
-        }); // End network.silent for TMDB
-    }, 300); // End setTimeout
-}; // End corrected this.load
+                }); // End TMDB success callback
+            }, 300); // End setTimeout
+        }; // End this.load
 
                        
         this.render = function () { return html; }; this.empty = function () {};
@@ -796,31 +719,16 @@ this.load = function (data) {
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-        /* Base styles... (kept from pivot point script) */
+            /* Base styles... (kept from pivot point script) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; } /* original was 24em*/
-        /* ... rest of base styles identical to pivot script ... */
+            /* ... rest of base styles identical to pivot script ... */
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
             .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
             .new-interface-info__head span { color: #fff; }
             .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
+            /* .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; } */
                         
-        /* Basic Quality Label Style */
-            .card__quality {
-                position: absolute;
-                top: 0.5em; /* Adjust as needed */
-                right: 0.5em; /* Adjust as needed */
-                padding: 0.2em 0.5em;
-                background-color: rgba(0, 0, 0, 0.7);
-                color: #fff;
-                font-size: 0.8em;
-                font-weight: bold;
-                border-radius: 0.3em;
-                z-index: 2;
-                line-height: 1.2;
-            }
-            
-            
             .new-interface-info__details {
                 margin-bottom: 1em; 
                 display: block;
@@ -897,63 +805,6 @@ this.load = function (data) {
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
         }
-                
-        // --- Watchmode Quality Listener Setup ---
-        // Check if feature should be enabled based on settings
-        let qualityEnabledCheck = Lampa.Storage.get('ar_show_quality', false); // Use 'ar_' key
-        if (qualityEnabledCheck === true || qualityEnabledCheck === 'true') {
-            if (window.Lampa && Lampa.Listener) {
-                // Listener for full screen details page
-                Lampa.Listener.follow("full", function (e) {
-                    // Re-check setting in case it changed while Lampa was running
-                    let currentQualityEnabled = Lampa.Storage.get('ar_show_quality', false);
-                    if (currentQualityEnabled !== true && currentQualityEnabled !== 'true') return;
-
-                    if (e.type === "complite" && e.object) {
-                        // Use e.object as it's more likely to contain the necessary IDs consistently
-                        let movieData = e.object;
-                        if (movieData && movieData.id) {
-                            let cachedResult = watchmodeCache[movieData.id]; // Check our Watchmode cache
-                            if (cachedResult && cachedResult.data && !cachedResult.error) {
-                                // Target element selector for the full screen poster
-                                let selector = ".full-start-new__poster";
-                                // Attempt to display the label
-                                displayQualityLabel(cachedResult.data, selector);
-                            }
-                        }
-                    }
-                });
-
-                // Listener for card rows/lines in lists
-                Lampa.Listener.follow("line", function (e) {
-                    // Re-check setting in case it changed
-                    let currentQualityEnabled = Lampa.Storage.get('ar_show_quality', false);
-                    if (e.type === "append" && (currentQualityEnabled === true || currentQualityEnabled === 'true')) {
-                        $.each(e.items, function (_, item) {
-                            // 'item' is the Lampa.InteractionLine instance
-                            let movieCard = item.card; // The jQuery card element
-                            let movieData = item.data; // The data object for the card
-
-                            if (movieData && movieData.id && movieCard && movieCard.length) {
-                                let cachedResult = watchmodeCache[movieData.id]; // Check Watchmode cache
-                                if (cachedResult && cachedResult.data && !cachedResult.error) {
-                                     // Target element selector within the card
-                                     let selector = movieCard.find(".card__view");
-                                     if(selector.length){
-                                         // Attempt to display the label
-                                         displayQualityLabel(cachedResult.data, selector);
-                                     }
-                                }
-                            }
-                        });
-                    }
-                });
-                 console.log("Watchmode Quality: Listeners Activated (using ar_show_quality).");
-            } else {
-                console.error("Watchmode Quality: Lampa.Listener not available.");
-            }
-        }
-        // --- End Watchmode Quality Listener Setup ---
     }
 
     // Original check before starting
