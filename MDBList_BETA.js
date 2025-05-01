@@ -1,4 +1,4 @@
-// == New Version | Better Menu | Cleaned some commented code ==
+// == New Version | Better Menu | Cleaned and Wroking ==
 (function () {
     'use strict';
     
