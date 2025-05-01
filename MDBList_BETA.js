@@ -473,7 +473,7 @@
                 line-height: 1.5;
             }
 
-            .new-interface-info__split { margin: 0 0.7em; font-size: 0.7em; }
+            .new-interface-info__split { margin: 0 0.5em; font-size: 0.7em; }
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
             .new-interface .full-start__background { height: 108%; top: -6em; }
