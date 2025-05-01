@@ -474,8 +474,73 @@ function fetchWatchmodeDetails(movieData, callback) {
   
     // --- create function (Info Panel Handler) ---
     // UNCHANGED create function...
-    function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; this.update = function (data) { var _this = this; html.find('.new-interface-info__head,.new-interface-info__details').text('---'); html.find('.new-interface-info__title').text(data.title); html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); delete mdblistRatingsCache[data.id]; delete mdblistRatingsPending[data.id];  if (/*window.MDBLIST_Fetcher && typeof window.MDBLIST_Fetcher.fetch === 'function' && */data.id && data.method) { mdblistRatingsPending[data.id] = true; /*window.MDBLIST_Fetcher.fetch*/fetchRatings(data, function(mdblistResult) { mdblistRatingsCache[data.id] = mdblistResult; delete mdblistRatingsPending[data.id]; var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } }); } else if (!data.method) { /* Optional warning */ } this.load(data); };
-     this.draw = function (data) {
+    function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; 
+
+        this.update = function (data) {
+            var _this = this; // Reference to the 'create' instance
+
+            // Basic UI updates (unchanged)
+            html.find('.new-interface-info__head,.new-interface-info__details').text('---');
+            html.find('.new-interface-info__title').text(data.title);
+            html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
+            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
+
+            // *** Cache Check/Deletion is handled INSIDE the fetch functions ***
+            // (Removed the cache delete lines that were here in the original baseline)
+
+            // Check if we have the necessary info to fetch ratings/details
+            if (data.id && data.method) {
+
+                // Construct the URL key used by 'this.load' to check if main TMDB details are loaded
+                // Ensure 'external_ids' remains in append_to_response from the previous step
+                var tmdb_url_key = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
+
+                // --- Define Callbacks ---
+
+                // Callback function after MDBList fetch completes (or returns from cache)
+                var mdbCallback = function(mdblistResult) {
+                    // Store the result (cached or fresh) in the MDBList in-memory cache
+                    mdblistRatingsCache[data.id] = mdblistResult;
+                    // If main TMDB data is already loaded by 'this.load', redraw the panel
+                    if (loaded && loaded[tmdb_url_key]) {
+                        _this.draw(loaded[tmdb_url_key]);
+                    }
+                };
+
+                // ** NEW: Callback function after Watchmode fetch completes (or returns from cache) **
+                var watchmodeCallback = function(watchmodeResult) {
+                    // Store the result { data: ..., error: ... } (cached or fresh) in the Watchmode in-memory cache
+                    watchmodeCache[data.id] = watchmodeResult;
+                     // If main TMDB data is already loaded by 'this.load', redraw the panel
+                    if (loaded && loaded[tmdb_url_key]) {
+                        _this.draw(loaded[tmdb_url_key]);
+                    }
+                };
+
+                // --- Trigger Fetch Processes ---
+                // These functions will first check their respective caches (getCache/getWatchmodeCache)
+                // and will only make an API call if the data isn't fresh in the cache.
+
+                // Trigger MDBList fetch
+                fetchRatings(data, mdbCallback);
+
+                // ** NEW: Trigger Watchmode Fetch **
+                // (fetchWatchmodeDetails checks internally if data.imdb_id exists before calling API)
+                fetchWatchmodeDetails(data, watchmodeCallback);
+
+            } else if (!data.method) {
+                // Optional warning if required data is missing
+                console.warn("CREATE UPDATE: data.method missing for item", data.id);
+            }
+
+            // Trigger the fetch for main TMDB details (unchanged - now includes imdb_id)
+            // The 'load' function calls _this.draw() internally once its data arrives.
+            this.load(data);
+        }; // End update function
+               
+    
+    
+        this.draw = function (data) {
             var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
             var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
             var head = [];
