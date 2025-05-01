@@ -35,7 +35,6 @@
                  en: "Additional Ratings",
                  uk: "Додаткові Рейтинги"
             },
-
             select_ratings_button_name: {
                  en: "Select Rating Providers",
                  ru: "Выбрать Источники Рейтингов",
@@ -50,6 +49,16 @@
                  en: "Select Ratings",
                  ru: "Выбор Рейтингов",
                  uk: "Вибір Рейтингів"
+            },
+            ar_show_quality_name: { // Renamed key
+                 en: "Show Quality Label",
+                 ru: "Показывать Метку Качества",
+                 uk: "Показувати Мітку Якості"
+            },
+            ar_show_quality_desc: { // Renamed key
+                 en: "Displays highest available streaming quality (4K, HD, SD) from Watchmode on posters/cards.",
+                 ru: "Отображает наивысшее доступное качество стриминга (4K, HD, SD) из Watchmode на постере/карточке.",
+                 uk: "Відображає найвищу доступну якість стрімінгу (4K, HD, SD) з Watchmode на постері/картці."
             },
             watchmode_api_key_desc: {
                  en: "Required for Quality/Streaming info. Get free key: api.watchmode.com/requestApiKey/",
@@ -129,6 +138,24 @@
                 showRatingProviderSelection();
             }
         });
+        
+        // 5. Add Toggle for Watchmode Quality Label
+            Lampa.SettingsApi.addParam({
+                component: 'additional_ratings',
+                param: {
+                    name: 'ar_show_quality', // Renamed storage key using 'ar_' prefix
+                    type: 'trigger',
+                    'default': false // Default OFF
+                },
+                field: {
+                    name: Lampa.Lang.translate('ar_show_quality_name'), // Use renamed lang key
+                    description: Lampa.Lang.translate('ar_show_quality_desc') // Use renamed lang key
+                },
+                onChange: function() {
+                    Lampa.Settings.update();
+                    // We might need to add logic later to re-check listeners if setting changes
+                }
+            });
 
     } else {
         console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
@@ -410,8 +437,56 @@ function fetchWatchmodeDetails(movieData, callback) {
     var mdblistRatingsCache = {};
     var mdblistRatingsPending = {};
     // -----------------------------
+          
+    /**
+       * Appends a quality label element to a target UI selector.
+       * Removes any existing quality label first.
+       * @param {string} qualityString - The text to display (e.g., "4K", "HD").
+       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
+       */
+      function appendQualityElement(qualityString, selector) {
+          if (!qualityString || !selector) return;
+          try {
+              var parentElement = (typeof selector === 'string') ? $(selector) : selector; // Handle string or jQuery object
+              if (parentElement.length) {
+                  parentElement.find('.card__quality').remove(); // Remove existing first
+                  var qualityDiv = $('<div></div>')
+                      .addClass('card__quality')
+                      .text(qualityString);
+                  parentElement.append(qualityDiv);
+              }
+          } catch (e) {
+              console.error("AR_Plugin Quality: Error appending element", e);
+          }
+      }
 
+      /**
+       * Parses Watchmode data to find the best quality and triggers display.
+       * @param {object} watchmodeData - The 'data' part of the watchmodeCache result ({ data: { ... }, error: null }).
+       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
+       */
+      function displayQualityLabel(watchmodeData, selector) {
+          if (!watchmodeData || !watchmodeData.sources || !Array.isArray(watchmodeData.sources)) {
+              return; // Exit if no data or sources array
+          }
 
+          let bestFormat = null;
+          const qualityOrder = ["4K", "HD", "SD"]; // Define quality preference
+
+          // Find the best format available in the sources
+          for (const quality of qualityOrder) {
+              if (watchmodeData.sources.some(source => source.format === quality)) {
+                  bestFormat = quality;
+                  break; // Stop once the best available is found
+              }
+          }
+
+          // If a format was found, append the element
+          if (bestFormat) {
+              appendQualityElement(bestFormat, selector);
+          }
+      }
+    
     // Function to display the multi-select dialog for rating providers
     function showRatingProviderSelection() {
         // Define the available rating providers
@@ -719,16 +794,31 @@ function fetchWatchmodeDetails(movieData, callback) {
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (kept from pivot point script) */
+        /* Base styles... (kept from pivot point script) */
             .new-interface .card--small.card--wide { width: 18.3em; }
             .new-interface-info { position: relative; padding: 1.5em; height: 24em; } /* original was 24em*/
-            /* ... rest of base styles identical to pivot script ... */
+        /* ... rest of base styles identical to pivot script ... */
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
             .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
             .new-interface-info__head span { color: #fff; }
             .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
-            /* .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; } */
                         
+        /* Basic Quality Label Style */
+            .card__quality {
+                position: absolute;
+                top: 0.5em; /* Adjust as needed */
+                right: 0.5em; /* Adjust as needed */
+                padding: 0.2em 0.5em;
+                background-color: rgba(0, 0, 0, 0.7);
+                color: #fff;
+                font-size: 0.8em;
+                font-weight: bold;
+                border-radius: 0.3em;
+                z-index: 2;
+                line-height: 1.2;
+            }
+            
+            
             .new-interface-info__details {
                 margin-bottom: 1em; 
                 display: block;
@@ -805,6 +895,55 @@ function fetchWatchmodeDetails(movieData, callback) {
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
         }
+              
+        /**
+       * Appends a quality label element to a target UI selector.
+       * Removes any existing quality label first.
+       * @param {string} qualityString - The text to display (e.g., "4K", "HD").
+       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
+       */
+      function appendQualityElement(qualityString, selector) {
+          if (!qualityString || !selector) return;
+          try {
+              var parentElement = (typeof selector === 'string') ? $(selector) : selector; // Handle string or jQuery object
+              if (parentElement.length) {
+                  parentElement.find('.card__quality').remove(); // Remove existing first
+                  var qualityDiv = $('<div></div>')
+                      .addClass('card__quality')
+                      .text(qualityString);
+                  parentElement.append(qualityDiv);
+              }
+          } catch (e) {
+              console.error("AR_Plugin Quality: Error appending element", e);
+          }
+      }
+
+      /**
+       * Parses Watchmode data to find the best quality and triggers display.
+       * @param {object} watchmodeData - The 'data' part of the watchmodeCache result ({ data: { ... }, error: null }).
+       * @param {string | JQuery} selector - The jQuery selector string or jQuery object for the parent element.
+       */
+      function displayQualityLabel(watchmodeData, selector) {
+          if (!watchmodeData || !watchmodeData.sources || !Array.isArray(watchmodeData.sources)) {
+              return; // Exit if no data or sources array
+          }
+
+          let bestFormat = null;
+          const qualityOrder = ["4K", "HD", "SD"]; // Define quality preference
+
+          // Find the best format available in the sources
+          for (const quality of qualityOrder) {
+              if (watchmodeData.sources.some(source => source.format === quality)) {
+                  bestFormat = quality;
+                  break; // Stop once the best available is found
+              }
+          }
+
+          // If a format was found, append the element
+          if (bestFormat) {
+              appendQualityElement(bestFormat, selector);
+          }
+      }
     }
 
     // Original check before starting
