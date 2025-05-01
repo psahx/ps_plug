@@ -515,11 +515,6 @@
                 align-items: center;
                 flex-shrink: 0;
             }
-             /* Specific padding for RT score number div */
-             .rt-rating-item > div.rt-score { 
-                 padding-left: 0.2em;  /* ** MODIFIED:  (was 1.2em) ** */. 
-                 padding-right: 0em; /* ** MODIFIED:  (was 1.2em) ** */
-             }  
          
             /* General Logo Style - UNCHANGED from pivot point */
             .rating-logo {
