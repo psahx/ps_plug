@@ -68,7 +68,7 @@
                 name: 'mdblist_api_key', // Storage key for the API key
                 type: 'input',          // Input field type
                 'default': '',          // Default value (empty)
-                values: {},             // Keep this from previous attempt, just in case
+                values: {},
                 placeholder: 'Enter your MDBList API Key' // Placeholder text
             },
             field: {
@@ -88,6 +88,7 @@
                 name: 'watchmode_api_key', // Storage key for the Watchmode key
                 type: 'input',
                 'default': '',
+                values: {},
                 placeholder: 'Enter your Watchmode API Key'
             },
             field: {
