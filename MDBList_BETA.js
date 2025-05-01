@@ -551,68 +551,40 @@ function fetchWatchmodeDetails(movieData, callback) {
     // UNCHANGED create function...
     function create() { var html; var timer; var network = new Lampa.Reguest(); var loaded = {}; this.create = function () { html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); }; 
 
-        this.update = function (data) {
-            var _this = this; // Reference to the 'create' instance
 
-            // Basic UI updates (unchanged)
-            html.find('.new-interface-info__head,.new-interface-info__details').text('---');
-            html.find('.new-interface-info__title').text(data.title);
-            html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
-            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
 
-            // *** Cache Check/Deletion is handled INSIDE the fetch functions ***
-            // (Removed the cache delete lines that were here in the original baseline)
+    this.update = function (data) {
+    var _this = this;
 
-            // Check if we have the necessary info to fetch ratings/details
-            if (data.id && data.method) {
+    // Basic UI updates
+    html.find('.new-interface-info__head,.new-interface-info__details').text('---');
+    html.find('.new-interface-info__title').text(data.title);
+    // ... rest of UI updates ...
+    Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
 
-                // Construct the URL key used by 'this.load' to check if main TMDB details are loaded
-                // Ensure 'external_ids' remains in append_to_response from the previous step
-                var tmdb_url_key = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
+    // *** CORRECTED: REMOVED erroneous cache/pending deletion lines ***
+    //delete mdblistRatingsCache[data.id]; // REMOVED
+    //delete mdblistRatingsPending[data.id]; // REMOVED
 
-                // --- Define Callbacks ---
+    if (data.id && data.method) {
+        var tmdb_url_key = Lampa.TMDB.api(/* ... url including external_ids ... */);
 
-                // Callback function after MDBList fetch completes (or returns from cache)
-                var mdbCallback = function(mdblistResult) {
-                    // Store the result (cached or fresh) in the MDBList in-memory cache
-                    mdblistRatingsCache[data.id] = mdblistResult;
-                    // If main TMDB data is already loaded by 'this.load', redraw the panel
-                    if (loaded && loaded[tmdb_url_key]) {
-                        _this.draw(loaded[tmdb_url_key]);
-                    }
-                };
+        // MDBList Callback
+        var mdbCallback = function(mdblistResult) {
+            mdblistRatingsCache[data.id] = mdblistResult;
+            if (loaded && loaded[tmdb_url_key]) { _this.draw(loaded[tmdb_url_key]); }
+        };
 
-                // ** NEW: Callback function after Watchmode fetch completes (or returns from cache) **
-                var watchmodeCallback = function(watchmodeResult) {
-                    // Store the result { data: ..., error: ... } (cached or fresh) in the Watchmode in-memory cache
-                    watchmodeCache[data.id] = watchmodeResult;
-                     // If main TMDB data is already loaded by 'this.load', redraw the panel
-                    if (loaded && loaded[tmdb_url_key]) {
-                        _this.draw(loaded[tmdb_url_key]);
-                    }
-                };
+        // --- Trigger MDBList Fetch ONLY ---
+        // Watchmode fetch will be triggered inside 'load' after imdb_id is confirmed
+        fetchRatings(data, mdbCallback);
 
-                // --- Trigger Fetch Processes ---
-                // These functions will first check their respective caches (getCache/getWatchmodeCache)
-                // and will only make an API call if the data isn't fresh in the cache.
+    } else if (!data.method) { /* ... warning ... */ }
 
-                // Trigger MDBList fetch
-                fetchRatings(data, mdbCallback);
+    // Trigger main TMDB detail load (this will also trigger Watchmode fetch in its callback)
+    this.load(data);
+}; // End corrected update function
 
-                // ** NEW: Trigger Watchmode Fetch **
-                // (fetchWatchmodeDetails checks internally if data.imdb_id exists before calling API)
-                fetchWatchmodeDetails(data, watchmodeCallback);
-
-            } else if (!data.method) {
-                // Optional warning if required data is missing
-                console.warn("CREATE UPDATE: data.method missing for item", data.id);
-            }
-
-            // Trigger the fetch for main TMDB details (unchanged - now includes imdb_id)
-            // The 'load' function calls _this.draw() internally once its data arrives.
-            this.load(data);
-        }; // End update function
-               
     
     
         this.draw = function (data) {
@@ -730,43 +702,73 @@ function fetchWatchmodeDetails(movieData, callback) {
             html.find('.new-interface-info__details').html(finalDetailsHtml);
         }; // End draw function
                        
-        this.load = function (data) {
-            var _this = this;
-            clearTimeout(timer);
+        
 
-            // ** MODIFIED: Add 'external_ids' to append_to_response **
-            // This tells the TMDB API to include IMDb ID, TVDB ID etc. in the response
-            var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
 
-            // Check Lampa's TMDB cache (unchanged)
-            if (loaded[url]) {
-                 // If already loaded, just ensure draw is called with the full data
-                 // (which should now include imdb_id if fetched previously)
-                 return this.draw(loaded[url]);
-            }
+this.load = function (data) {
+    var _this = this;
+    clearTimeout(timer);
 
-            // Fetch main TMDB details if not cached
-            timer = setTimeout(function () {
-                network.clear();
-                network.timeout(5000); // Keep TMDB timeout short
-                network.silent(url, function (movie) { // 'movie' is the detailed data from TMDB
+    // Request external_ids from TMDB
+    var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
 
-                     // ** ADDED: Extract and store imdb_id directly onto the movie object **
-                     // We check if external_ids and external_ids.imdb_id exist before assigning
-                     movie.imdb_id = movie.external_ids ? movie.external_ids.imdb_id : null;
+    // Check TMDB cache
+    if (loaded[url]) {
+        // Item details already loaded, draw them
+         _this.draw(loaded[url]);
+         // ** ALSO trigger Watchmode fetch here if needed (for consistency) **
+         // Check if Watchmode data is missing/stale and not pending
+         if (!getWatchmodeCache(loaded[url].id) && !watchmodePending[loaded[url].id]) {
+              // console.log("LOAD (Cache Hit): Triggering Watchmode fetch for", loaded[url].id);
+              // Need a callback, define inline or reuse if possible
+              fetchWatchmodeDetails(loaded[url], function(watchmodeResult){
+                  watchmodeCache[loaded[url].id] = watchmodeResult;
+                  // Redraw again once watchmode data is potentially ready
+                  _this.draw(loaded[url]);
+              });
+         }
+         return; // Return after drawing from cache
+    }
 
-                     // Store the enhanced movie object (now potentially with imdb_id) in the cache
-                     loaded[url] = movie;
+    // Fetch main TMDB details if not cached
+    timer = setTimeout(function () {
+        network.clear();
+        network.timeout(5000);
+        network.silent(url, function (movie) { // 'movie' is the detailed data from TMDB
 
-                     // Ensure method is set (unchanged)
-                     if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
+             // Add imdb_id to the movie object
+             movie.imdb_id = movie.external_ids ? movie.external_ids.imdb_id : null;
 
-                     // Call draw with the complete data (including imdb_id if available)
-                     _this.draw(movie);
+             // Store the enhanced movie object in the TMDB cache
+             loaded[url] = movie;
 
-                }); // End TMDB success callback
-            }, 300); // End setTimeout
-        }; // End this.load
+             // Ensure method is set
+             if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
+
+             // ** Define Watchmode Callback for this scope **
+             var watchmodeCallback = function(watchmodeResult) {
+                 watchmodeCache[movie.id] = watchmodeResult; // Store result
+                 // Re-draw now that Watchmode data might be ready
+                 // The listeners for quality might fire before this, using the newly cached data
+                 // Or this draw might be needed if listeners already fired
+                  // console.log("Watchmode Callback inside Load: Triggering draw", movie.id);
+                 _this.draw(movie); // Use the 'movie' object from the TMDB callback closure
+             };
+
+             // ** Trigger Watchmode Fetch HERE, after we have movie.imdb_id **
+             // console.log("LOAD (New Fetch): Triggering Watchmode fetch for", movie.id);
+             fetchWatchmodeDetails(movie, watchmodeCallback); // Pass the 'movie' object
+
+             // Call draw the first time with the main TMDB details (includes imdb_id now)
+             // console.log("LOAD (New Fetch): Triggering initial draw for", movie.id);
+             _this.draw(movie); // This draw happens before Watchmode results arrive
+
+        }, function(xhr, status){ // Error callback for TMDB fetch
+            console.error("CREATE LOAD: Failed to load TMDB details", status);
+            // Optionally handle TMDB load error (e.g., show error in UI)
+        }); // End network.silent for TMDB
+    }, 300); // End setTimeout
+}; // End corrected this.load
 
                        
         this.render = function () { return html; }; this.empty = function () {};
