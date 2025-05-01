@@ -12,6 +12,16 @@
         request_timeout: 10000 // 10 seconds request timeout
     };
     
+    // --- Watchmode Fetcher State & Config ---
+    var watchmodeCache = {}; // Cache for full Watchmode details responses
+    var watchmodePending = {}; // Tracks pending Watchmode requests
+    var watchmode_cache_key = 'watchmode_details_cache'; // Unique key
+    var watchmode_cache_time = 24 * 60 * 60 * 1000; // 24 hours cache
+    // Timeout can reuse MDBList's or have its own
+    var watchmode_request_timeout = 15000; // Watchmode might be slower? Use 15s.
+    var watchmode_api_base_url = 'https://api.watchmode.com/v1/title/'; // Base URL for title details
+
+    
     // --- Language Strings ---
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
@@ -160,6 +170,36 @@
         Lampa.Storage.set(config.cache_key, cache); // Save updated cache to storage
       }
 
+        // --- Watchmode Caching Functions ---
+    function getWatchmodeCache(tmdb_id) {
+        if (!window.Lampa || !Lampa.Storage) return false;
+        var timestamp = new Date().getTime();    
+        var cache = Lampa.Storage.cache(watchmode_cache_key, config.cache_limit, {}); // Reuse MDBList limit
+
+        if (cache[tmdb_id]) {
+            if ((timestamp - cache[tmdb_id].timestamp) > watchmode_cache_time) {
+                delete cache[tmdb_id];
+                Lampa.Storage.set(watchmode_cache_key, cache);
+                return false;
+            }
+            // Return cached data { data: { ... watchmode response ... }, error: null } or { data: null, error: '...' }
+            return cache[tmdb_id].data;
+        }
+        return false;
+    }
+    
+    function setWatchmodeCache(tmdb_id, result) { // result is { data: ..., error: ... }
+        if (!window.Lampa || !Lampa.Storage) return;
+        var timestamp = new Date().getTime();
+        var cache = Lampa.Storage.cache(watchmode_cache_key, config.cache_limit, {});
+        cache[tmdb_id] = {
+            timestamp: timestamp,
+            data: result
+        };
+        Lampa.Storage.set(watchmode_cache_key, cache);
+    }
+
+
     // --- Core Fetching Logic ---
     /**
      * Fetches ratings for a given movie/show from MDBList.
@@ -263,6 +303,108 @@
             callback(errorResult);
         }); // End network.silent
     } // End fetchRatings
+
+                
+    // --- Watchmode Fetching Logic ---
+/**
+ * Fetches Watchmode details for a given movie using its IMDb ID.
+ * @param {object} movieData - Object containing movie details. Requires 'id' (TMDB ID for cache key) and 'imdb_id'.
+ * @param {function} callback - Function to call with the result object { data: { ... response ... }, error: null } or { data: null, error: '...' }.
+ */
+function fetchWatchmodeDetails(movieData, callback) {
+    // Check required components
+    if (!network || !window.Lampa || !Lampa.Storage) {
+        console.error("Watchmode_Fetcher: Missing Lampa component (Network/Storage).");
+        if (callback) callback({ data: null, error: "Lampa component missing" });
+        return;
+    }
+    // Validate input: Need TMDB ID for cache key, IMDb ID for lookup, and callback
+    if (!movieData || !movieData.id || !movieData.imdb_id || !callback) {
+        if (callback) callback({ data: null, error: (movieData && movieData.id && !movieData.imdb_id) ? "IMDb ID missing for Watchmode lookup" : "Invalid input data for Watchmode" });
+        return;
+    }
+
+    var tmdb_id = movieData.id; // Used for caching key
+    var imdb_id = movieData.imdb_id; // Used for API lookup
+
+    // 1. Check Watchmode Cache (using TMDB ID as the key)
+    var cached_data = getWatchmodeCache(tmdb_id);
+    if (cached_data) {
+        callback(cached_data);
+        return;
+    }
+
+    // 2. Check if Pending
+    if (watchmodePending[tmdb_id]) {
+        return; // Exit if already fetching
+    }
+    watchmodePending[tmdb_id] = true;
+
+    // 3. Get Watchmode API Key
+    var apiKey = Lampa.Storage.get('watchmode_api_key');
+    if (!apiKey) {
+        delete watchmodePending[tmdb_id]; // Not pending anymore
+        if (callback) callback({ data: null, error: "Watchmode API Key not configured" });
+        return;
+    }
+
+    // 4. Prepare API Request URL (Using IMDb ID)
+    // Example: https://api.watchmode.com/v1/title/tt1234567/details/?apiKey=YOUR_KEY
+    var api_url = watchmode_api_base_url + imdb_id + '/details/?apiKey=' + apiKey;
+    // Optional: Add append_to_response for sources if needed? Docs suggest details includes it.
+
+    // console.log("Watchmode_Fetcher: Fetching from URL:", api_url);
+
+    // 5. Make Network Request
+    network.clear();
+    network.timeout(watchmode_request_timeout);
+    // Watchmode uses apiKey in URL, no special headers usually needed for GET
+    network.headers({}); // Clear any previous headers
+
+    network.silent(api_url, function (response) {
+        // --- Success Callback ---
+        var watchmodeResult = { data: null, error: null };
+
+        // Basic check for a valid response (e.g., contains an 'id' field)
+        // Watchmode might return 200 OK with an error message inside, e.g. { "success": false, "message": "..." }
+        if (response && response.id) {
+             watchmodeResult.data = response; // Store the full response object
+             // console.log("Watchmode_Fetcher: Success for IMDb ID:", imdb_id);
+        } else if (response && response.success === false && response.message) {
+             watchmodeResult.error = "Watchmode API Error: " + response.message;
+             console.error("Watchmode_Fetcher: API Error for IMDb ID:", imdb_id, response.message);
+        }
+        else {
+             // Unexpected response format or valid ID missing
+             watchmodeResult.error = "Invalid response from Watchmode";
+             console.error("Watchmode_Fetcher: Invalid response for IMDb ID:", imdb_id, response);
+        }
+
+        setWatchmodeCache(tmdb_id, watchmodeResult); // Cache result (or error)
+        delete watchmodePending[tmdb_id]; // Mark as no longer pending
+        callback(watchmodeResult); // Call the original callback
+
+    }, function (xhr, status) {
+        // --- Error Callback (Network level) ---
+        var errorMessage = "Watchmode request failed";
+        // Watchmode 404 likely means title not found by that ID
+        if (status === 404) {
+              errorMessage = "Title not found on Watchmode (404)";
+        } else if (status) {
+              errorMessage += " (Status: " + status + ")";
+        }
+        console.error("Watchmode_Fetcher:", errorMessage, "for IMDb ID:", imdb_id);
+        var errorResult = { data: null, error: errorMessage };
+
+        // Cache the error state (use TMDB ID as key)
+        if (status !== 401 && status !== 403 && status !== 429) { // 401=Unauth(Bad Key?), 403=Forbidden, 429=Rate Limit
+             setWatchmodeCache(tmdb_id, errorResult);
+        }
+        delete watchmodePending[tmdb_id];
+        callback(errorResult);
+    }); // End network.silent
+} // End fetchWatchmodeDetails
+
 
     // --- MDBList Fetcher State ---
     var mdblistRatingsCache = {};
