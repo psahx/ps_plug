@@ -503,11 +503,11 @@
             /* Style for the Number Div (common to all ratings) */
             .new-interface .full-start__rate > div {
                 font-weight: normal;      /* Normal weight */
-                font-size: 1em;         /* Changing back to original from 0.9 */
+                font-size: 0.9em;         /* Changing back to original from 0.9 */
                 justify-content: center;  /* From source analysis */
                 background-color: rgba(0, 0, 0, 0.4); /* Darker background */
                 color: #ffffff;
-                padding: 0.1em 0.2em;     /* ** MODIFIED: Narrower L/R padding (was 0.3em) ** */
+                padding: 0em 0.2em;     /* ** MODIFIED: Narrower L/R padding (was 0.3em) ** */
                 border-radius: 0.3em;       /* Smoother edges */
                 line-height: 1;          /* MODIFIED: Was 1.3 */
                 order: 1;
