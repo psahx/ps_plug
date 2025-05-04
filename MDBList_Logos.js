@@ -352,74 +352,80 @@
             }
         });
     } // End of showRatingProviderSelection function
-
-        
-    // --- Helper Function to Fetch and Display Movie Logo ---
-    /**
-     * Fetches a logo from TMDB and displays it in a target element, or falls back to text.
-     * Uses the global 'network' instance.
-     * @param {object} targetElement - jQuery object of the HTML element to update.
-     * @param {object} movieData - Object containing movie details {id, method ('movie'/'tv'), title}.
-     * @param {string} imageSize - TMDB image size (e.g., 'w500', 'w300').
-     * @param {string} styleAttr - Inline style attribute string for the img tag.
-     */
-    function displayLogoInElement(targetElement, movieData, imageSize, styleAttr) {
-        console.log("displayLogoInElement: Called"); // <-- ADD
-        console.log("displayLogoInElement: Target valid?", targetElement && targetElement.length > 0); // <-- ADD
-        console.log("displayLogoInElement: MovieData?", movieData); // <-- ADD
     
+    // --- Helper Function to Fetch and Display Logo (v3 - Delayed Clearing) ---
+    function displayLogoInElement(targetElement, movieData, imageSize, styleAttr) {
+        console.log("displayLogoInElement: Called");
+        // Perform initial checks first
+        if (!targetElement || !targetElement.length) {
+            console.warn("LogoHelper: Invalid targetElement provided.");
+            return;
+        }
+        if (!movieData || !movieData.id || !movieData.method || !movieData.title) {
+            console.warn("LogoHelper: Invalid movieData provided. Cannot fetch logo.");
+            // Optionally set text title here if possible, though it might be the wrong one if targetElement persists
+             if (targetElement && targetElement.length && movieData && movieData.title) targetElement.text(movieData.title);
+            return;
+        }
+        console.log("displayLogoInElement: Target valid?", true); // Simplified log
+        console.log("displayLogoInElement: MovieData ID:", movieData.id, "Method:", movieData.method);
+
         // Ensure global network instance is available
         if (!network) {
             console.error("LogoHelper: Global network instance not available.");
-            if (movieData && movieData.title) targetElement.text(movieData.title); // Fallback
-            return;
-        }
-        // Basic validation
-        if (!targetElement || !targetElement.length || !movieData || !movieData.id || !movieData.method || !movieData.title) {
-            console.warn("LogoHelper: Invalid input provided.");
-            if (targetElement && targetElement.length && movieData && movieData.title) targetElement.text(movieData.title); // Fallback
+            targetElement.text(movieData.title); // Fallback if network missing
             return;
         }
 
-        // Clear the target element first (acts as a placeholder)
-        targetElement.empty();
+        // --- DO NOT CLEAR targetElement here ---
 
         var method = movieData.method;
         var id = movieData.id;
         var apiKey = Lampa.TMDB.key();
         var language = Lampa.Storage.get('language');
-        // Construct the correct API URL for images
         var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
 
-        // Use the global network instance for the request
-        network.clear(); // Optional: Depending on how network instance is used elsewhere
-        network.timeout(config.request_timeout || 5000); // Use timeout from config or a default
-        network.silent(apiUrl, function (response) {
-            // --- Success Callback ---
-            console.log("displayLogoInElement: API Success. Response:", response); // <-- ADD
-            var logoPath = null;
-            if (response && response.logos && response.logos.length > 0) {
-                // Try to find a non-SVG logo first
-                var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
-                logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path; // Fallback to first logo if no PNG
-            }
+        console.log("displayLogoInElement: Attempting to fetch logo from URL:", apiUrl);
 
-            if (logoPath) {
-                console.log("displayLogoInElement: Logo found, path:", logoPath); // <-- ADD
-                // Construct image URL (consider replacing .svg if needed, though TMDB often serves PNGs)
-                var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath /*.replace('.svg', '.png')*/ );
-                var imgTagHtml = '<img src="' + imgUrl + '" style="' + styleAttr + '" alt="' + movieData.title + ' Logo" />';
-                targetElement.html(imgTagHtml);
-            } else {
-                console.log("displayLogoInElement: No logo found in response."); // <-- ADD
-                // No logo found - Fallback to text title
-                targetElement.text(movieData.title);
-            }
-        }, function (xhr, status) {
-            // --- Error Callback ---
-            console.error("LogoHelper: Failed to fetch logo. Status:", status, "XHR:", xhr); // <-- MODIFY existing log slightly
-            targetElement.text(movieData.title);
-        });
+        try {
+            // Clear previous network activity *for this instance* to prevent race conditions
+            // where an old request updates the now incorrect element.
+            network.clear();
+            network.timeout(config.request_timeout || 5000); // Use configured timeout
+            network.silent(apiUrl, function (response) {
+                // --- Success Callback ---
+                console.log("displayLogoInElement: API Success. Response:", response);
+                var logoPath = null;
+                if (response && response.logos && response.logos.length > 0) {
+                    var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
+                    logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
+                }
+
+                if (logoPath) {
+                    console.log("displayLogoInElement: Logo found, path:", logoPath);
+                    var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                    var imgTagHtml = '<img src="' + imgUrl + '" style="' + styleAttr + '" alt="' + movieData.title + ' Logo" />';
+                    // --- Clear PREVIOUS content then set NEW ---
+                    targetElement.empty().html(imgTagHtml);
+                    console.log("displayLogoInElement: Logo image inserted.");
+                } else {
+                    console.log("displayLogoInElement: No logo found in response. Falling back to text.");
+                     // --- Clear PREVIOUS content then set NEW ---
+                    targetElement.empty().text(movieData.title); // Fallback to text title
+                }
+            }, function (xhr, status) {
+                // --- Error Callback ---
+                console.error("LogoHelper: Failed to fetch logo. Status:", status, "XHR:", xhr);
+                console.log("displayLogoInElement: API Error. Falling back to text.");
+                 // --- Clear PREVIOUS content then set NEW ---
+                targetElement.empty().text(movieData.title); // Fallback to text title on error
+            });
+        } catch (e) {
+             console.error("LogoHelper: Error occurred *during* network call setup/execution:", e);
+             console.log("displayLogoInElement: Exception occurred. Falling back to text.");
+              // --- Clear PREVIOUS content then set NEW ---
+             targetElement.empty().text(movieData.title); // Fallback to text title on exception
+        }
     }
     // --- End Helper Function to Fetch and Display Movie Logo ---
 
