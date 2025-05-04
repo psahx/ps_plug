@@ -346,6 +346,71 @@
             }
         });
     } // End of showRatingProviderSelection function
+
+        
+    // --- Helper Function to Fetch and Display Movie Logo ---
+    /**
+     * Fetches a logo from TMDB and displays it in a target element, or falls back to text.
+     * Uses the global 'network' instance.
+     * @param {object} targetElement - jQuery object of the HTML element to update.
+     * @param {object} movieData - Object containing movie details {id, method ('movie'/'tv'), title}.
+     * @param {string} imageSize - TMDB image size (e.g., 'w500', 'w300').
+     * @param {string} styleAttr - Inline style attribute string for the img tag.
+     */
+    function displayLogoInElement(targetElement, movieData, imageSize, styleAttr) {
+        // Ensure global network instance is available
+        if (!network) {
+            console.error("LogoHelper: Global network instance not available.");
+            if (movieData && movieData.title) targetElement.text(movieData.title); // Fallback
+            return;
+        }
+        // Basic validation
+        if (!targetElement || !targetElement.length || !movieData || !movieData.id || !movieData.method || !movieData.title) {
+            console.warn("LogoHelper: Invalid input provided.");
+            if (targetElement && targetElement.length && movieData && movieData.title) targetElement.text(movieData.title); // Fallback
+            return;
+        }
+
+        // Clear the target element first (acts as a placeholder)
+        targetElement.empty();
+
+        var method = movieData.method;
+        var id = movieData.id;
+        var apiKey = Lampa.TMDB.key();
+        var language = Lampa.Storage.get('language');
+        // Construct the correct API URL for images
+        var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
+
+        // Use the global network instance for the request
+        network.clear(); // Optional: Depending on how network instance is used elsewhere
+        network.timeout(config.request_timeout || 5000); // Use timeout from config or a default
+        network.silent(apiUrl, function (response) {
+            // --- Success Callback ---
+            var logoPath = null;
+            if (response && response.logos && response.logos.length > 0) {
+                // Try to find a non-SVG logo first
+                var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
+                logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path; // Fallback to first logo if no PNG
+            }
+
+            if (logoPath) {
+                // Construct image URL (consider replacing .svg if needed, though TMDB often serves PNGs)
+                var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath /*.replace('.svg', '.png')*/ );
+                var imgTagHtml = '<img src="' + imgUrl + '" style="' + styleAttr + '" alt="' + movieData.title + ' Logo" />';
+                targetElement.html(imgTagHtml);
+            } else {
+                // No logo found - Fallback to text title
+                targetElement.text(movieData.title);
+            }
+        }, function (xhr, status) {
+            // --- Error Callback ---
+            console.error("LogoHelper: Failed to fetch logo for", method, id, "(Status: " + status + ")");
+            // Fallback to text title on error
+            targetElement.text(movieData.title);
+        });
+    }
+    // --- End Helper Function to Fetch and Display Movie Logo ---
+
   
     // --- create function (Info Panel Handler) ---
     // UNCHANGED create function...
@@ -360,10 +425,35 @@
             html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); 
         }; 
         
-        this.update = function (data) { 
-            var _this = this; 
+                
+        this.update = function (data) {
+            var _this = this;
+            // --- Find the title element once ---
+            var titleElement = html.find('.new-interface-info__title');
+
+            // --- Handle Title Display (Logo or Text) ---
+            var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+
+            if (showLogos && data.id && data.method && data.title) {
+                // Call the helper function to display logo in the info panel title area
+                // Adjust image size and style as needed for the info panel
+                displayLogoInElement(
+                    titleElement,
+                    data, // Pass the movie data object
+                    'w500', // Image size (e.g., w500 is good for larger areas)
+                    'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;' // Example style
+                );
+            } else if (data.title) {
+                // Original behavior or fallback: Set text title
+                titleElement.text(data.title);
+            } else {
+                 // Clear if no title and no logo logic ran
+                 titleElement.empty();
+            }
+            // --- End Handle Title Display ---
+        
             html.find('.new-interface-info__head,.new-interface-info__details').text('---'); 
-            html.find('.new-interface-info__title').text(data.title); 
+            // html.find('.new-interface-info__title').text(data.title); 
             html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); 
             Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); 
             delete mdblistRatingsCache[data.id]; 
@@ -736,10 +826,78 @@
     // --- Plugin Initialization Logic ---
     function startPlugin() {
         // UNCHANGED Initialization setup...
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("NewInterface Adjust Padding: Missing Lampa components"); return; }
-        Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
-        window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
-        Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { 
+            console.error("NewInterface Adjust Padding: Missing Lampa components"); 
+            return; 
+        }
+        Lampa.Lang.add({ 
+            full_notext: { 
+                en: 'No description', 
+                ru: 'Нет описания'
+            }, 
+        });
+        
+        window.plugin_interface_ready = true; 
+        var old_interface = Lampa.InteractionMain; 
+        var new_interface = component;
+
+            
+        // --- Add Listener for Full Card Logo Replacement ---
+        // Ensure Lampa.Listener is available before adding the listener
+        if (Lampa.Listener && network) { // Also check if the global network instance exists
+            Lampa.Listener.follow("full", function(eventData) {
+                try {
+                    // Check toggle status first
+                    var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+
+                    // Proceed only if event is 'complite' and logos are enabled
+                    if (eventData.type === 'complite' && showLogos) {
+                        var movie = eventData.data.movie;
+
+                        // Check if we have movie data and an ID
+                        if (movie && movie.id && movie.title) { // Check title exists for fallback/alt tag
+                             // Determine method ('tv' or 'movie')
+                             movie.method = movie.name ? 'tv' : 'movie';
+
+                             // Find the target element using jQuery selector from original plugin
+                             // Assumes jQuery ($) is available in Lampa environment
+                             var renderTarget = eventData.object.activity.render();
+                             if (renderTarget && typeof $(renderTarget).find === 'function') {
+                                var titleElement = $(renderTarget).find(".full-start-new__title");
+
+                                if (titleElement.length > 0) {
+                                    // Call the helper function to display logo in the full card title area
+                                    displayLogoInElement(
+                                        titleElement,
+                                        movie, // Pass the movie data object
+                                        'w300', // Image size (w300 as per original plugin)
+                                        'margin-top: 5px; max-height: 125px; max-width: 100%; vertical-align: middle;' // Style from original plugin
+                                    );
+                                } else {
+                                     console.warn("Logo Listener (Full): Target element '.full-start-new__title' not found.");
+                                }
+                             } else {
+                                 console.warn("Logo Listener (Full): Could not find render target or '.find' method.");
+                             }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Logo Listener (Full): Error in callback:", e);
+                }
+            }); // End Lampa.Listener.follow("full", ...)
+        } else {
+             console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
+        }
+        // --- End Listener for Full Card ---
+        
+        Lampa.InteractionMain = function (object) { 
+            var use = new_interface; 
+            if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; 
+            if (window.innerWidth < 767) use = old_interface; 
+            if (!Lampa.Account.hasPremium()) use = old_interface; 
+            if (Lampa.Manifest.app_digital < 153) use = old_interface; 
+            return new use(object); 
+        };
 
         // **MODIFIED CSS**: Adjusted padding for number divs
         var style_id = 'new_interface_style_adjusted_padding'; // Style ID
