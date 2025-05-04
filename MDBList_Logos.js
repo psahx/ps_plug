@@ -11,8 +11,6 @@
         cache_limit: 500, // Max items in cache
         request_timeout: 10000 // 10 seconds request timeout
     };
-    // --- Local State for Logo Toggle ---
-    var isLogoFeatureEnabled = false;
     
     // --- Language Strings ---
     if (window.Lampa && Lampa.Lang) {
@@ -134,16 +132,13 @@
                 description: Lampa.Lang.translate('logo_toggle_desc') // Use translation key for description
             },
                 
-            onChange: function(value) { // value is 'true' or 'false' (string)
-                console.log("Setting Changed: 'show_logo_instead_of_title' - UI selected value:", value);
-                // Save to storage as before
-                Lampa.Storage.set('show_logo_instead_of_title', value);
-                console.log("Setting Saved: 'show_logo_instead_of_title' set to '" + value + "' in storage.");
-
-                // --- Update the local state variable ---
-                isLogoFeatureEnabled = (value === 'true'); // Convert string 'true'/'false' to boolean
-                console.log("Local State Updated: isLogoFeatureEnabled variable set to:", isLogoFeatureEnabled); // <-- Log the update
+            onChange: function(value) {
+                var storageKey = 'show_logo_instead_of_title'; // Make sure this matches param.name
+                console.log(`Setting Changed: '${storageKey}' - UI selected value:`, value);
+                Lampa.Storage.set(storageKey, value); // Save to storage
+                console.log(`Setting Saved: '${storageKey}' set to '${value}' in storage.`);
             }
+
 
         });
 
@@ -444,12 +439,20 @@
         
                 
         this.update = function (data) {
+            var storageKey = 'show_logo_instead_of_title'; // Key used in settings
             var _this = this;
             // --- Find the title element once ---
             var titleElement = html.find('.new-interface-info__title');
 
-            // --- Handle Title Display (Logo or Text) ---
-            var showLogos = isLogoFeatureEnabled;
+
+
+            // --- Read storage directly when update is called ---
+            var storedValue = Lampa.Storage.get(storageKey, 'false');
+            // Check for both string 'true' and boolean true just in case Lampa storage behaves differently
+            var showLogos = (storedValue === 'true' || storedValue === true);
+            // Add log to see what's read and the type
+            console.log(`create.update: Reading '${storageKey}'. Stored Value:`, storedValue, `(Type: ${typeof storedValue}) ==> Show Logos:`, showLogos);
+            // --------------------------------------------------
             console.log("create.update: showLogos from local state is:", showLogos); // <-- ADD
             if (showLogos && data.id && data.method && data.title) {
                 console.log("create.update: Calling displayLogoInElement for focus."); // <-- ADD
@@ -860,16 +863,19 @@
         var old_interface = Lampa.InteractionMain; 
         var new_interface = component;
         
-            
         // --- Add Listener for Full Card Logo Replacement ---
         // Ensure Lampa.Listener is available before adding the listener
         if (Lampa.Listener && network) { // Also check if the global network instance exists
             Lampa.Listener.follow("full", function(eventData) {
+                var storageKey = 'show_logo_instead_of_title'; // Key used in settings
                 try {
-                    console.log("Listener (Full): Event received.", eventData); // <-- ADD
-                    // Check toggle status first
-                    var showLogos = isLogoFeatureEnabled;
-                    console.log("Listener (Full): showLogos from local state is:", showLogos); // <-- ADD
+                    // --- Read storage directly when listener runs ---
+                    var storedValue = Lampa.Storage.get(storageKey, 'false');
+                    // Check for both string 'true' and boolean true
+                    var showLogos = (storedValue === 'true' || storedValue === true);
+                    // Add log to see what's read and the type
+                    console.log(`Listener (Full): Reading '${storageKey}'. Stored Value:`, storedValue, `(Type: ${typeof storedValue}) ==> Show Logos:`, showLogos);
+                    // ------------------------------------------------
 
                     // Proceed only if event is 'complite' and logos are enabled
                     if (eventData.type === 'complite' && showLogos) {
@@ -1033,18 +1039,5 @@
 
     // Original check before starting
     if (!window.plugin_interface_ready) startPlugin();
-
-    // --- Attempt to read initial state AFTER Lampa load using a delay ---
-    setTimeout(function() {
-        // Check if Lampa.Storage is available now
-        if (window.Lampa && Lampa.Storage) {
-            // Read the setting and update the global state variable
-            isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-            console.log("STARTUP (Delayed): Initial Logo Feature State read after delay:", isLogoFeatureEnabled);
-
-        } else {
-             console.error("STARTUP (Delayed): Lampa.Storage not available after delay.");
-        }
-    }, 1000); // Delay execution by 1000ms (1 second)
 
 })();
