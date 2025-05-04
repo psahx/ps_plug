@@ -12,82 +12,6 @@
         request_timeout: 10000 // 10 seconds request timeout
     };
 
-    // --- Logo Cache ---
-    var logoCache = {}; // Cache: { id: 'pending' | 'logo/path.png' | false }
-
-    // --- Simple Event Emitter for Logo Updates ---
-    var logoEventBus = {
-        listeners: {},
-        on: function(event, callback) {
-            if (!this.listeners[event]) this.listeners[event] = [];
-            this.listeners[event].push(callback);
-        },
-        off: function(event, callback) { // Simple removal by reference
-            if (this.listeners[event]) {
-                this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
-            }
-        },
-        emit: function(event, data) {
-            console.log(`EVENT EMIT: ${event}`, data); // Keep this log for now
-            if (this.listeners[event]) {
-                this.listeners[event].forEach(callback => {
-                    try { callback(data); } catch(e) { console.error(`Error in event listener for ${event}:`, e); }
-                });
-            }
-        }
-    };
-
-    // --- Background Logo Fetcher/Cacher ---
-    /**
-     * Fetches logo if not already cached/pending, updates cache, and emits event.
-     * @param {object} movieData - Object containing {id, method, title}
-     */
-    function fetchAndCacheLogo(movieData) {
-         if (!movieData || !movieData.id || !movieData.method) {
-             console.warn("fetchAndCacheLogo: Invalid movieData", movieData);
-             return;
-         }
-         var id = movieData.id;
-
-         if (logoCache.hasOwnProperty(id)) { // Already fetched or pending
-              // console.log(`WorkspaceAndCacheLogo (ID: ${id}): Cache hit (${logoCache[id]}). Skipping fetch.`);
-              return;
-         }
-         if (!network) { console.error(`WorkspaceAndCacheLogo (ID: ${id}): Network object not available.`); return; }
-
-         logoCache[id] = 'pending'; // Mark as pending
-         var method = movieData.method;
-         var apiKey = Lampa.TMDB.key();
-         var language = Lampa.Storage.get('language');
-         var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
-
-         console.log(`WorkspaceAndCacheLogo (ID: ${id}): Fetching from ${apiUrl}`); // Keep log
-
-         try {
-             network.clear(); // Clear previous network activity
-             network.timeout(config.request_timeout || 7000); // 7 sec timeout
-             network.silent(apiUrl, function (response) { // Success
-                  var logoPath = null;
-                  if (response && response.logos && response.logos.length > 0) {
-                      var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
-                      logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
-                  }
-                  var result = logoPath || false;
-                  logoCache[id] = result;
-                  console.log(`WorkspaceED & CACHED for ${id}: ${result}`); // Keep log
-                  logoEventBus.emit('logo_updated', { id: id }); // Emit event
-             }, function (xhr, status) { // Error
-                  console.error(`API Error for ${id}, Status: ${status}`);
-                  logoCache[id] = false; // Cache failure
-                  logoEventBus.emit('logo_updated', { id: id }); // Emit event
-             });
-         } catch (e) {
-              console.error(`Exception during network call for ${id}:`, e);
-              logoCache[id] = false; // Cache failure
-              logoEventBus.emit('logo_updated', { id: id }); // Emit event
-         }
-    }
-
     
     // --- Language Strings ---
     if (window.Lampa && Lampa.Lang) {
@@ -440,23 +364,9 @@
         var network = new Lampa.Reguest(); 
         var loaded = {}; 
         
-        /* this.create = function () { // --- Original this.create --- //
+        this.create = function () { // --- Original this.create --- //
             html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); 
-        }; */
-
-        this.create = function() {
-            console.log("INSTANCE CREATE: Panel instance created.");
-            html = $(`<div class="new-interface-info">
-                     <div class="new-interface-info__body">
-                         <div class="new-interface-info__head"></div>
-                         <div class="new-interface-info__title"></div>
-                         <div class="new-interface-info__details"></div>
-                         <div class="new-interface-info__description"></div>
-                     </div>
-                 </div>`);
-            // Subscribe this panel instance to logo update events
-            logoEventBus.on('logo_updated', this.onLogoUpdate);
-        };
+        }; 
                 
         /*this.update = function (data) { // --- ORIGINAL this.update --- //
             var storageKey = 'show_logo_instead_of_title'; // Key used in settings
@@ -528,17 +438,19 @@
             delete mdblistRatingsCache[data.id]; // Existing logic
             delete mdblistRatingsPending[data.id]; // Existing logic
             // --- End Standard updates ---
-
-
+        
             // --- Title Handling ---
-            var storageKey = 'show_logo_instead_of_title'; // Or your simple key if using
+            var storageKey = 'show_logo_instead_of_title'; // Or your simple key
             var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-            if (showLogos) {
-                // console.log(`create.update (ID: ${data.id}): Logo mode ON. Calling renderTitle.`);
-                this.renderTitle(); // Call the central function to check cache/display/fetch
+            console.log(`create.update (ID ${data.id}): showLogos = ${showLogos}`);
+
+            if (showLogos && data.id && data.method && data.title) {
+                this.displayLogoOrTitle(data); // <<-- CALL NEW HELPER
+            } else if (data.title) {
+                // Ensure html is defined before finding element
+                if (html) html.find('.new-interface-info__title').text(data.title); // Logo mode off
             } else {
-                // console.log(`create.update (ID: ${data.id}): Logo mode OFF. Setting text title.`);
-                html.find('.new-interface-info__title').text(data.title); // Logo mode off
+                if (html) html.find('.new-interface-info__title').empty(); // No title, clear area
             }
             // --- End Title Handling ---
 
@@ -693,98 +605,83 @@
         this.render = function () { 
             return html; 
         };
-
+    
+        // --- Helper Method INSIDE create() ---
+        this.displayLogoOrTitle = function(movieData) {
+            // 'html' is accessible here from the outer 'create' scope
+            if (!html) return; // Ensure panel element exists
+            var titleElement = html.find('.new-interface-info__title');
+            if (!titleElement.length) return; // Ensure title element exists
             
-        // --- Central function to update the title display (with detailed logs) ---
-        this.renderTitle = function() {
-             var functionStartLog = "renderTitle: "; // Prefix for logs
-             if (!html || !this.currentMovieData) {
-                 console.log(functionStartLog + "Aborted - No HTML element or current movie data.");
-                 return;
-             }
-
-             var titleElement = html.find('.new-interface-info__title');
-             if (!titleElement.length) {
-                  console.log(functionStartLog + "Aborted - Title element not found.");
-                  return;
-             }
-
-             var data = this.currentMovieData;
-             var id = data.id;
-             var imageSize = 'w500';
-             var styleAttr = 'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Adjust style
-
-             console.log(functionStartLog + `##### STARTING update for ID ${id} (${data.title}) #####`); // Log start
-
-             // Check cache status
-             var cacheExists = logoCache.hasOwnProperty(id);
-             var cacheValue = cacheExists ? logoCache[id] : undefined;
-             var isPending = cacheValue === 'pending';
-
-             console.log(functionStartLog + `Cache state for ${id}: Exists=${cacheExists}, Value='${cacheValue}', Pending=${isPending}`);
-
-             if (cacheExists && !isPending) { // Cache has a final result (path or false)
-                  var cachedResult = cacheValue;
-                  console.log(functionStartLog + `Using final cache result: ${cachedResult}`);
-                  if (cachedResult) { // Check if cachedResult is truthy (a logo path string)
-                       var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + cachedResult);
-                       var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${data.title} Logo" />`;
-                       console.log(functionStartLog + `RESULT is Logo Path. Preparing to set HTML.`); // Log before update
-                       titleElement.empty().html(imgTagHtml); // THE LOGO UPDATE
-                       console.log(functionStartLog + `Finished setting HTML for logo.`); // Log after update
-                  } else { // Cached result is false (no logo found)
-                       console.log(functionStartLog + `RESULT is False (No Logo). Preparing to set text: ${data.title}`); // Log before update
-                       titleElement.text(data.title); // THE TEXT UPDATE
-                       console.log(functionStartLog + `Finished setting text title.`); // Log after update
-                  }
-             } else { // Not cached or fetch is pending: Show text title
-                  console.log(functionStartLog + `Cache miss or pending. Preparing to set text title: ${data.title}`); // Log before update
-                  titleElement.text(data.title); // THE TEXT UPDATE
-                  console.log(functionStartLog + `Finished setting text title.`); // Log after update
-                  // Initiate background fetch ONLY if it hasn't been started/cached yet
-                  if (!cacheExists) {
-                       console.log(functionStartLog + `Triggering background fetch for ${id}.`);
-                       fetchAndCacheLogo(data);
-                  } else if (isPending) {
-                       console.log(functionStartLog + `Workspace already pending for ${id}.`);
-                  }
-             }
-             console.log(functionStartLog + `##### FINISHED update for ID ${id} #####`); // Log end
-        };
-
+            var id = movieData.id;
+            console.log(`displayLogoOrTitle (ID ${id}): Setting text placeholder: ${movieData.title}`);
+            titleElement.text(movieData.title); // Set text placeholder immediately
             
-        // --- Event listener callback ---
-        this.onLogoUpdate = function(eventData) {
-            // Check if the update is for the movie currently displayed in *this* panel instance
-            if (this.currentMovieData && eventData.id === this.currentMovieData.id) {
-                console.log(`onLogoUpdate: Received relevant update for ID ${eventData.id}. Re-rendering title.`); // Keep log
-                this.renderTitle(); // Re-run the render logic to use the new cache value
+            // Use the global network instance (ensure it's defined and accessible)
+            if (!network) { console.error("displayLogoOrTitle: Global network missing."); return; }
+
+            var method = movieData.method;
+            var apiKey = Lampa.TMDB.key();
+            var language = Lampa.Storage.get('language');
+            var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
+
+            console.log(`displayLogoOrTitle (ID ${id}): Fetching logo: ${apiUrl}`);
+
+            network.clear(); // Clear previous logo requests on the global instance
+            network.timeout(config.request_timeout || 7000);
+            network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
+                console.log(`displayLogoOrTitle (ID ${id}): API Success.`);
+                var logoPath = null;
+                // ... logic to find logoPath from response ..
+                if (response && response.logos && response.logos.length > 0) {
+                    var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
+                    logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
+                }
+
+            // --- Find element AGAIN inside callback and update ---
+            // Use the 'html' variable from the outer 'create' scope
+            var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
+
+            if (currentTitleElement && currentTitleElement.length) {
+                if (logoPath) {
+                     console.log(`displayLogoOrTitle (ID ${id}): Logo found. Updating UI.`);
+                     var imageSize = 'w500'; // Size for info panel
+                     var styleAttr = 'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Style
+                     var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                     var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
+                     currentTitleElement.empty().html(imgTagHtml); // Update with fresh reference
+                     console.log(`displayLogoOrTitle (ID ${id}): UI updated with logo.`);
+                } else {
+                     console.log(`displayLogoOrTitle (ID ${id}): No logo found. Ensuring text remains.`);
+                     currentTitleElement.text(movieData.title); // Ensure text is set if no logo
+                }
+            } else {
+                 console.log(`displayLogoOrTitle (ID ${id}): Title element NOT FOUND during callback.`);
+                 // Cannot update UI if element is gone
             }
-        }.bind(this); // Bind 'this' correctly
 
+        }, function(xhr, status) { // ERROR CALLBACK
+             console.error(`displayLogoOrTitle (ID ${id}): API Error ${status}. Ensuring text remains.`);
+             // Ensure text title is displayed on error
+             var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
+              if (currentTitleElement && currentTitleElement.length) {
+                  currentTitleElement.text(movieData.title);
+              }
+            })
+        }; // --- End of displayLogoOrTitle ---
+
+        
+        
         
         this.empty = function () {};
         
-        /*this.destroy = function () { // --- ORIGINAL this.destroy --- //
+        this.destroy = function () { // --- ORIGINAL this.destroy --- //
             html.remove(); 
             loaded = {}; 
             html = null; 
             mdblistRatingsCache = {}; 
             mdblistRatingsPending = {}; 
-        }; */
-
-        this.destroy = function() {
-            console.log(`INSTANCE DESTROY: Called for ID ${this.currentMovieData ? this.currentMovieData.id : 'null'}`);
-            // Unsubscribe this instance from logo update events
-            logoEventBus.off('logo_updated', this.onLogoUpdate);
-            if (html) html.remove();
-            // Keep other cleanup if present (loaded, network etc. - check original
-            loaded = {}; // Reset if 'loaded' was part of 'create' scope
-            html = null;
-            this.currentMovieData = null; // Clear reference
-            mdblistRatingsCache = {}; // Resetting these might impact other logic? Check original destroy.
-            mdblistRatingsPending = {};
-        };
+        }; 
     }
 
 
@@ -1014,46 +911,24 @@
         // Ensure Lampa.Listener is available before adding the listener
         if (Lampa.Listener && network) { // Also check if the global network instance exists
             Lampa.Listener.follow("full", function(eventData) {
-                var storageKey = 'show_logo_instead_of_title'; // Or your simple key
+                var storageKey = 'show_logo_instead_of_title';
                 try {
                     var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-                    if (eventData.type === 'complite' && showLogos) {
+                    if (eventData.type === 'complite' /* && showLogos */) { // Check type only for now
                         var movie = eventData.data.movie;
-                        if (movie && movie.id && movie.title) {
-                            movie.method = movie.name ? 'tv' : 'movie'; // Add method if needed by fetcher
+                        if (movie && movie.title) {
                             var targetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
-
                             if (targetElement.length > 0) {
-                                var id = movie.id;
-                                var imageSize = 'w300'; // Size for full card
-                                var styleAttr = 'margin-top: 5px; max-height: 125px; max-width: 100%; vertical-align: middle;'; // Style for full card
-
-                                // --- Use Cache First ---
-                                if (logoCache.hasOwnProperty(id) && logoCache[id] !== 'pending') {
-                                     var cachedResult = logoCache[id];
-                                     console.log(`Listener (Full ID: ${id}): Using cache: ${cachedResult}`); // Keep log
-                                     if (cachedResult) { // Logo path
-                                          var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + cachedResult);
-                                          var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
-                                          targetElement.empty().html(imgTagHtml);
-                                     } else { // False (no logo found)
-                                          targetElement.text(movie.title); // Set text if cache says no logo
-                                     }
-                                } else {
-                                     // --- Not cached or pending: Show text, trigger background fetch ---
-                                     console.log(`Listener (Full ID: ${id}): Cache miss/pending. Showing text. Triggering fetch.`); // Keep log
-                                     targetElement.text(movie.title); // Ensure text title is shown initially
-                                     // Avoid re-fetching if already pending from browse view
-                                     if (!logoCache.hasOwnProperty(id) || logoCache[id] !== 'pending') {
-                                          fetchAndCacheLogo(movie); // Trigger background fetch/cache update
-                                     }
-                                }
-                                // --- End Cache Logic ---
-                            } // end if targetElement found
-                        } // end if movie data valid
-                    } // end if complite and showLogos
+                                // JUST SET TEXT TITLE for now if logo mode enabled, or always? Let's always set it.
+                                targetElement.text(movie.title);
+                                console.log(`Listener (Full ID: ${movie.id}): Set text title.`);
+                                // We can add logo fetching/cache check here later if needed
+                            }
+                        }
+                    }
                 } catch (e) { console.error("Logo Listener (Full): Error in callback:", e); }
-            });// End Lampa.Listener.follow("full", ...)
+            });
+            // End Lampa.Listener.follow("full", ...)
             
         } else {
              console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
