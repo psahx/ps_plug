@@ -114,25 +114,30 @@
                 showRatingProviderSelection();
             }
         });
-        
-        // 4. Add Toggle for Replacing Title with Logo
+                
+        // 4. Add Toggle for Replacing Title with Logo (with explicit save)
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',        // Target the same category
             param: {
-                name: 'show_logo_instead_of_title', // Unique storage key for the unified setting
+                name: 'show_logo_instead_of_title', // The key used for storage
                 type: 'select',                     // Use select for On/Off toggle
                 values: {                           // Define the options
-                    'true': Lampa.Lang.translate('settings_show'), // "On"
-                    'false': Lampa.Lang.translate('settings_hide') // "Off"
+                    'true': Lampa.Lang.translate('settings_show'), // "Show" / "On"
+                    'false': Lampa.Lang.translate('settings_hide') // "Hide" / "Off"
                 },
                 'default': 'false'                  // Default value is Off
             },
             field: {
-                name: Lampa.Lang.translate('logo_toggle_name'), // Use new translation key for name
-                description: Lampa.Lang.translate('logo_toggle_desc') // Use new translation key for description
+                name: Lampa.Lang.translate('logo_toggle_name'), // Use translation key for name
+                description: Lampa.Lang.translate('logo_toggle_desc') // Use translation key for description
             },
-            onChange: function() {
-                // No immediate action needed on change for this toggle typically
+            onChange: function(value) { // <-- Add the 'value' parameter to receive selected value
+                console.log("Setting Changed: 'show_logo_instead_of_title' - UI selected value:", value); // <-- Log the value from UI change
+
+                // --- Explicitly save the selected value to Lampa.Storage ---
+                Lampa.Storage.set('show_logo_instead_of_title', value); // <-- ADD THIS LINE
+
+                console.log("Setting Saved: 'show_logo_instead_of_title' set to '" + value + "' in storage."); // <-- Confirm saving
             }
         });
 
