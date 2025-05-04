@@ -11,6 +11,9 @@
         cache_limit: 500, // Max items in cache
         request_timeout: 10000 // 10 seconds request timeout
     };
+    // --- Local State for Logo Toggle ---
+    var isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+    console.log("INIT: Initial Logo Feature State read from storage:", isLogoFeatureEnabled); // <-- Log initial state
     
     // --- Language Strings ---
     if (window.Lampa && Lampa.Lang) {
@@ -131,14 +134,18 @@
                 name: Lampa.Lang.translate('logo_toggle_name'), // Use translation key for name
                 description: Lampa.Lang.translate('logo_toggle_desc') // Use translation key for description
             },
-            onChange: function(value) { // <-- Add the 'value' parameter to receive selected value
-                console.log("Setting Changed: 'show_logo_instead_of_title' - UI selected value:", value); // <-- Log the value from UI change
+                
+            onChange: function(value) { // value is 'true' or 'false' (string)
+                console.log("Setting Changed: 'show_logo_instead_of_title' - UI selected value:", value);
+                // Save to storage as before
+                Lampa.Storage.set('show_logo_instead_of_title', value);
+                console.log("Setting Saved: 'show_logo_instead_of_title' set to '" + value + "' in storage.");
 
-                // --- Explicitly save the selected value to Lampa.Storage ---
-                Lampa.Storage.set('show_logo_instead_of_title', value); // <-- ADD THIS LINE
-
-                console.log("Setting Saved: 'show_logo_instead_of_title' set to '" + value + "' in storage."); // <-- Confirm saving
+                // --- Update the local state variable ---
+                isLogoFeatureEnabled = (value === 'true'); // Convert string 'true'/'false' to boolean
+                console.log("Local State Updated: isLogoFeatureEnabled variable set to:", isLogoFeatureEnabled); // <-- Log the update
             }
+
         });
 
 
@@ -443,8 +450,8 @@
             var titleElement = html.find('.new-interface-info__title');
 
             // --- Handle Title Display (Logo or Text) ---
-            var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-            console.log("create.update: showLogos setting is:", showLogos); // <-- ADD
+            var showLogos = isLogoFeatureEnabled;
+            console.log("create.update: showLogos from local state is:", showLogos); // <-- ADD
             if (showLogos && data.id && data.method && data.title) {
                 console.log("create.update: Calling displayLogoInElement for focus."); // <-- ADD
                 // Call the helper function to display logo in the info panel title area
@@ -862,8 +869,8 @@
                 try {
                     console.log("Listener (Full): Event received.", eventData); // <-- ADD
                     // Check toggle status first
-                    var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-                    console.log("Listener (Full): showLogos setting is:", showLogos); // <-- ADD
+                    var showLogos = isLogoFeatureEnabled;
+                    console.log("Listener (Full): showLogos from local state is:", showLogos); // <-- ADD
 
                     // Proceed only if event is 'complite' and logos are enabled
                     if (eventData.type === 'complite' && showLogos) {
