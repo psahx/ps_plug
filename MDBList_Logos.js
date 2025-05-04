@@ -358,6 +358,10 @@
      * @param {string} styleAttr - Inline style attribute string for the img tag.
      */
     function displayLogoInElement(targetElement, movieData, imageSize, styleAttr) {
+        console.log("displayLogoInElement: Called"); // <-- ADD
+        console.log("displayLogoInElement: Target valid?", targetElement && targetElement.length > 0); // <-- ADD
+        console.log("displayLogoInElement: MovieData?", movieData); // <-- ADD
+    
         // Ensure global network instance is available
         if (!network) {
             console.error("LogoHelper: Global network instance not available.");
@@ -386,6 +390,7 @@
         network.timeout(config.request_timeout || 5000); // Use timeout from config or a default
         network.silent(apiUrl, function (response) {
             // --- Success Callback ---
+            console.log("displayLogoInElement: API Success. Response:", response); // <-- ADD
             var logoPath = null;
             if (response && response.logos && response.logos.length > 0) {
                 // Try to find a non-SVG logo first
@@ -394,18 +399,19 @@
             }
 
             if (logoPath) {
+                console.log("displayLogoInElement: Logo found, path:", logoPath); // <-- ADD
                 // Construct image URL (consider replacing .svg if needed, though TMDB often serves PNGs)
                 var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath /*.replace('.svg', '.png')*/ );
                 var imgTagHtml = '<img src="' + imgUrl + '" style="' + styleAttr + '" alt="' + movieData.title + ' Logo" />';
                 targetElement.html(imgTagHtml);
             } else {
+                console.log("displayLogoInElement: No logo found in response."); // <-- ADD
                 // No logo found - Fallback to text title
                 targetElement.text(movieData.title);
             }
         }, function (xhr, status) {
             // --- Error Callback ---
-            console.error("LogoHelper: Failed to fetch logo for", method, id, "(Status: " + status + ")");
-            // Fallback to text title on error
+            console.error("LogoHelper: Failed to fetch logo. Status:", status, "XHR:", xhr); // <-- MODIFY existing log slightly
             targetElement.text(movieData.title);
         });
     }
@@ -433,8 +439,9 @@
 
             // --- Handle Title Display (Logo or Text) ---
             var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-
+            console.log("create.update: showLogos setting is:", showLogos); // <-- ADD
             if (showLogos && data.id && data.method && data.title) {
+                console.log("create.update: Calling displayLogoInElement for focus."); // <-- ADD
                 // Call the helper function to display logo in the info panel title area
                 // Adjust image size and style as needed for the info panel
                 displayLogoInElement(
@@ -444,6 +451,7 @@
                     'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;' // Example style
                 );
             } else if (data.title) {
+                console.log("create.update: Setting text title (logo off or data missing)."); // <-- ADD
                 // Original behavior or fallback: Set text title
                 titleElement.text(data.title);
             } else {
@@ -847,11 +855,14 @@
         if (Lampa.Listener && network) { // Also check if the global network instance exists
             Lampa.Listener.follow("full", function(eventData) {
                 try {
+                    console.log("Listener (Full): Event received.", eventData); // <-- ADD
                     // Check toggle status first
                     var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+                    console.log("Listener (Full): showLogos setting is:", showLogos); // <-- ADD
 
                     // Proceed only if event is 'complite' and logos are enabled
                     if (eventData.type === 'complite' && showLogos) {
+                        console.log("Listener (Full): Event is 'complite' and logos enabled."); // <-- ADD
                         var movie = eventData.data.movie;
 
                         // Check if we have movie data and an ID
@@ -866,6 +877,7 @@
                                 var titleElement = $(renderTarget).find(".full-start-new__title");
 
                                 if (titleElement.length > 0) {
+                                    console.log("Listener (Full): Calling displayLogoInElement for full card."); // <-- ADD
                                     // Call the helper function to display logo in the full card title area
                                     displayLogoInElement(
                                         titleElement,
