@@ -1045,6 +1045,6 @@
         } else {
              console.error("STARTUP (Delayed): Lampa.Storage not available after delay.");
         }
-    }, 250); // Delay execution by 1000ms (1 second)
+    }, 1000); // Delay execution by 1000ms (1 second)
 
 })();
