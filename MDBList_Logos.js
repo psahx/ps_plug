@@ -832,31 +832,91 @@
         var old_interface = Lampa.InteractionMain; 
         var new_interface = component;
         
-        // --- Add Listener for Full Card Logo Replacement ---
-        // Ensure Lampa.Listener is available before adding the listener
-        if (Lampa.Listener && network) { // Also check if the global network instance exists
+        // --- Add Listener for Full Card Logo Replacement (Complete Logic) ---
+        if (Lampa.Listener && network) { // Check Listener and global network
             Lampa.Listener.follow("full", function(eventData) {
                 var storageKey = 'show_logo_instead_of_title';
                 try {
+                    // Check if logo display is enabled
                     var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-                    if (eventData.type === 'complite' /* && showLogos */) { // Check type only for now
+
+                    // Only proceed if the view is complete and logos should be shown
+                    if (eventData.type === 'complite' && showLogos) {
                         var movie = eventData.data.movie;
-                        if (movie && movie.title) {
-                            var targetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
-                            if (targetElement.length > 0) {
-                                // JUST SET TEXT TITLE for now if logo mode enabled, or always? Let's always set it.
-                                targetElement.text(movie.title);
-                                // We can add logo fetching/cache check here later if needed
-                            }
-                        }
-                    }
+
+                        // Check for essential movie data
+                        if (movie && movie.id && movie.title) {
+                            movie.method = movie.name ? 'tv' : 'movie'; // Determine method if needed
+                            var id = movie.id;
+
+                            // Find the target element where the title/logo goes
+                            // We need to potentially re-find this inside callbacks
+                            var initialTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
+
+                            if (initialTargetElement.length > 0) {
+                                // --- Set text title as placeholder immediately ---
+                                console.log(`Listener (Full ID: ${id}): Setting text placeholder: ${movie.title}`);
+                                initialTargetElement.text(movie.title);
+
+                                // --- Fetch the logo ---
+                                if (!network) { console.error("Listener (Full): Global network missing."); return; }
+
+                                var apiKey = Lampa.TMDB.key();
+                                var language = Lampa.Storage.get('language');
+                                var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
+
+                                console.log(`Listener (Full ID: ${id}): Fetching logo: ${apiUrl}`);
+
+                                network.clear(); // Clear previous requests on the global instance
+                                network.timeout(config.request_timeout || 7000);
+                                network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
+                                    console.log(`Listener (Full ID: ${id}): API Success.`);
+                                    var logoPath = null;
+                                    // Find the best logo path
+                                    if (response && response.logos && response.logos.length > 0) {
+                                        var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
+                                        logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
+                                    }
+
+                                    // --- Re-find the element inside callback and update ---
+                                    // Use the eventData again to ensure we have the right context
+                                    var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
+
+                                    if (currentTargetElement.length > 0) {
+                                        if (logoPath) {
+                                             console.log(`Listener (Full ID: ${id}): Logo found. Updating UI.`);
+                                             var imageSize = 'w300'; // Size suitable for details page title
+                                             var styleAttr = 'margin-top: 5px; max-height: 125px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
+                                             var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                                             var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
+                                             currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
+                                             console.log(`Listener (Full ID: ${id}): UI updated with logo.`);
+                                        } else {
+                                             console.log(`Listener (Full ID: ${id}): No logo found. Ensuring text remains.`);
+                                             currentTargetElement.text(movie.title); // Ensure text is set if no logo
+                                        }
+                                    } else {
+                                        console.log(`Listener (Full ID: ${id}): Target element NOT FOUND during callback.`);
+                                    }
+
+                                }, function(xhr, status) { // ERROR CALLBACK
+                                     console.error(`Listener (Full ID: ${id}): API Error ${status}. Ensuring text remains.`);
+                                     // Ensure text title is displayed on error by re-finding element
+                                     var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
+                                      if (currentTargetElement && currentTargetElement.length) {
+                                          currentTargetElement.text(movie.title);
+                                      }
+                                }); // End network.silent
+
+                            } // End if initialTargetElement found
+                        } // End if movie data valid
+                    } // End if complite and showLogos
                 } catch (e) { console.error("Logo Listener (Full): Error in callback:", e); }
-            });
-            // End Lampa.Listener.follow("full", ...)
-            
+            }); // End Lampa.Listener.follow
         } else {
              console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
-        }// --- End Listener for Full Card ---
+        }
+        // --- End Listener for Full Card ---
     
         // --- Override Lampa.InteractionMain --- (existing code)
         Lampa.InteractionMain = function (object) { 
