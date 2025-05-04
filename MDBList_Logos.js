@@ -693,15 +693,6 @@
         
         this.build = function (data) {
             var _this2 = this;
-
-            // --- Read initial setting state when component is built ---
-            if (window.Lampa && Lampa.Storage) {
-                 isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-                 console.log("COMPONENT.BUILD: Initial Logo Feature State read:", isLogoFeatureEnabled); // <-- Check this log
-            } else {
-                 console.warn("COMPONENT.BUILD: Lampa.Storage not ready when reading initial state.");
-            }
-            
             lezydata = data; 
             info = new create(object); 
             info.create(); 
@@ -1042,5 +1033,18 @@
 
     // Original check before starting
     if (!window.plugin_interface_ready) startPlugin();
+
+    // --- Attempt to read initial state AFTER Lampa load using a delay ---
+    setTimeout(function() {
+        // Check if Lampa.Storage is available now
+        if (window.Lampa && Lampa.Storage) {
+            // Read the setting and update the global state variable
+            isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+            console.log("STARTUP (Delayed): Initial Logo Feature State read after delay:", isLogoFeatureEnabled);
+
+        } else {
+             console.error("STARTUP (Delayed): Lampa.Storage not available after delay.");
+        }
+    }, 250); // Delay execution by 1000ms (1 second)
 
 })();
