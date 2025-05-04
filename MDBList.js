@@ -66,7 +66,17 @@
                 en: 'No description', 
                 ru: 'Нет описания',
                 uk: 'Немає опису'
-            }, 
+            },
+            info_panel_logo_height_name: {
+                ru: "Размер логотипа",
+                en: "Logo Size",
+                uk: "Висота логотипу"
+            },
+            info_panel_logo_height_desc: {
+                ru: "Максимальная высота логотипа",
+                en: "Maximum logo height",
+                uk: "Максимальна висота логотипу"
+            }
         });
     }
 
@@ -143,6 +153,37 @@
 
 
         });
+                
+        // 5. Add Setting for Info Panel Logo Height
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings', // Keep in the same settings section
+            param: {
+                name: 'info_panel_logo_max_height', // Storage key
+                type: 'select',
+                values: { 
+                    '100': '100px',
+                    '125': '125px',
+                    '150': '150px',
+                    '200': '200px',
+                    '250': '250px',
+                    '300': '300px',
+                    '350': '350px',
+                    '400': '400px',
+                    '450': '450px',
+                    '500': '500px'
+                },
+                'default': '100'
+            },
+            field: {
+                name: Lampa.Lang.translate('info_panel_logo_height_name'), // Use new translation
+                description: Lampa.Lang.translate('info_panel_logo_height_desc') // Use new translation
+            },
+            onChange: function(value) {
+                // Explicitly save the selected value
+                Lampa.Storage.set('info_panel_logo_max_height', value);
+            }
+        });
+
 
 
     } else {
@@ -544,17 +585,23 @@
         this.render = function () { 
             return html; 
         };
-    
-        // --- Helper Method INSIDE create() ---
+            // --- Helper Method INSIDE create() ---
         this.displayLogoOrTitle = function(movieData) {
             // 'html' is accessible here from the outer 'create' scope
             if (!html) return; // Ensure panel element exists
             var titleElement = html.find('.new-interface-info__title');
             if (!titleElement.length) return; // Ensure title element exists
-            
+
+            // Ensure movieData is valid before proceeding
+            if (!movieData || !movieData.id || !movieData.method || !movieData.title) {
+                console.warn("displayLogoOrTitle: Invalid movieData received.");
+                titleElement.empty(); // Clear title area if data is bad
+                return;
+            }
+
             var id = movieData.id;
             titleElement.text(movieData.title); // Set text placeholder immediately
-            
+
             // Use the global network instance (ensure it's defined and accessible)
             if (!network) { console.error("displayLogoOrTitle: Global network missing."); return; }
 
@@ -563,46 +610,60 @@
             var language = Lampa.Storage.get('language');
             var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
 
+
             network.clear(); // Clear previous logo requests on the global instance
             network.timeout(config.request_timeout || 7000);
             network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
                 var logoPath = null;
-                // ... logic to find logoPath from response ..
+                // Find the best logo path from response
                 if (response && response.logos && response.logos.length > 0) {
                     var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
                     logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
                 }
 
-            // --- Find element AGAIN inside callback and update ---
-            // Use the 'html' variable from the outer 'create' scope
-            var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
+                // --- Find element AGAIN inside callback and update ---
+                // Use the 'html' variable from the outer 'create' scope
+                var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
 
-            if (currentTitleElement && currentTitleElement.length) {
-                if (logoPath) {
-                     var imageSize = 'w500'; // Size for info panel
-                     var styleAttr = 'max-height: 125px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Style
-                     var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
-                     var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
-                     currentTitleElement.empty().html(imgTagHtml); // Update with fresh reference
+                if (currentTitleElement && currentTitleElement.length) {
+                    if (logoPath) {
+                         // --- Read Height Setting and Build Style ---
+                         var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100'); // Read saved height, default 100
+                         // Basic validation to ensure it's a number string, default to '100' otherwise
+                         if (!/^\d+$/.test(selectedHeight)) {
+                             console.warn(`Invalid logo height '${selectedHeight}' found in storage, using default '100'.`); // Optional warning
+                             selectedHeight = '100';
+                         }
+
+                         var imageSize = 'w500'; // Request a decent size image source
+                         // Dynamically create the style string using the selected height
+                         var styleAttr = `max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;`;
+                         // --- End Style Building ---
+
+                         var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                         var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
+                         currentTitleElement.empty().html(imgTagHtml); // Update with fresh reference
+                    } else {
+                         currentTitleElement.text(movieData.title); // Ensure text is set if no logo
+                    }
                 } else {
-                     currentTitleElement.text(movieData.title); // Ensure text is set if no logo
+                     // Cannot update UI if element is gone
                 }
-            } else {
-                 // Cannot update UI if element is gone
-            }
 
-        }, function(xhr, status) { // ERROR CALLBACK
-             console.error(`displayLogoOrTitle (ID ${id}): API Error ${status}. Ensuring text remains.`);
-             // Ensure text title is displayed on error
-             var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
-              if (currentTitleElement && currentTitleElement.length) {
-                  currentTitleElement.text(movieData.title);
-              }
-            })
+            }, function(xhr, status) { // ERROR CALLBACK
+                 console.error(`displayLogoOrTitle (ID ${id}): API Error ${status}. Ensuring text remains.`);
+                 // Ensure text title is displayed on error
+                 var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
+                  if (currentTitleElement && currentTitleElement.length) {
+                      // Check movieData exists before accessing title
+                      if(movieData && movieData.title) {
+                           currentTitleElement.text(movieData.title);
+                      } else {
+                           currentTitleElement.empty(); // Clear if no title available
+                      }
+                  }
+            }); // End network.silent
         }; // --- End of displayLogoOrTitle ---
-
-        
-        
         
         this.empty = function () {};
         
@@ -855,7 +916,6 @@
 
                             if (initialTargetElement.length > 0) {
                                 // --- Set text title as placeholder immediately ---
-                                console.log(`Listener (Full ID: ${id}): Setting text placeholder: ${movie.title}`);
                                 initialTargetElement.text(movie.title);
 
                                 // --- Fetch the logo ---
@@ -865,12 +925,9 @@
                                 var language = Lampa.Storage.get('language');
                                 var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
 
-                                console.log(`Listener (Full ID: ${id}): Fetching logo: ${apiUrl}`);
-
                                 network.clear(); // Clear previous requests on the global instance
                                 network.timeout(config.request_timeout || 7000);
-                                network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
-                                    console.log(`Listener (Full ID: ${id}): API Success.`);
+                                network.silent(apiUrl, function (response) { // SUCCESS CAL
                                     var logoPath = null;
                                     // Find the best logo path
                                     if (response && response.logos && response.logos.length > 0) {
@@ -884,19 +941,15 @@
 
                                     if (currentTargetElement.length > 0) {
                                         if (logoPath) {
-                                             console.log(`Listener (Full ID: ${id}): Logo found. Updating UI.`);
                                              var imageSize = 'w300'; // Size suitable for details page title
                                              var styleAttr = 'margin-top: 5px; max-height: 125px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
                                              var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                                              var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
                                              currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
-                                             console.log(`Listener (Full ID: ${id}): UI updated with logo.`);
                                         } else {
-                                             console.log(`Listener (Full ID: ${id}): No logo found. Ensuring text remains.`);
                                              currentTargetElement.text(movie.title); // Ensure text is set if no logo
                                         }
                                     } else {
-                                        console.log(`Listener (Full ID: ${id}): Target element NOT FOUND during callback.`);
                                     }
 
                                 }, function(xhr, status) { // ERROR CALLBACK
