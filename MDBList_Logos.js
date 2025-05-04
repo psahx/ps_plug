@@ -61,9 +61,12 @@
                 ru: "Скрыть",
                 en: "Hide", // Or "Off" if you prefer
                 uk: "Приховати"
-            }
-
-          
+            },
+            full_notext: { 
+                en: 'No description', 
+                ru: 'Нет описания',
+                uk: 'Немає опису'
+            }, 
         });
     }
 
@@ -824,12 +827,6 @@
             console.error("NewInterface Adjust Padding: Missing Lampa components"); 
             return; 
         }
-        Lampa.Lang.add({ 
-            full_notext: { 
-                en: 'No description', 
-                ru: 'Нет описания'
-            }, 
-        });
         
         window.plugin_interface_ready = true; 
         var old_interface = Lampa.InteractionMain; 
