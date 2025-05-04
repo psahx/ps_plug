@@ -410,7 +410,9 @@
                     console.log("displayLogoInElement: Logo found, path:", logoPath);
                     var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                     var imgTagHtml = '<img src="' + imgUrl + '" style="' + styleAttr + '" alt="' + movieData.title + ' Logo" />';
-                    targetElement.empty().html(imgTagHtml); // Replace text placeholder with logo
+                    // --- Update UI ---
+                    targetElement.empty().html(imgTagHtml); // --- Force Reflow (Attempt) ---
+                    targetElement[0].offsetHeight; // --- Accessing offsetHeight forces browser reflow
                     console.log("displayLogoInElement: Logo image inserted.");
                 } else {
                     // ** No logo found - DO NOTHING (text placeholder set earlier remains) **
