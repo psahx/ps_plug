@@ -50,6 +50,16 @@
                 ru: "Заменяет текстовый заголовок фильма логотипом",
                 en: "Replaces movie text title with a logo",
                 uk: "Замінює текстовий заголовок логотипом"
+            },
+            settings_show: {
+                ru: "Показать",
+                en: "Show", // Or "On" if you prefer
+                uk: "Показати"
+            },
+            settings_hide: {
+                ru: "Скрыть",
+                en: "Hide", // Or "Off" if you prefer
+                uk: "Приховати"
             }
 
           
