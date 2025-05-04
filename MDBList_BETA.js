@@ -1,25 +1,18 @@
-// == Version 2.1.0 | Watchmode Quality + Debug Logging ==
+// == Movie Logos | Clean and Working  ==
 (function () {
     'use strict';
-
-    // --- Fetcher Configuration (MDBList) ---
+    
+    // --- Fetcher Configuration ---
     var config = {
         api_url: 'https://api.mdblist.com/tmdb/', // Base URL for MDBList TMDB endpoint
+        // api_key is now configured via Lampa Settings -> Additional Ratings
         cache_time: 60 * 60 * 12 * 1000, // 12 hours cache duration
         cache_key: 'mdblist_ratings_cache', // Unique storage key for ratings data
         cache_limit: 500, // Max items in cache
         request_timeout: 10000 // 10 seconds request timeout
     };
 
-    // --- Watchmode Fetcher State & Config ---
-    var watchmodeCache = {}; // Cache for full Watchmode details responses
-    var watchmodePending = {}; // Tracks pending Watchmode requests
-    var watchmode_cache_key = 'watchmode_details_cache'; // Unique key
-    var watchmode_cache_time = 24 * 60 * 60 * 1000; // 24 hours cache
-    var watchmode_request_timeout = 15000; // Watchmode might be slower? Use 15s.
-    var watchmode_api_base_url = 'https://api.watchmode.com/v1/title/'; // Base URL for title details
-
-
+    
     // --- Language Strings ---
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
@@ -29,10 +22,11 @@
                 uk: "Введіть ваш API ключ з сайту MDBList.com"
             },
             additional_ratings_title: {
-                 ru: "Дополнительные Рейтинги",
+                 ru: "Дополнительные Рейтинги", 
                  en: "Additional Ratings",
                  uk: "Додаткові Рейтинги"
             },
+
             select_ratings_button_name: {
                  en: "Select Rating Providers",
                  ru: "Выбрать Источники Рейтингов",
@@ -48,21 +42,40 @@
                  ru: "Выбор Рейтингов",
                  uk: "Вибір Рейтингів"
             },
-            // Watchmode keys
-            watchmode_api_key_desc: {
-                 en: "Required for Quality/Streaming info. Get free key: api.watchmode.com/requestApiKey/",
-                 ru: "Требуется для инфо о качестве/стриминге. Бесплатный ключ: api.watchmode.com/requestApiKey/",
-                 uk: "Потрібен для інфо про якість/стрімінг. Безкоштовний ключ: api.watchmode.com/requestApiKey/"
+            logo_toggle_name: {
+                ru: "Логотип вместо заголовка",
+                en: "Logo Instead of Title",
+                uk: "Логотип замість заголовка"
             },
-            ar_show_quality_name: {
-                 en: "Show Quality Label",
-                 ru: "Показывать Метку Качества",
-                 uk: "Показувати Мітку Якості"
+            logo_toggle_desc: {
+                ru: "Заменяет текстовый заголовок фильма логотипом",
+                en: "Replaces movie text title with a logo",
+                uk: "Замінює текстовий заголовок логотипом"
             },
-            ar_show_quality_desc: {
-                 en: "Displays highest available streaming quality (4K, HD, SD) from Watchmode on posters/cards.",
-                 ru: "Отображает наивысшее доступное качество стриминга (4K, HD, SD) из Watchmode на постере/карточке.",
-                 uk: "Відображає найвищу доступну якість стрімінгу (4K, HD, SD) з Watchmode на постері/картці."
+            settings_show: {
+                ru: "Показать",
+                en: "Show", // Or "On" if you prefer
+                uk: "Показати"
+            },
+            settings_hide: {
+                ru: "Скрыть",
+                en: "Hide", // Or "Off" if you prefer
+                uk: "Приховати"
+            },
+            full_notext: { 
+                en: 'No description', 
+                ru: 'Нет описания',
+                uk: 'Немає опису'
+            },
+            info_panel_logo_height_name: {
+                ru: "Размер логотипа",
+                en: "Logo Size",
+                uk: "Висота логотипу"
+            },
+            info_panel_logo_height_desc: {
+                ru: "Максимальная высота логотипа",
+                en: "Maximum logo height",
+                uk: "Максимальна висота логотипу"
             }
         });
     }
@@ -70,231 +83,385 @@
 
     // --- Settings UI Registration ---
     if (window.Lampa && Lampa.SettingsApi) {
+        // 1. Add the new Settings Category
         Lampa.SettingsApi.addComponent({
             component: 'additional_ratings',
             name: Lampa.Lang.translate('additional_ratings_title'),
-            icon: '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24" xml:space="preserve" width="32" height="32" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>'
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24" xml:space="preserve" width="32" height="32" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>' // Simple placeholder icon
         });
 
+        // 2. Add the API Key parameter under the new category
         Lampa.SettingsApi.addParam({
-            component: 'additional_ratings',
-            param: { name: 'mdblist_api_key', type: 'input', 'default': '', values: {}, placeholder: 'Enter your MDBList API Key' },
-            field: { name: 'MDBList API Key', description: Lampa.Lang.translate('mdblist_api_key_desc') },
-            onChange: function() { Lampa.Settings.update(); }
+            component: 'additional_ratings', // <-- Target the new component
+            param: {
+                name: 'mdblist_api_key', // Storage key for the API key
+                type: 'input',          // Input field type
+                'default': '',          // Default value (empty)
+                values: {},             // Keep this from previous attempt, just in case
+                placeholder: 'Enter your MDBList API Key' // Placeholder text
+            },
+            field: {
+                name: 'MDBList API Key', // Display name in settings
+                description: Lampa.Lang.translate('mdblist_api_key_desc') // Use translated description
+            },
+            onChange: function() {
+                // Optional: Clear cache if API key changes? For now, just update settings.
+                Lampa.Settings.update();
+            }
         });
 
-        // Add the Watchmode API Key parameter (Corrected)
+        // 3. Add Button to Open Rating Selection
         Lampa.SettingsApi.addParam({
-            component: 'additional_ratings',
-            param: { name: 'watchmode_api_key', type: 'input', 'default': '', values: {}, placeholder: 'Enter your Watchmode API Key' },
-            field: { name: 'Watchmode API Key', description: Lampa.Lang.translate('watchmode_api_key_desc') },
-            onChange: function() { Lampa.Settings.update(); }
+            component: 'additional_ratings', // Target category
+            param: {
+                name: 'select_ratings_button', // Unique name for this settings parameter
+                type: 'button'                 // Set type to button
+            },
+            field: {
+                // Use translated text for the button row
+                name: Lampa.Lang.translate('select_ratings_button_name'),
+                description: Lampa.Lang.translate('select_ratings_button_desc')
+            },
+            // onChange for button type = action on click/enter
+            onChange: function () {
+                // Call our helper function to show the selection dialog
+                showRatingProviderSelection();
+            }
+        });
+                
+        // 4. Add Toggle for Replacing Title with Logo (with explicit save)
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings',        // Target the same category
+            param: {
+                name: 'show_logo_instead_of_title', // The key used for storage
+                type: 'select',                     // Use select for On/Off toggle
+                values: {                           // Define the options
+                    'true': Lampa.Lang.translate('settings_show'), // "Show" / "On"
+                    'false': Lampa.Lang.translate('settings_hide') // "Hide" / "Off"
+                },
+                'default': 'false'                  // Default value is Off
+            },
+            field: {
+                name: Lampa.Lang.translate('logo_toggle_name'), // Use translation key for name
+                description: Lampa.Lang.translate('logo_toggle_desc') // Use translation key for description
+            },
+                
+            onChange: function(value) {
+                var storageKey = 'show_logo_instead_of_title'; // Make sure this matches param.name
+                Lampa.Storage.set(storageKey, value); // Save to storage
+            }
+
+
+        });
+                
+        // 5. Add Setting for Info Panel Logo Height
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings', // Keep in the same settings section
+            param: {
+                name: 'info_panel_logo_max_height', // Storage key
+                type: 'select',
+                values: { 
+                    '100': '100px',
+                    '125': '125px',
+                    '150': '150px',
+                    '200': '200px',
+                    '250': '250px',
+                    '300': '300px',
+                    '350': '350px',
+                    '400': '400px',
+                    '450': '450px',
+                    '500': '500px'
+                },
+                'default': '100'
+            },
+            field: {
+                name: Lampa.Lang.translate('info_panel_logo_height_name'), // Use new translation
+                description: Lampa.Lang.translate('info_panel_logo_height_desc') // Use new translation
+            },
+            onChange: function(value) {
+                // Explicitly save the selected value
+                Lampa.Storage.set('info_panel_logo_max_height', value);
+                console.log(`Setting Saved: 'info_panel_logo_max_height' set to '${value}' in storage.`);
+            }
         });
 
-        // Add Button to Open Rating Selection
-        Lampa.SettingsApi.addParam({
-            component: 'additional_ratings',
-            param: { name: 'select_ratings_button', type: 'button' },
-            field: { name: Lampa.Lang.translate('select_ratings_button_name'), description: Lampa.Lang.translate('select_ratings_button_desc') },
-            onChange: function () { showRatingProviderSelection(); }
-        });
 
-        // Add Toggle for Watchmode Quality Label
-        Lampa.SettingsApi.addParam({
-            component: 'additional_ratings',
-            param: { name: 'ar_show_quality', type: 'trigger', 'default': false },
-            field: { name: Lampa.Lang.translate('ar_show_quality_name'), description: Lampa.Lang.translate('ar_show_quality_desc') },
-            onChange: function() { Lampa.Settings.update(); }
-        });
 
     } else {
-        console.error("AR_Plugin: Lampa.SettingsApi not available.");
+        console.error("MDBLIST_Fetcher: Lampa.SettingsApi not available. Cannot create API Key setting.");
     }
 
     // --- Network Instance ---
+    // Use Lampa.Reguest if available for consistency and potential benefits
     var network = (window.Lampa && Lampa.Reguest) ? new Lampa.Reguest() : null;
 
-    // --- Caching Functions (MDBList) ---
+    // --- Caching Functions ---
     function getCache(tmdb_id) {
+        // Ensure Lampa Storage is available for caching
         if (!window.Lampa || !Lampa.Storage) return false;
         var timestamp = new Date().getTime();
-        var cache = Lampa.Storage.cache(config.cache_key, config.cache_limit, {});
+        var cache = Lampa.Storage.cache(config.cache_key, config.cache_limit, {}); // Use Lampa's cache utility
+
         if (cache[tmdb_id]) {
+            // Check if cache entry has expired
             if ((timestamp - cache[tmdb_id].timestamp) > config.cache_time) {
-                delete cache[tmdb_id]; Lampa.Storage.set(config.cache_key, cache); return false;
-            }
-          return cache[tmdb_id].data;
-        } return false;
+                delete cache[tmdb_id];
+                Lampa.Storage.set(config.cache_key, cache); // Update storage after removing expired entry
+                return false;
+            } 
+          return cache[tmdb_id].data; // Return cached data { imdb: ..., tmdb: ..., etc... }
+        }
+        return false;
     }
+
     function setCache(tmdb_id, data) {
+        // Ensure Lampa Storage is available
         if (!window.Lampa || !Lampa.Storage) return;
         var timestamp = new Date().getTime();
         var cache = Lampa.Storage.cache(config.cache_key, config.cache_limit, {});
-        cache[tmdb_id] = { timestamp: timestamp, data: data };
-        Lampa.Storage.set(config.cache_key, cache);
-    }
+        // Store data along with a timestamp
+        cache[tmdb_id] = {
+            timestamp: timestamp,
+            data: data
+        };
+        Lampa.Storage.set(config.cache_key, cache); // Save updated cache to storage
+      }
 
-    // --- Watchmode Caching Functions ---
-    function getWatchmodeCache(tmdb_id) {
-        if (!window.Lampa || !Lampa.Storage) return false;
-        var timestamp = new Date().getTime();
-        var cache = Lampa.Storage.cache(watchmode_cache_key, config.cache_limit, {});
-        if (cache[tmdb_id]) {
-            if ((timestamp - cache[tmdb_id].timestamp) > watchmode_cache_time) {
-                delete cache[tmdb_id]; Lampa.Storage.set(watchmode_cache_key, cache); return false;
-            }
-          return cache[tmdb_id].data; // Returns { data: { ... }, error: ... }
-        } return false;
-    }
-    function setWatchmodeCache(tmdb_id, result) { // result is { data: ..., error: ... }
-        if (!window.Lampa || !Lampa.Storage) return;
-        var timestamp = new Date().getTime();
-        var cache = Lampa.Storage.cache(watchmode_cache_key, config.cache_limit, {});
-        cache[tmdb_id] = { timestamp: timestamp, data: result };
-        Lampa.Storage.set(watchmode_cache_key, cache);
-    }
-
-
-    // --- Core Fetching Logic (MDBList) ---
+    // --- Core Fetching Logic ---
+    /**
+     * Fetches ratings for a given movie/show from MDBList.
+     * @param {object} movieData - Object containing movie details. Requires 'id' (TMDB ID) and 'method' ('movie' or 'tv').
+     * @param {function} callback - Function to call with the result object (e.g., {imdb: 7.5, tmdb: 8.0, error: null}) or error ({error: 'message'}).
+     */
     function fetchRatings(movieData, callback) {
-        if (!network) { if (callback) callback({ error: "Network component unavailable" }); return; }
-        if (!window.Lampa || !Lampa.Storage) { if (callback) callback({ error: "Storage component unavailable" }); return; }
-        if (!movieData || !movieData.id || !movieData.method || !callback) { if (callback) callback({ error: "Invalid input data" }); return; }
+        // Check if Lampa components are available
+        if (!network) {
+             console.error("MDBLIST_Fetcher: Lampa.Reguest not available.");
+             if (callback) callback({ error: "Network component unavailable" });
+             return;
+        }
+        if (!window.Lampa || !Lampa.Storage) {
+             console.error("MDBLIST_Fetcher: Lampa.Storage not available.");
+             if (callback) callback({ error: "Storage component unavailable" });
+             return;
+        }
+
+        // Validate input data
+        if (!movieData || !movieData.id || !movieData.method || !callback) {
+             console.error("MDBLIST_Fetcher: Invalid input - requires movieData object with 'id' and 'method' ('movie'/'tv'), and a callback function.");
+             if (callback) callback({ error: "Invalid input data" });
+             return;
+        }
+
         var tmdb_id = movieData.id;
-        var cached_ratings = getCache(tmdb_id); if (cached_ratings) { callback(cached_ratings); return; }
-        var apiKey = Lampa.Storage.get('mdblist_api_key'); if (!apiKey) { callback({ error: "MDBList API Key not configured" }); return; }
+
+        // 1. Check Cache
+        var cached_ratings = getCache(tmdb_id);
+        if (cached_ratings) {
+            // If valid cache exists, return it immediately via callback
+            callback(cached_ratings);
+            return;
+        }
+
+        // 2. Get API Key from Storage
+        var apiKey = Lampa.Storage.get('mdblist_api_key');
+        if (!apiKey) {
+            // No need to cache this error, as it depends on user config
+            // Updated error message to reflect 'Additional Ratings' section
+            callback({ error: "MDBList API Key not configured in Additional Ratings settings" });
+            return;
+        }
+
+        // 3. Prepare API Request
+        // MDBList uses 'show' for TV series
         var media_type = movieData.method === 'tv' ? 'show' : 'movie';
+        // Construct URL using the retrieved API key
         var api_url = "".concat(config.api_url).concat(media_type, "/").concat(tmdb_id, "?apikey=").concat(apiKey);
-        network.clear(); network.timeout(config.request_timeout);
+
+        
+        // 4. Make Network Request using Lampa.Request
+        network.clear(); // Clear previous requests on this instance
+        network.timeout(config.request_timeout);
         network.silent(api_url, function (response) {
-            var ratingsResult = { error: null };
+            // --- Success Callback ---
+            var ratingsResult = { error: null }; // Initialize result object
+
             if (response && response.ratings && Array.isArray(response.ratings)) {
-                 response.ratings.forEach(function(rating) { if (rating.source && rating.value !== null) { ratingsResult[rating.source] = rating.value; } });
-            } else if (response && response.error) { ratingsResult.error = "MDBList API Error: " + response.error; console.error("MDBList_Fetcher: API Error", tmdb_id, response.error); }
-            else { ratingsResult.error = "Invalid response format from MDBList"; console.error("MDBList_Fetcher: Invalid response", tmdb_id, response); }
-            if (ratingsResult.error === null || (ratingsResult.error && !ratingsResult.error.toLowerCase().includes("invalid api key"))) { setCache(tmdb_id, ratingsResult); }
+                 // Populate result object dynamically from the ratings array
+                 response.ratings.forEach(function(rating) {
+                     // Use source name directly as key, only if value is not null
+                     if (rating.source && rating.value !== null) {
+                          ratingsResult[rating.source] = rating.value;
+                     }
+                 });
+            } else if (response && response.error) {
+                // Handle specific errors from MDBList API (e.g., invalid key)
+                console.error("MDBLIST_Fetcher: API Error from MDBList for TMDB ID:", tmdb_id, response.error);
+                ratingsResult.error = "MDBList API Error: " + response.error;
+            }
+             else {
+                 console.error("MDBLIST_Fetcher: Invalid response format received from MDBList for TMDB ID:", tmdb_id, response);
+                 ratingsResult.error = "Invalid response format from MDBList";
+            }
+
+            // Cache the processed result (even if it's just {error: ...})
+            // Only cache successful results or non-auth related errors
+            if (ratingsResult.error === null || (ratingsResult.error && !ratingsResult.error.toLowerCase().includes("invalid api key"))) {
+                 setCache(tmdb_id, ratingsResult);
+            }
+            // Execute the original callback with the result
             callback(ratingsResult);
+
         }, function (xhr, status) {
-            var errorMessage = "MDBList request failed"; if (status) { errorMessage += " (Status: " + status + ")"; } console.error("MDBLIST_Fetcher:", errorMessage, "for TMDB ID:", tmdb_id);
-            var errorResult = { error: errorMessage }; if (status !== 401 && status !== 403) { setCache(tmdb_id, errorResult); } callback(errorResult);
-        });
+            // --- Error Callback ---
+            var errorMessage = "MDBList request failed";
+            if (status) { errorMessage += " (Status: " + status + ")"; }
+            // Avoid logging the full URL which contains the API key
+            console.error("MDBLIST_Fetcher:", errorMessage, "for TMDB ID:", tmdb_id);
+
+            var errorResult = { error: errorMessage };
+
+            // Cache the error state to prevent rapid retries on persistent failures
+            // Avoid caching auth-related errors (like 401 Unauthorized) caused by bad keys
+            if (status !== 401 && status !== 403) {
+                setCache(tmdb_id, errorResult);
+            }
+            // Execute the original callback with the error result
+            callback(errorResult);
+        }); // End network.silent
     } // End fetchRatings
-
-
-    // --- Watchmode Fetching Logic ---
-    function fetchWatchmodeDetails(movieData, callback) {
-        if (!network || !window.Lampa || !Lampa.Storage) { console.error("Watchmode_Fetcher: Missing Lampa component."); if (callback) callback({ data: null, error: "Lampa component missing" }); return; }
-        if (!movieData || !movieData.id || !movieData.imdb_id || !callback) { if (callback) callback({ data: null, error: (movieData && movieData.id && !movieData.imdb_id) ? "IMDb ID missing for Watchmode lookup" : "Invalid input data for Watchmode" }); return; }
-        var tmdb_id = movieData.id; var imdb_id = movieData.imdb_id;
-        var cached_data = getWatchmodeCache(tmdb_id); if (cached_data) { callback(cached_data); return; }
-        if (watchmodePending[tmdb_id]) { return; } watchmodePending[tmdb_id] = true;
-        var apiKey = Lampa.Storage.get('watchmode_api_key');
-        if (!apiKey) { delete watchmodePending[tmdb_id]; if (callback) callback({ data: null, error: "Watchmode API Key not configured" }); return; }
-        var api_url = watchmode_api_base_url + imdb_id + '/details/?apiKey=' + apiKey;
-        network.clear(); network.timeout(watchmode_request_timeout);
-        network.silent(api_url, function (response) { // onSuccess
-            var watchmodeResult = { data: null, error: null };
-            if (response && response.id) { watchmodeResult.data = response; }
-            else if (response && response.success === false && response.message) { watchmodeResult.error = "Watchmode API Error: " + response.message; console.error("Watchmode_Fetcher: API Error for IMDb ID:", imdb_id, response.message); }
-            else { watchmodeResult.error = "Invalid response from Watchmode"; console.error("Watchmode_Fetcher: Invalid response for IMDb ID:", imdb_id, response); }
-            setWatchmodeCache(tmdb_id, watchmodeResult); delete watchmodePending[tmdb_id]; callback(watchmodeResult);
-        }, function (xhr, status) { // onError
-            var errorMessage = "Watchmode request failed";
-            if (status === 404) { errorMessage = "Title not found on Watchmode (404)"; }
-            else if (status === 401) { errorMessage = "Watchmode API Key Invalid (401)"; }
-            else if (status === 403) { errorMessage = "Watchmode API Forbidden (403)"; }
-            else if (status === 429) { errorMessage = "Watchmode Rate Limit Exceeded (429)"; }
-            else if (status) { errorMessage += " (Status: " + status + ")"; }
-            console.error("Watchmode_Fetcher:", errorMessage, "for IMDb ID:", imdb_id);
-            var errorResult = { data: null, error: errorMessage };
-            if (status !== 401 && status !== 403 && status !== 429) { setWatchmodeCache(tmdb_id, errorResult); }
-            delete watchmodePending[tmdb_id]; callback(errorResult);
-        });
-    } // End fetchWatchmodeDetails
-
 
     // --- MDBList Fetcher State ---
     var mdblistRatingsCache = {};
     var mdblistRatingsPending = {};
-    // --- (Watchmode cache/pending defined earlier) ---
+    // -----------------------------
 
 
-    // --- Helper Functions ---
-    /** Appends Quality Label */
-    function appendQualityElement(qualityString, selector) {
-        console.log('[AR Quality Debug] appendQualityElement: Attempting to append "' + qualityString + '" to selector:', selector); // LOG APPEND CALL
-        if (!qualityString || !selector) { console.log('[AR Quality Debug] appendQualityElement: Missing qualityString or selector.'); return; }
-        try {
-            var parentElement = (typeof selector === 'string') ? $(selector) : selector;
-            if (parentElement.length) {
-                console.log('[AR Quality Debug] appendQualityElement: Parent element found.'); // LOG PARENT FOUND
-                parentElement.find('.card__quality').remove();
-                var qualityDiv = $('<div></div>').addClass('card__quality').text(qualityString);
-                parentElement.append(qualityDiv);
-                console.log('[AR Quality Debug] appendQualityElement: Successfully appended.'); // LOG SUCCESS
-            } else {
-                console.log('[AR Quality Debug] appendQualityElement: Parent element NOT found for selector:', selector); // LOG PARENT NOT FOUND
-            }
-        } catch (e) { console.error("AR_Plugin Quality: Error appending element", e); }
-    }
-    /** Parses Watchmode data for Quality Label */
-    function displayQualityLabel(watchmodeData, selector) {
-        console.log('[AR Quality Debug] displayQualityLabel called for selector:', selector); // LOG FUNCTION CALL
-        if (!watchmodeData || !watchmodeData.sources || !Array.isArray(watchmodeData.sources)) { console.log('[AR Quality Debug] displayQualityLabel: Exiting - No valid sources data.'); return; }
-        console.log('[AR Quality Debug] displayQualityLabel: Sources data:', JSON.stringify(watchmodeData.sources)); // LOG SOURCES
-        let bestFormat = null; const qualityOrder = ["4K", "HD", "SD"];
-        for (const quality of qualityOrder) { if (watchmodeData.sources.some(source => source.format === quality)) { bestFormat = quality; break; } }
-        console.log('[AR Quality Debug] displayQualityLabel: Determined best format:', bestFormat); // LOG BEST FORMAT
-        if (bestFormat) { appendQualityElement(bestFormat, selector); }
-        else { console.log('[AR Quality Debug] displayQualityLabel: No suitable format (4K/HD/SD) found.'); } // LOG NO FORMAT FOUND
-    }
-    /** Shows Rating Provider Selection Dialog */
+    // Function to display the multi-select dialog for rating providers
     function showRatingProviderSelection() {
-        const providers = [ { title: 'IMDb', id: 'show_rating_imdb', default: true }, { title: 'TMDB', id: 'show_rating_tmdb', default: true }, { title: 'Rotten Tomatoes (Critics)', id: 'show_rating_tomatoes', default: false }, { title: 'Rotten Tomatoes (Audience)', id: 'show_rating_audience', default: false }, { title: 'Metacritic', id: 'show_rating_metacritic', default: false }, { title: 'Trakt', id: 'show_rating_trakt', default: false }, { title: 'Letterboxd', id: 'show_rating_letterboxd', default: false }, { title: 'Roger Ebert', id: 'show_rating_rogerebert', default: false } ];
-        let selectItems = providers.map(provider => { let storedValue = Lampa.Storage.get(provider.id, provider.default); let isChecked = (storedValue === true || storedValue === 'true'); return { title: provider.title, id: provider.id, checkbox: true, checked: isChecked, default: provider.default }; });
-        var currentController = Lampa.Controller.enabled().name;
-        Lampa.Select.show({
-            title: Lampa.Lang.translate('select_ratings_dialog_title'), items: selectItems,
-            onBack: function () { Lampa.Controller.toggle(currentController || 'settings'); },
-            onCheck: function (item) { let oldValue = Lampa.Storage.get(item.id, item.default); let oldStateIsChecked = (oldValue === true || oldValue === 'true'); let newStateIsChecked = !oldStateIsChecked; Lampa.Storage.set(item.id, newStateIsChecked); item.checked = newStateIsChecked; }
+        // Define the available rating providers
+        // 'id' MUST match the Lampa.Storage key used by create.draw (e.g., 'show_rating_imdb')
+        // 'default' MUST match the default value defined for the original trigger
+        const providers = [
+            { title: 'IMDb', id: 'show_rating_imdb', default: true },
+            { title: 'TMDB', id: 'show_rating_tmdb', default: true },
+            // { title: 'KinoPoisk', id: 'show_rating_kp', default: true }, // 
+            { title: 'Rotten Tomatoes (Critics)', id: 'show_rating_tomatoes', default: false },
+            { title: 'Rotten Tomatoes (Audience)', id: 'show_rating_audience', default: false },
+            { title: 'Metacritic', id: 'show_rating_metacritic', default: false },
+            { title: 'Trakt', id: 'show_rating_trakt', default: false },
+            { title: 'Letterboxd', id: 'show_rating_letterboxd', default: false },
+            { title: 'Roger Ebert', id: 'show_rating_rogerebert', default: false }
+        ];
+
+        // Prepare items array for Lampa.Select.show
+        let selectItems = providers.map(provider => {
+            let storedValue = Lampa.Storage.get(provider.id, provider.default);
+            let isChecked = (storedValue === true || storedValue === 'true');
+            return {
+                title: provider.title,
+                id: provider.id,          // Use the storage key as the item ID
+                checkbox: true,         // Display as a checkbox
+                checked: isChecked,       // Set initial state based on storage
+                default: provider.default // Pass default for toggle logic in onCheck
+            };
         });
-    } // End showRatingProviderSelection
 
+        // Get current controller context to return correctly with 'Back'
+        var currentController = Lampa.Controller.enabled().name;
 
+        // Use Lampa's built-in Select component
+        Lampa.Select.show({
+            title: Lampa.Lang.translate('select_ratings_dialog_title'), // Translated title
+            items: selectItems,                                        // Items with checkboxes
+            onBack: function () {                                      // Handler for Back button
+                Lampa.Controller.toggle(currentController || 'settings');
+            },
+            onCheck: function (item) { // Handler for when ANY checkbox is toggled
+                // Read the definitive OLD state from storage using item's ID
+                let oldValue = Lampa.Storage.get(item.id, item.default);
+                let oldStateIsChecked = (oldValue === true || oldValue === 'true');
+
+                // Calculate the NEW state
+                let newStateIsChecked = !oldStateIsChecked;
+
+                // Save the NEW state directly to Lampa.Storage under the specific key (e.g., 'show_rating_imdb')
+                Lampa.Storage.set(item.id, newStateIsChecked);
+
+                // Update the visual state of the checkbox in the dialog UI
+                item.checked = newStateIsChecked;
+
+                // NOTE: We don't call Lampa.Settings.update() here. We're saving directly.
+                // The draw function will read these storage keys next time it runs.
+            }
+        });
+    } // End of showRatingProviderSelection function
+  
     // --- create function (Info Panel Handler) ---
-    function create() {
-        var html; var timer; var network = new Lampa.Reguest(); var loaded = {};
-        // Removed this.kpRatingResult = null; as KP was abandoned earlier - keeping state clean
+    // UNCHANGED create function...
+    function create() { 
+        
+        var html;
+        var timer; 
+        var network = new Lampa.Reguest(); 
+        var loaded = {}; 
+        
+        this.create = function () { // --- Original this.create --- //
+            html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); 
+        }; 
+                
+        this.update = function(data) { // Called on focus change with new movie data
+            var _this = this; // Keep if needed by fetchRatings callback's use of this.draw
 
-        this.create = function () { html = $("<div class=\"new-interface-info\">\n <div class=\"new-interface-info__body\">\n <div class=\"new-interface-info__head\"></div>\n <div class=\"new-interface-info__title\"></div>\n <div class=\"new-interface-info__details\"></div>\n <div class=\"new-interface-info__description\"></div>\n </div>\n </div>"); };
-
-        // Corrected update function (only triggers MDBList fetch)
-        this.update = function (data) {
-            var _this = this;
-            html.find('.new-interface-info__head,.new-interface-info__details').text('---');
-            html.find('.new-interface-info__title').text(data.title);
+            // --- Standard updates (non-title) --
+            html.find('.new-interface-info__head, .new-interface-info__details').text('---'); // Placeholder
             html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
             Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
-            if (data.id && data.method) {
-                var tmdb_url_key = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
-                var mdbCallback = function(mdblistResult) {
-                    mdblistRatingsCache[data.id] = mdblistResult;
-                    if (loaded && loaded[tmdb_url_key]) { _this.draw(loaded[tmdb_url_key]); }
-                };
-                fetchRatings(data, mdbCallback);
-            } else if (!data.method) { console.warn("CREATE UPDATE: data.method missing for item", data.id); }
-            this.load(data); // Triggers TMDB load AND Watchmode fetch (in its callback)
-        }; // End update function
+            delete mdblistRatingsCache[data.id]; // Existing logic
+            delete mdblistRatingsPending[data.id]; // Existing logic
+            // --- End Standard updates ---
+        
+            // --- Title Handling ---
+            var storageKey = 'show_logo_instead_of_title'; // Or your simple key
+            var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
 
-        // Draw function (displays MDBList ratings + two-line layout)
-        this.draw = function (data) { // data here is the full object from TMDB cache/fetch
+            if (showLogos && data.id && data.method && data.title) {
+                this.displayLogoOrTitle(data); // <<-- CALL NEW HELPER
+            } else if (data.title) {
+                // Ensure html is defined before finding element
+                if (html) html.find('.new-interface-info__title').text(data.title); // Logo mode off
+            } else {
+                if (html) html.find('.new-interface-info__title').empty(); // No title, clear area
+            }
+            // --- End Title Handling ---
+
+            // --- Ratings Fetch (existing logic - keep as is) ---
+            if (data.id && data.method) {
+                mdblistRatingsPending[data.id] = true;
+                fetchRatings(data, function(mdblistResult) { // fetchRatings callback
+                    mdblistRatingsCache[data.id] = mdblistResult;
+                    delete mdblistRatingsPending[data.id];
+                    var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
+                    // Ensure 'loaded' is defined/accessible in this scope if used here
+                    if (typeof loaded !== 'undefined' && loaded[tmdb_url]) {
+                        _this.draw(loaded[tmdb_url]);
+                    }
+                });
+            }
+            this.load(data); // Load supplementary TMDB data (keep existing)
+        };
+     
+        this.draw = function (data) {
             var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
             var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
-            var head = []; var lineOneDetails = []; var genreDetails = [];
+            var head = [];
+            // ** Initialize separate arrays for layout lines **
+            var lineOneDetails = []; // To hold Ratings, Runtime, PG
+            var genreDetails = [];   // To hold only Genres string
             var countries = Lampa.Api.sources.tmdb.parseCountries(data);
             var pg = Lampa.Api.sources.tmdb.parsePG(data);
 
-            // Logos (keep all)
+            // --- Logo URLs --- 
             const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
             const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
             const rtFreshLogoUrl = 'https://psahx.github.io/ps_plug/Rotten_Tomatoes.svg';
@@ -307,205 +474,623 @@
             const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
             const kpLogoUrl = 'https://psahx.github.io/ps_plug/kinopoisk-icon-main.svg'; // Unused
 
-            // Rating Toggles State
-            let imdbStored = Lampa.Storage.get('show_rating_imdb', true); const showImdb = (imdbStored === true || imdbStored === 'true');
-            let tmdbStored = Lampa.Storage.get('show_rating_tmdb', true); const showTmdb = (tmdbStored === true || tmdbStored === 'true');
-            let tomatoesStored = Lampa.Storage.get('show_rating_tomatoes', false); const showTomatoes = (tomatoesStored === true || tomatoesStored === 'true');
-            let audienceStored = Lampa.Storage.get('show_rating_audience', false); const showAudience = (audienceStored === true || audienceStored === 'true');
-            let metacriticStored = Lampa.Storage.get('show_rating_metacritic', false); const showMetacritic = (metacriticStored === true || metacriticStored === 'true');
-            let traktStored = Lampa.Storage.get('show_rating_trakt', false); const showTrakt = (traktStored === true || traktStored === 'true');
-            let letterboxdStored = Lampa.Storage.get('show_rating_letterboxd', false); const showLetterboxd = (letterboxdStored === true || letterboxdStored === 'true');
-            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false); const showRogerebert = (rogerEbertStored === true || rogerEbertStored === 'true');
+            // --- Rating Toggles State --- (Unchanged - read all needed for line 1)
+            let imdbStored = Lampa.Storage.get('show_rating_imdb', true);
+            const showImdb = (imdbStored === true || imdbStored === 'true');
+            let tmdbStored = Lampa.Storage.get('show_rating_tmdb', true);
+            const showTmdb = (tmdbStored === true || tmdbStored === 'true');
+            // No need to read KP toggle anymore
+            let tomatoesStored = Lampa.Storage.get('show_rating_tomatoes', false);
+            const showTomatoes = (tomatoesStored === true || tomatoesStored === 'true');
+            let audienceStored = Lampa.Storage.get('show_rating_audience', false);
+            const showAudience = (audienceStored === true || audienceStored === 'true');
+            let metacriticStored = Lampa.Storage.get('show_rating_metacritic', false);
+            const showMetacritic = (metacriticStored === true || metacriticStored === 'true');
+            let traktStored = Lampa.Storage.get('show_rating_trakt', false);
+            const showTrakt = (traktStored === true || traktStored === 'true');
+            let letterboxdStored = Lampa.Storage.get('show_rating_letterboxd', false);
+            const showLetterboxd = (letterboxdStored === true || letterboxdStored === 'true');
+            let rogerEbertStored = Lampa.Storage.get('show_rating_rogerebert', false);
+            const showRogerebert = (rogerEbertStored === true || rogerEbertStored === 'true');
 
-            // Build Head
+            // --- Build Head --- (Unchanged)
             if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
             if (countries.length > 0) head.push(countries.join(', '));
 
-            // Get MDBList Rating Results
+            // --- Get MDBList Rating Results --- (Unchanged)
             var mdblistResult = mdblistRatingsCache[data.id];
 
             // --- Build Line 1 Details (Ratings) ---
-            if (showImdb) { var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0'; lineOneDetails.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>'); }
-            if (showTmdb) { lineOneDetails.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>'); }
-            if (showTomatoes) { if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { lineOneDetails.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>'); } } }
-            if (showAudience) { if (mdblistResult && mdblistResult.popcorn != null) { let parsedScore = parseFloat(mdblistResult.popcorn); if (!isNaN(parsedScore)) { let score = parsedScore; let logoUrl = ''; if (score >= 60) { logoUrl = rtAudienceFreshLogoUrl; } else if (score >= 0) { logoUrl = rtAudienceSpilledLogoUrl; } if (logoUrl) { lineOneDetails.push('<div class="full-start__rate rt-audience-rating-item">' + '<div class="rt-audience-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' + '</div>'); } } } }
-            if (showMetacritic) { if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) { let score = mdblistResult.metacritic; if (score >= 0) { lineOneDetails.push('<div class="full-start__rate metacritic-rating-item">' + '<div class="metacritic-score">' + score + '</div>' + '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + '</div>'); } } }
-            if (showTrakt) { if (mdblistResult && mdblistResult.trakt != null) { let parsedScore = parseFloat(mdblistResult.trakt); if (!isNaN(parsedScore)) { let score = parsedScore; if (score >= 0) { lineOneDetails.push('<div class="full-start__rate trakt-rating-item">' + '<div class="trakt-score">' + score + '</div>' + '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + '</div>'); } } } }
-            if (showLetterboxd) { if (mdblistResult && mdblistResult.letterboxd != null) { let parsedScore = parseFloat(mdblistResult.letterboxd); if (!isNaN(parsedScore)) { let score = parsedScore.toFixed(1); if (parsedScore >= 0) { lineOneDetails.push('<div class="full-start__rate letterboxd-rating-item">' + '<div class="letterboxd-score">' + score + '</div>' + '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + '</div>'); } } } }
-            if (showRogerebert) { if (mdblistResult && mdblistResult.rogerebert != null) { let parsedScore = parseFloat(mdblistResult.rogerebert); if (!isNaN(parsedScore)) { let score = parsedScore.toFixed(1); if (parsedScore >= 0) { lineOneDetails.push('<div class="full-start__rate rogerebert-rating-item">' + '<div class="rogerebert-score">' + score + '</div>' + '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + '</div>'); } } } }
+            // Push all active rating divs into lineOneDetails
+            if (showImdb) {
+                var imdbRating = mdblistResult && mdblistResult.imdb !== null && typeof mdblistResult.imdb === 'number' ? parseFloat(mdblistResult.imdb || 0).toFixed(1) : '0.0';
+                lineOneDetails.push('<div class="full-start__rate imdb-rating-item">' + '<div>' + imdbRating + '</div>' + '<img src="' + imdbLogoUrl + '" class="rating-logo imdb-logo" alt="IMDB" draggable="false">' + '</div>');
+            }
+            if (showTmdb) {
+                lineOneDetails.push('<div class="full-start__rate tmdb-rating-item">' + '<div>' + vote + '</div>' + '<img src="' + tmdbLogoUrl + '" class="rating-logo tmdb-logo" alt="TMDB" draggable="false">' + '</div>');
+            }
+            if (showTomatoes) {
+                 if (mdblistResult && typeof mdblistResult.tomatoes === 'number' && mdblistResult.tomatoes !== null) { let score = mdblistResult.tomatoes; let logoUrl = ''; if (score >= 60) { logoUrl = rtFreshLogoUrl; } else if (score >= 0) { logoUrl = rtRottenLogoUrl; } if (logoUrl) { lineOneDetails.push('<div class="full-start__rate rt-rating-item">' + '<div class="rt-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-logo" alt="RT Critics" draggable="false">' + '</div>'); } }
+            }
+            if (showAudience) {
+                 if (mdblistResult && mdblistResult.popcorn != null) { let parsedScore = parseFloat(mdblistResult.popcorn); if (!isNaN(parsedScore)) { let score = parsedScore; let logoUrl = ''; if (score >= 60) { logoUrl = rtAudienceFreshLogoUrl; } else if (score >= 0) { logoUrl = rtAudienceSpilledLogoUrl; } if (logoUrl) { lineOneDetails.push('<div class="full-start__rate rt-audience-rating-item">' + '<div class="rt-audience-score">' + score + '</div>' + '<img src="' + logoUrl + '" class="rating-logo rt-audience-logo" alt="RT Audience" draggable="false">' + '</div>'); } } }
+            }
+            if (showMetacritic) {
+                 if (mdblistResult && typeof mdblistResult.metacritic === 'number' && mdblistResult.metacritic !== null) { let score = mdblistResult.metacritic; if (score >= 0) { lineOneDetails.push('<div class="full-start__rate metacritic-rating-item">' + '<div class="metacritic-score">' + score + '</div>' + '<img src="' + metacriticLogoUrl + '" class="rating-logo metacritic-logo" alt="Metacritic" draggable="false">' + '</div>'); } }
+            }
+            if (showTrakt) {
+                 if (mdblistResult && mdblistResult.trakt != null) { let parsedScore = parseFloat(mdblistResult.trakt); if (!isNaN(parsedScore)) { let score = parsedScore; if (score >= 0) { lineOneDetails.push('<div class="full-start__rate trakt-rating-item">' + '<div class="trakt-score">' + score + '</div>' + '<img src="' + traktLogoUrl + '" class="rating-logo trakt-logo" alt="Trakt" draggable="false">' + '</div>'); } } }
+            }
+            if (showLetterboxd) {
+                 if (mdblistResult && mdblistResult.letterboxd != null) { let parsedScore = parseFloat(mdblistResult.letterboxd); if (!isNaN(parsedScore)) { let score = parsedScore.toFixed(1); if (parsedScore >= 0) { lineOneDetails.push('<div class="full-start__rate letterboxd-rating-item">' + '<div class="letterboxd-score">' + score + '</div>' + '<img src="' + letterboxdLogoUrl + '" class="rating-logo letterboxd-logo" alt="Letterboxd" draggable="false">' + '</div>'); } } }
+            }
+            if (showRogerebert) {
+                 if (mdblistResult && mdblistResult.rogerebert != null) { let parsedScore = parseFloat(mdblistResult.rogerebert); if (!isNaN(parsedScore)) { let score = parsedScore.toFixed(1); if (parsedScore >= 0) { lineOneDetails.push('<div class="full-start__rate rogerebert-rating-item">' + '<div class="rogerebert-score">' + score + '</div>' + '<img src="' + rogerEbertLogoUrl + '" class="rating-logo rogerebert-logo" alt="Roger Ebert" draggable="false">' + '</div>'); } } }
+            }
+
 
             // --- Build Line 1 Details (Runtime, PG) ---
-            if (data.runtime) { lineOneDetails.push(Lampa.Utils.secondsToTime(data.runtime * 60, true)); }
-            if (pg) { lineOneDetails.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>'); }
+            // Push Runtime and PG into lineOneDetails array
+            if (data.runtime) {
+                lineOneDetails.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
+            }
+            if (pg) {
+                lineOneDetails.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
+            }
 
             // --- Build Genre Details ---
-            if (data.genres && data.genres.length > 0) { genreDetails.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | ')); }
+            // Push ONLY the Genres string into genreDetails array
+            if (data.genres && data.genres.length > 0) {
+                genreDetails.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
+            }
 
             // --- Update HTML ---
             html.find('.new-interface-info__head').empty().append(head.join(', '));
+
+            // ** Construct final details HTML with specific lines **
             let lineOneHtml = lineOneDetails.join('<span class="new-interface-info__split">&#9679;</span>');
+            // Genres string is already joined by '|', so just get the first element if it exists
             let genresHtml = genreDetails.length > 0 ? genreDetails[0] : '';
+
             let finalDetailsHtml = '';
-            if (lineOneDetails.length > 0) { finalDetailsHtml += `<div class="line-one-details">${lineOneHtml}</div>`; }
-            if (genresHtml) { finalDetailsHtml += `<div class="genre-details-line">${genresHtml}</div>`; }
+            // Add line 1 (Ratings, Runtime, PG) if it has content
+            if (lineOneDetails.length > 0) {
+                 finalDetailsHtml += `<div class="line-one-details">${lineOneHtml}</div>`;
+            }
+            // Add line 2 (Genres) if it has content
+             if (genresHtml) {
+                 finalDetailsHtml += `<div class="genre-details-line">${genresHtml}</div>`;
+             }
+
+            // Set the new HTML structure into the details element
             html.find('.new-interface-info__details').html(finalDetailsHtml);
         }; // End draw function
-
-        // Corrected load function (fetches imdb_id, triggers Watchmode fetch)
+                       
         this.load = function (data) {
-            var _this = this;
-            clearTimeout(timer);
-            var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates,external_ids&language=' + Lampa.Storage.get('language'));
-
-            // Callback defined once for Watchmode fetch result
-            var watchmodeCallback = function(watchmodeResult) {
-                watchmodeCache[data.id] = watchmodeResult;
-                if (loaded && loaded[url]) { _this.draw(loaded[url]); }
-            };
-
-            if (loaded[url]) {
-                 let currentMovieData = loaded[url];
-                 _this.draw(currentMovieData);
-                 if (!getWatchmodeCache(currentMovieData.id) && !watchmodePending[currentMovieData.id]) {
-                      if (currentMovieData.imdb_id){ fetchWatchmodeDetails(currentMovieData, watchmodeCallback); }
-                 }
-                 return;
-            }
-            timer = setTimeout(function () {
-                network.clear(); network.timeout(5000);
-                network.silent(url, function (movie) {
-                     movie.imdb_id = movie.external_ids ? movie.external_ids.imdb_id : null;
-                     loaded[url] = movie;
-                     if (!movie.method) movie.method = data.name ? 'tv' : 'movie';
-                     fetchWatchmodeDetails(movie, watchmodeCallback); // Trigger Watchmode Fetch HERE
-                     _this.draw(movie); // Initial draw
-                }, function(xhr, status){ console.error("CREATE LOAD: Failed to load TMDB details for", data.id, status); });
-            }, 300);
-        }; // End this.load
-
-        this.render = function () { return html; }; this.empty = function () {};
-        // Corrected destroy function (only cleans MDBList vars relevant to this instance)
-        this.destroy = function () {
-            html.remove(); loaded = {}; html = null;
-            mdblistRatingsCache = {}; mdblistRatingsPending = {};
+            var _this = this; 
+            clearTimeout(timer); 
+            var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
+            if (loaded[url]) return this.draw(loaded[url]); 
+            timer = setTimeout(function () { 
+                network.clear(); 
+                network.timeout(5000); 
+                network.silent(url, function (movie) { 
+                    loaded[url] = movie; 
+                    if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; 
+                    _this.draw(movie); 
+                }); 
+            }, 300); 
         };
-    } // End create function
+        
+        
+        this.render = function () { 
+            return html; 
+        };
+            // --- Helper Method INSIDE create() ---
+        this.displayLogoOrTitle = function(movieData) {
+            // 'html' is accessible here from the outer 'create' scope
+            if (!html) return; // Ensure panel element exists
+            var titleElement = html.find('.new-interface-info__title');
+            if (!titleElement.length) return; // Ensure title element exists
+
+            // Ensure movieData is valid before proceeding
+            if (!movieData || !movieData.id || !movieData.method || !movieData.title) {
+                console.warn("displayLogoOrTitle: Invalid movieData received.");
+                titleElement.empty(); // Clear title area if data is bad
+                return;
+            }
+
+            var id = movieData.id;
+            // console.log(`displayLogoOrTitle (ID ${id}): Setting text placeholder: ${movieData.title}`); // Keep logs minimal
+            titleElement.text(movieData.title); // Set text placeholder immediately
+
+            // Use the global network instance (ensure it's defined and accessible)
+            if (!network) { console.error("displayLogoOrTitle: Global network missing."); return; }
+
+            var method = movieData.method;
+            var apiKey = Lampa.TMDB.key();
+            var language = Lampa.Storage.get('language');
+            var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
+
+            // console.log(`displayLogoOrTitle (ID ${id}): Fetching logo: ${apiUrl}`); // Keep logs minimal
+
+            network.clear(); // Clear previous logo requests on the global instance
+            network.timeout(config.request_timeout || 7000);
+            network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
+                // console.log(`displayLogoOrTitle (ID ${id}): API Success.`); // Keep logs minimal
+                var logoPath = null;
+                // Find the best logo path from response
+                if (response && response.logos && response.logos.length > 0) {
+                    var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
+                    logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
+                }
+
+                // --- Find element AGAIN inside callback and update ---
+                // Use the 'html' variable from the outer 'create' scope
+                var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
+
+                if (currentTitleElement && currentTitleElement.length) {
+                    if (logoPath) {
+                         // --- Read Height Setting and Build Style ---
+                         var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100'); // Read saved height, default 100
+                         // Basic validation to ensure it's a number string, default to '100' otherwise
+                         if (!/^\d+$/.test(selectedHeight)) {
+                             console.warn(`Invalid logo height '${selectedHeight}' found in storage, using default '100'.`); // Optional warning
+                             selectedHeight = '100';
+                         }
+                         console.log(`displayLogoOrTitle (ID ${id}): Using max-height: ${selectedHeight}px`); // Log the height being used
+
+                         var imageSize = 'w500'; // Request a decent size image source
+                         // Dynamically create the style string using the selected height
+                         var styleAttr = `max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;`;
+                         // --- End Style Building ---
+
+                         var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                         var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
+                         currentTitleElement.empty().html(imgTagHtml); // Update with fresh reference
+                         // console.log(`displayLogoOrTitle (ID ${id}): UI updated with logo.`); // Keep logs minimal
+                    } else {
+                         // console.log(`displayLogoOrTitle (ID ${id}): No logo found. Ensuring text remains.`); // Keep logs minimal
+                         currentTitleElement.text(movieData.title); // Ensure text is set if no logo
+                    }
+                } else {
+                     console.log(`displayLogoOrTitle (ID ${id}): Title element NOT FOUND during callback.`); // Keep this log
+                     // Cannot update UI if element is gone
+                }
+
+            }, function(xhr, status) { // ERROR CALLBACK
+                 console.error(`displayLogoOrTitle (ID ${id}): API Error ${status}. Ensuring text remains.`);
+                 // Ensure text title is displayed on error
+                 var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
+                  if (currentTitleElement && currentTitleElement.length) {
+                      // Check movieData exists before accessing title
+                      if(movieData && movieData.title) {
+                           currentTitleElement.text(movieData.title);
+                      } else {
+                           currentTitleElement.empty(); // Clear if no title available
+                      }
+                  }
+            }); // End network.silent
+        }; // --- End of displayLogoOrTitle ---
+        
+        this.empty = function () {};
+        
+        this.destroy = function () { // --- ORIGINAL this.destroy --- //
+            html.remove(); 
+            loaded = {}; 
+            html = null; 
+            mdblistRatingsCache = {}; 
+            mdblistRatingsPending = {}; 
+        }; 
+    }
 
 
     // --- component function (Main List Handler) ---
     // ORIGINAL FUNCTION - UNCHANGED
-    function component(object) { /* ... */ }
+    function component(object) { 
+        
+        var network = new Lampa.Reguest(); 
+        var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); 
+        var items = []; 
+        var html = $('<div class="new-interface"><img class="full-start__background"></div>'); 
+        var active = 0; 
+        var newlampa = Lampa.Manifest.app_digital >= 166; 
+        var info; 
+        var lezydata; 
+        var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; 
+        var background_img = html.find('.full-start__background'); 
+        var background_last = ''; 
+        var background_timer; 
+        
+        this.create = function () {
+            
+        }; 
+        
+        this.empty = function () { 
+            var button; 
+            if (object.source == 'tmdb') { 
+                button = $('<div class="empty__footer"><div class="simple-button selector">' + Lampa.Lang.translate('change_source_on_cub') + '</div></div>'); 
+                button.find('.selector').on('hover:enter', function () { 
+                    Lampa.Storage.set('source', 'cub'); 
+                    Lampa.Activity.replace({ source: 'cub' }); 
+                }); 
+            } 
+            var empty = new Lampa.Empty(); 
+            html.append(empty.render(button)); 
+            this.start = empty.start; 
+            this.activity.loader(false); 
+            this.activity.toggle(); 
+        }; 
+        
+        this.loadNext = function () {
+            var _this = this; 
+            if (this.next && !this.next_wait && items.length) { 
+                this.next_wait = true; 
+                this.next(function (new_data) { 
+                    _this.next_wait = false; 
+                    new_data.forEach(_this.append.bind(_this)); 
+                    Lampa.Layer.visible(items[active + 1].render(true)); 
+                }, function () { 
+                    _this.next_wait = false; 
+                }); 
+            } 
+        }; 
+        
+        this.push = function () {}; 
+        
+        this.build = function (data) {
+            var _this2 = this;
+            lezydata = data; 
+            info = new create(object); 
+            info.create(); 
+            scroll.minus(info.render()); 
+            data.slice(0, viewall ? data.length : 2).forEach(this.append.bind(this)); 
+            html.append(info.render()); 
+            html.append(scroll.render()); 
+            if (newlampa) {
+                Lampa.Layer.update(html); 
+                Lampa.Layer.visible(scroll.render(true)); 
+                scroll.onEnd = this.loadNext.bind(this); 
+                scroll.onWheel = function (step) { 
+                    if (!Lampa.Controller.own(_this2)) _this2.start(); 
+                    if (step > 0) _this2.down(); 
+                    else if (active > 0) _this2.up(); 
+                }; 
+            } if (items.length > 0 && items[0] && items[0].data) { 
+                active = 0; info.update(items[active].data); 
+                this.background(items[active].data); 
+            }    
+            this.activity.loader(false); 
+            this.activity.toggle(); 
+        }; 
+        
+        this.background = function (elem) {
+            if (!elem || !elem.backdrop_path) return; 
+            var new_background = Lampa.Api.img(elem.backdrop_path, 'w1280'); 
+            clearTimeout(background_timer); 
+            if (new_background == background_last) return; 
+            background_timer = setTimeout(function () { 
+                background_img.removeClass('loaded'); 
+                background_img[0].onload = function () { 
+                    background_img.addClass('loaded'); 
+                }; 
+                background_img[0].onerror = function () { 
+                    background_img.removeClass('loaded'); 
+                }; 
+                background_last = new_background; 
+                setTimeout(function () { 
+                    if (background_img[0]) background_img[0].src = background_last; 
+                }, 300); 
+            }, 1000); 
+        }; 
+        
+        this.append = function (element) {
+            if (element.ready) return; 
+            var _this3 = this; 
+            element.ready = true; 
+            var item = new Lampa.InteractionLine(element, { 
+                url: element.url, card_small: true, cardClass: element.cardClass, genres: object.genres, object: object, card_wide: true, nomore: element.nomore 
+            }); 
+            item.create(); 
+            item.onDown = this.down.bind(this); 
+            item.onUp = this.up.bind(this); 
+            item.onBack = this.back.bind(this); 
+            item.onToggle = function () { 
+                active = items.indexOf(item); 
+            }; 
+            if (this.onMore) item.onMore = this.onMore.bind(this); 
+            item.onFocus = function (elem) { 
+                if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); 
+            }; 
+            item.onHover = function (elem) { 
+                if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; 
+                info.update(elem); 
+                _this3.background(elem); 
+            }; 
+            item.onFocusMore = info.empty.bind(info); 
+            scroll.append(item.render()); 
+            items.push(item); 
+        }; 
+        
+        this.back = function () { 
+            Lampa.Activity.backward(); 
+        }; 
+        
+        this.down = function () { 
+            active++; 
+            active = Math.min(active, items.length - 1); 
+            if (!viewall && lezydata) lezydata.slice(0, active + 2).forEach(this.append.bind(this)); 
+            items[active].toggle(); 
+            scroll.update(items[active].render()); 
+        }; 
+        
+        this.up = function () { 
+            active--; 
+            if (active < 0) { 
+                active = 0; Lampa.Controller.toggle('head'); 
+            } else { 
+                items[active].toggle(); scroll.update(items[active].render()); 
+            } 
+        }; 
+        
+        this.start = function () {
+            var _this4 = this; 
+            Lampa.Controller.add('content', { 
+                link: this, toggle: function toggle() { 
+                    if (_this4.activity.canRefresh()) return false; 
+                    if (items.length) { 
+                        items[active].toggle(); 
+                    } 
+                }, 
+                update: function update() {}, 
+                left: function left() { 
+                    if (Navigator.canmove('left')) Navigator.move('left'); 
+                    else Lampa.Controller.toggle('menu'); 
+                }, 
+                right: function right() { 
+                    Navigator.move('right'); 
+                }, 
+                up: function up() { 
+                    if (Navigator.canmove('up')) Navigator.move('up'); 
+                    else Lampa.Controller.toggle('head'); 
+                }, 
+                down: function down() { 
+                    if (Navigator.canmove('down')) Navigator.move('down'); 
+                }, 
+                back: this.back 
+            }); 
+            Lampa.Controller.toggle('content'); 
+        }; 
+        
+        this.refresh = function () { 
+            this.activity.loader(true); 
+            this.activity.need_refresh = true; 
+        }; 
+        
+        this.pause = function () {}; 
+        this.stop = function () {}; 
+        this.render = function () { 
+            return html; 
+        }; 
+        
+        this.destroy = function () {
+            clearTimeout(background_timer); 
+            network.clear(); 
+            Lampa.Arrays.destroy(items); 
+            scroll.destroy(); 
+            if (info) info.destroy(); 
+            if (html) html.remove(); 
+            items = null; 
+            network = null; 
+            lezydata = null; 
+            info = null; 
+            html = null; 
+        }; 
+    }
 
 
     // --- Plugin Initialization Logic ---
     function startPlugin() {
-        // Basic Lampa checks
-        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { console.error("AR_Plugin: Missing Lampa components"); return; }
-        // Add lang strings (can be done within the main Lang block)
-        Lampa.Lang.add({ full_notext: { en: 'No description', ru: 'Нет описания'}, });
-        // Interface hijack
-        window.plugin_interface_ready = true; var old_interface = Lampa.InteractionMain; var new_interface = component;
-        Lampa.InteractionMain = function (object) { var use = new_interface; if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; if (window.innerWidth < 767) use = old_interface; if (!Lampa.Account.hasPremium()) use = old_interface; if (Lampa.Manifest.app_digital < 153) use = old_interface; return new use(object); };
+        // UNCHANGED Initialization setup...
+        if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { 
+            console.error("NewInterface Adjust Padding: Missing Lampa components"); 
+            return; 
+        }
+        
+        window.plugin_interface_ready = true; 
+        var old_interface = Lampa.InteractionMain; 
+        var new_interface = component;
+        
+        // --- Add Listener for Full Card Logo Replacement (Complete Logic) ---
+        if (Lampa.Listener && network) { // Check Listener and global network
+            Lampa.Listener.follow("full", function(eventData) {
+                var storageKey = 'show_logo_instead_of_title';
+                try {
+                    // Check if logo display is enabled
+                    var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
 
-        // CSS Injection
-        var style_id = 'ar_style'; // Use specific prefix
+                    // Only proceed if the view is complete and logos should be shown
+                    if (eventData.type === 'complite' && showLogos) {
+                        var movie = eventData.data.movie;
+
+                        // Check for essential movie data
+                        if (movie && movie.id && movie.title) {
+                            movie.method = movie.name ? 'tv' : 'movie'; // Determine method if needed
+                            var id = movie.id;
+
+                            // Find the target element where the title/logo goes
+                            // We need to potentially re-find this inside callbacks
+                            var initialTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
+
+                            if (initialTargetElement.length > 0) {
+                                // --- Set text title as placeholder immediately ---
+                                console.log(`Listener (Full ID: ${id}): Setting text placeholder: ${movie.title}`);
+                                initialTargetElement.text(movie.title);
+
+                                // --- Fetch the logo ---
+                                if (!network) { console.error("Listener (Full): Global network missing."); return; }
+
+                                var apiKey = Lampa.TMDB.key();
+                                var language = Lampa.Storage.get('language');
+                                var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
+
+                                console.log(`Listener (Full ID: ${id}): Fetching logo: ${apiUrl}`);
+
+                                network.clear(); // Clear previous requests on the global instance
+                                network.timeout(config.request_timeout || 7000);
+                                network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
+                                    console.log(`Listener (Full ID: ${id}): API Success.`);
+                                    var logoPath = null;
+                                    // Find the best logo path
+                                    if (response && response.logos && response.logos.length > 0) {
+                                        var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
+                                        logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
+                                    }
+
+                                    // --- Re-find the element inside callback and update ---
+                                    // Use the eventData again to ensure we have the right context
+                                    var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
+
+                                    if (currentTargetElement.length > 0) {
+                                        if (logoPath) {
+                                             console.log(`Listener (Full ID: ${id}): Logo found. Updating UI.`);
+                                             var imageSize = 'w300'; // Size suitable for details page title
+                                             var styleAttr = 'margin-top: 5px; max-height: 125px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
+                                             var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                                             var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
+                                             currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
+                                             console.log(`Listener (Full ID: ${id}): UI updated with logo.`);
+                                        } else {
+                                             console.log(`Listener (Full ID: ${id}): No logo found. Ensuring text remains.`);
+                                             currentTargetElement.text(movie.title); // Ensure text is set if no logo
+                                        }
+                                    } else {
+                                        console.log(`Listener (Full ID: ${id}): Target element NOT FOUND during callback.`);
+                                    }
+
+                                }, function(xhr, status) { // ERROR CALLBACK
+                                     console.error(`Listener (Full ID: ${id}): API Error ${status}. Ensuring text remains.`);
+                                     // Ensure text title is displayed on error by re-finding element
+                                     var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
+                                      if (currentTargetElement && currentTargetElement.length) {
+                                          currentTargetElement.text(movie.title);
+                                      }
+                                }); // End network.silent
+
+                            } // End if initialTargetElement found
+                        } // End if movie data valid
+                    } // End if complite and showLogos
+                } catch (e) { console.error("Logo Listener (Full): Error in callback:", e); }
+            }); // End Lampa.Listener.follow
+        } else {
+             console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
+        }
+        // --- End Listener for Full Card ---
+    
+        // --- Override Lampa.InteractionMain --- (existing code)
+        Lampa.InteractionMain = function (object) { 
+            var use = new_interface; 
+            if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; 
+            if (window.innerWidth < 767) use = old_interface; 
+            if (!Lampa.Account.hasPremium()) use = old_interface; 
+            if (Lampa.Manifest.app_digital < 153) use = old_interface; 
+            return new use(object); 
+        };
+
+        // **MODIFIED CSS**: Adjusted padding for number divs
+        var style_id = 'new_interface_style_adjusted_padding'; // Style ID
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="ar_style"]').remove(); // Clean up previous matching prefix
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up older naming too
+             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-                /* Base styles */
-                .new-interface .card--small.card--wide { width: 18.3em; }
-                .new-interface-info { position: relative; padding: 1.5em; height: 24em; }
-                .new-interface-info__body { width: 80%; padding-top: 1.1em; }
-                .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
-                .new-interface-info__head span { color: #fff; }
-                .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
-                .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
+            /* Base styles... (kept from pivot point script) */
+            .new-interface .card--small.card--wide { width: 18.3em; }
+            .new-interface-info { position: relative; padding: 1.5em; height: 24em; } /* original was 24em*/
+            /* ... rest of base styles identical to pivot script ... */
+            .new-interface-info__body { width: 80%; padding-top: 1.1em; }
+            .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
+            .new-interface-info__head span { color: #fff; }
+            .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
+            /* .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; } */
+                        
+            .new-interface-info__details {
+                margin-bottom: 1em; 
+                display: block;
+                min-height: 1.9em;
+                font-size: 1.1em;
+            }
+            .line-one-details {
+                margin-bottom: 0.6em;
+                line-height: 1.5;
+            }
+            .genre-details-line {
+                margin-top: 1em;
+                line-height: 1.5;
+            }
 
-                /* Layout for Details */
-                .new-interface-info__details { margin-bottom: 1em; display: block; min-height: 1.9em; font-size: 1.1em; }
-                .line-one-details { margin-bottom: 0.6em; line-height: 1.5; }
-                .genre-details-line { margin-top: 1em; line-height: 1.5; }
-                .new-interface-info__split { margin: 0 0.5em; font-size: 0.7em; } /* Split for Line 1 */
+            .new-interface-info__split { margin: 0 0.5em; font-size: 0.7em; }
+            .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
+            .new-interface .card-more__box { padding-bottom: 95%; }
+            .new-interface .full-start__background { height: 108%; top: -6em; }
+            .new-interface .card__promo { display: none; }
+            .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }
+            .new-interface .card.card--wide .card-watched { display: none !important; }
+            body.light--version .new-interface-info__body { width: 69%; padding-top: 1.5em; }
+            body.light--version .new-interface-info { height: 25.3em; }
+            body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
+            body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
 
-                /* Rating Box Styles */
-                .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0em; display: inline-flex; align-items: center; vertical-align: middle; background-color: rgba(255, 255, 255, 0.12); padding: 0 0.2em 0 0; border-radius: 0.3em; gap: 0.4em; overflow: hidden; height: auto; }
-                .new-interface .full-start__rate > div { font-weight: normal; font-size: 0.9em; justify-content: center; background-color: rgba(0, 0, 0, 0.4); color: #ffffff; padding: 0em 0.2em; border-radius: 0.3em; line-height: 1; order: 1; display: flex; align-items: center; flex-shrink: 0; }
-                .rating-logo { height: 1.1em; width: auto; max-width: 75px; vertical-align: middle; order: 2; line-height: 0; }
-                .tmdb-logo { height: 0.9em; }
-                .rt-logo { height: 1.1em; }
 
-                /* Quality Label Style */
-                .card__quality { position: absolute; top: 0.5em; right: 0.5em; padding: 0.2em 0.5em; background-color: rgba(0, 0, 0, 0.7); color: #fff; font-size: 0.8em; font-weight: bold; border-radius: 0.3em; z-index: 2; line-height: 1.2; pointer-events: none; }
+            /* --- Rating Box Styles --- */
+            .new-interface .full-start__rate {
+                font-size: 1.3em;        /* Lampa Source base size is 1.3, we had it 1.45 */
+                margin-right: 0em;        /* modified was 1em */
+                display: inline-flex;
+                align-items: center;
+                vertical-align: middle;
+                background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
+                padding: 0 0.2em 0 0; /* Zero Left Padding */
+                border-radius: 0.3em;  /* Smoother edges */
+                gap: 0.4em; /* modified was 0.5 */
+                overflow: hidden;
+                height: auto;
+            }
+            /* Style for the Number Div (common to all ratings) */
+            .new-interface .full-start__rate > div {
+                font-weight: normal;      /* Normal weight */
+                font-size: 0.9em;         /* Changing back to original from 0.9 */
+                justify-content: center;  /* From source analysis */
+                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
+                color: #ffffff;
+                padding: 0em 0.2em;     /* ** MODIFIED: Narrower L/R padding (was 0.3em) ** */
+                border-radius: 0.3em;       /* Smoother edges */
+                line-height: 1;          /* MODIFIED: Was 1.3 */
+                order: 1;
+                display: flex;
+                align-items: center;
+                flex-shrink: 0;
+            }
+         
+            /* General Logo Style - UNCHANGED from pivot point */
+            .rating-logo {
+                height: 1.1em;
+                width: auto;
+                max-width: 75px; /* changed from 55 */
+                vertical-align: middle;
+                order: 2;
+                line-height: 0;
+            }
+             /* Specific Logo Adjustments - UNCHANGED from pivot point */
+            .tmdb-logo { height: 0.9em; }
+            .rt-logo { height: 1.1em; }
+            /* --- End Rating Box Styles --- */
 
-                /* Other Styles */
-                .new-interface .card-more__box { padding-bottom: 95%; }
-                .new-interface .full-start__background { height: 108%; top: -6em; }
-                .new-interface .card__promo { display: none; }
-                .new-interface .card.card--wide+.card-more .card-more__box { padding-bottom: 95%; }
-                .new-interface .card.card--wide .card-watched { display: none !important; }
-                body.light--version .new-interface-info__body { width: 69%; padding-top: 1.5em; }
-                body.light--version .new-interface-info { height: 25.3em; }
-                body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
-                body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
             </style>
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
         }
-
-        // --- Watchmode Quality Listener Setup ---
-        let qualityEnabledCheck = Lampa.Storage.get('ar_show_quality', false);
-        console.log('[AR Quality Debug] Initial check: Show Quality Enabled?', (qualityEnabledCheck === true || qualityEnabledCheck === 'true')); // LOG START
-        if (qualityEnabledCheck === true || qualityEnabledCheck === 'true') {
-            if (window.Lampa && Lampa.Listener) {
-                Lampa.Listener.follow("full", function (e) {
-                    console.log('[AR Quality Debug] "full" listener fired. Type:', e.type); // LOG LISTENER
-                    let currentQualityEnabled = Lampa.Storage.get('ar_show_quality', false);
-                    if (currentQualityEnabled !== true && currentQualityEnabled !== 'true') { console.log('[AR Quality Debug] "full" listener: Setting disabled, exiting.'); return; } // LOG SETTING OFF
-                    if (e.type === "complite" && e.object) {
-                        let movieData = e.object;
-                        if (movieData && movieData.id) {
-                            console.log('[AR Quality Debug] "full" listener: Processing movie ID:', movieData.id, 'IMDb ID:', movieData.imdb_id); // LOG ID
-                            let cachedResult = watchmodeCache[movieData.id];
-                            console.log('[AR Quality Debug] "full" listener: Cache check for ' + movieData.id + '. Result:', JSON.stringify(cachedResult)); // LOG CACHE RESULT
-                            if (cachedResult && cachedResult.data && !cachedResult.error) {
-                                let selector = ".full-start-new__poster"; if ($(selector).length == 0) selector = ".full__poster";
-                                console.log('[AR Quality Debug] "full" listener: Found valid cache data. Calling displayQualityLabel for selector:', selector); // LOG CALL
-                                displayQualityLabel(cachedResult.data, selector);
-                            } else { console.log('[AR Quality Debug] "full" listener: No valid cached data found or error present in cache.'); } // LOG NO DATA/ERROR
-                        } else { console.log('[AR Quality Debug] "full" listener: Missing movieData or movieData.id'); } // LOG MISSING DATA
-                    }
-                });
-                Lampa.Listener.follow("line", function (e) {
-                    // console.log('[AR Quality Debug] "line" listener fired. Type:', e.type); // Can be very verbose
-                    let currentQualityEnabled = Lampa.Storage.get('ar_show_quality', false);
-                    if (e.type === "append" && (currentQualityEnabled === true || currentQualityEnabled === 'true')) {
-                        $.each(e.items, function (_, item) {
-                            let movieCard = item.card; let movieData = item.data;
-                            if (movieData && movieData.id && movieCard && movieCard.length) {
-                                // console.log('[AR Quality Debug] "line" listener: Processing item ID:', movieData.id);
-                                let cachedResult = watchmodeCache[movieData.id];
-                                // console.log('[AR Quality Debug] "line" listener: Cache result for ' + movieData.id + ':', JSON.stringify(cachedResult));
-                                if (cachedResult && cachedResult.data && !cachedResult.error) {
-                                     let selector = movieCard.find(".card__view");
-                                     if(selector.length){
-                                         // console.log('[AR Quality Debug] "line" listener: Calling displayQualityLabel for item ' + movieData.id);
-                                         displayQualityLabel(cachedResult.data, selector);
-                                     }
-                                }
-                                // else { console.log('[AR Quality Debug] "line" listener: No cache/error for ' + movieData.id); } // Can be verbose
-                            }
-                        });
-                    }
-                });
-                 console.log("[AR Quality Debug] Watchmode Quality: Listeners Attached."); // LOG ACTIVATION
-            } else { console.error("Watchmode Quality: Lampa.Listener not available."); }
-        }
-        // --- End Watchmode Quality Listener Setup ---
-
-    } // End startPlugin function
+    }
 
     // Original check before starting
     if (!window.plugin_interface_ready) startPlugin();
