@@ -859,23 +859,9 @@
             
         } else {
              console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
-        }
-    
-        // --- End Listener for Full Card ---
+        }// --- End Listener for Full Card ---
     
         // --- Override Lampa.InteractionMain --- (existing code)
-        Lampa.Lang.add({ 
-            full_notext: { 
-                en: 'No description', 
-                ru: 'Нет описания'
-            }, 
-        });
-        
-        window.plugin_interface_ready = true;
-        var old_interface = Lampa.InteractionMain;
-        var new_interface = component;
-
-        
         Lampa.InteractionMain = function (object) { 
             var use = new_interface; 
             if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; 
