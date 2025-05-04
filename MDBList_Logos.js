@@ -692,7 +692,16 @@
         this.push = function () {}; 
         
         this.build = function (data) {
-            var _this2 = this; 
+            var _this2 = this;
+
+            // --- Read initial setting state when component is built ---
+            if (window.Lampa && Lampa.Storage) {
+                 isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+                 console.log("COMPONENT.BUILD: Initial Logo Feature State read:", isLogoFeatureEnabled); // <-- Check this log
+            } else {
+                 console.warn("COMPONENT.BUILD: Lampa.Storage not ready when reading initial state.");
+            }
+            
             lezydata = data; 
             info = new create(object); 
             info.create(); 
@@ -860,10 +869,6 @@
         var old_interface = Lampa.InteractionMain; 
         var new_interface = component;
         
-        // --- Read initial setting state AFTER component checks -
-        isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-        console.log("STARTUP: Initial Logo Feature State read inside startPlugin:", isLogoFeatureEnabled); // <-- Log the state read at startup
-        // --------------------------------------------------------
             
         // --- Add Listener for Full Card Logo Replacement ---
         // Ensure Lampa.Listener is available before adding the listener
