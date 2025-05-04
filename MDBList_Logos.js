@@ -12,8 +12,7 @@
         request_timeout: 10000 // 10 seconds request timeout
     };
     // --- Local State for Logo Toggle ---
-    var isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
-    console.log("INIT: Initial Logo Feature State read from storage:", isLogoFeatureEnabled); // <-- Log initial state
+    var isLogoFeatureEnabled = false;
     
     // --- Language Strings ---
     if (window.Lampa && Lampa.Lang) {
@@ -860,7 +859,11 @@
         window.plugin_interface_ready = true; 
         var old_interface = Lampa.InteractionMain; 
         var new_interface = component;
-
+        
+        // --- Read initial setting state AFTER component checks -
+        isLogoFeatureEnabled = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true';
+        console.log("STARTUP: Initial Logo Feature State read inside startPlugin:", isLogoFeatureEnabled); // <-- Log the state read at startup
+        // --------------------------------------------------------
             
         // --- Add Listener for Full Card Logo Replacement ---
         // Ensure Lampa.Listener is available before adding the listener
@@ -912,7 +915,21 @@
         } else {
              console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
         }
+    
         // --- End Listener for Full Card ---
+    
+        // --- Override Lampa.InteractionMain --- (existing code)
+        Lampa.Lang.add({ 
+            full_notext: { 
+                en: 'No description', 
+                ru: 'Нет описания'
+            }, 
+        });
+        
+        window.plugin_interface_ready = true;
+        var old_interface = Lampa.InteractionMain;
+        var new_interface = component;
+
         
         Lampa.InteractionMain = function (object) { 
             var use = new_interface; 
