@@ -580,7 +580,7 @@
             if (currentTitleElement && currentTitleElement.length) {
                 if (logoPath) {
                      var imageSize = 'w500'; // Size for info panel
-                     var styleAttr = 'max-height: 125px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Style
+                     var styleAttr = 'max-height: 500px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Style
                      var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                      var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
                      currentTitleElement.empty().html(imgTagHtml); // Update with fresh reference
