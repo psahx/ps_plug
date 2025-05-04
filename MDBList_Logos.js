@@ -695,44 +695,61 @@
         };
 
             
-        // --- Central function to update the title display ---
-    
+        // --- Central function to update the title display (with detailed logs) ---
         this.renderTitle = function() {
-            if (!html || !this.currentMovieData) {
-             // console.log("renderTitle: Aborted - No HTML element or current movie data.");
-             return;
-         }
+             var functionStartLog = "renderTitle: "; // Prefix for logs
+             if (!html || !this.currentMovieData) {
+                 console.log(functionStartLog + "Aborted - No HTML element or current movie data.");
+                 return;
+             }
 
-         var titleElement = html.find('.new-interface-info__title');
-         if (!titleElement.length) return; // Element not found
+             var titleElement = html.find('.new-interface-info__title');
+             if (!titleElement.length) {
+                  console.log(functionStartLog + "Aborted - Title element not found.");
+                  return;
+             }
 
-         var data = this.currentMovieData; // Use the stored data
-         var id = data.id;
-         var imageSize = 'w500'; // For info panel
-         var styleAttr = 'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Adjust style
+             var data = this.currentMovieData;
+             var id = data.id;
+             var imageSize = 'w500';
+             var styleAttr = 'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Adjust style
 
-         // console.log(`renderTitle: Updating display for ID ${id}`);
+             console.log(functionStartLog + `##### STARTING update for ID ${id} (${data.title}) #####`); // Log start
 
-         // Check cache status
-         if (logoCache.hasOwnProperty(id) && logoCache[id] !== 'pending') {
-              var cachedResult = logoCache[id];
-              // console.log(`renderTitle (ID: ${id}): Using cache result: ${cachedResult}`);
-              if (cachedResult) { // It's a logo path
-                   var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + cachedResult);
-                   var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${data.title} Logo" />`;
-                   titleElement.empty().html(imgTagHtml);
-              } else { // It's false (no logo found)
-                   titleElement.text(data.title);
-              }
-         } else {
-              // Not cached or fetch is pending: Show text title
-              // console.log(`renderTitle (ID: ${id}): Cache miss or pending. Displaying text title: ${data.title}`);
-              titleElement.text(data.title);
-              // Initiate background fetch if not already pending
-              if (!logoCache.hasOwnProperty(id) || logoCache[id] !== 'pending') {
-                   fetchAndCacheLogo(data);
-              }
-         }
+             // Check cache status
+             var cacheExists = logoCache.hasOwnProperty(id);
+             var cacheValue = cacheExists ? logoCache[id] : undefined;
+             var isPending = cacheValue === 'pending';
+
+             console.log(functionStartLog + `Cache state for ${id}: Exists=${cacheExists}, Value='${cacheValue}', Pending=${isPending}`);
+
+             if (cacheExists && !isPending) { // Cache has a final result (path or false)
+                  var cachedResult = cacheValue;
+                  console.log(functionStartLog + `Using final cache result: ${cachedResult}`);
+                  if (cachedResult) { // Check if cachedResult is truthy (a logo path string)
+                       var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + cachedResult);
+                       var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${data.title} Logo" />`;
+                       console.log(functionStartLog + `RESULT is Logo Path. Preparing to set HTML.`); // Log before update
+                       titleElement.empty().html(imgTagHtml); // THE LOGO UPDATE
+                       console.log(functionStartLog + `Finished setting HTML for logo.`); // Log after update
+                  } else { // Cached result is false (no logo found)
+                       console.log(functionStartLog + `RESULT is False (No Logo). Preparing to set text: ${data.title}`); // Log before update
+                       titleElement.text(data.title); // THE TEXT UPDATE
+                       console.log(functionStartLog + `Finished setting text title.`); // Log after update
+                  }
+             } else { // Not cached or fetch is pending: Show text title
+                  console.log(functionStartLog + `Cache miss or pending. Preparing to set text title: ${data.title}`); // Log before update
+                  titleElement.text(data.title); // THE TEXT UPDATE
+                  console.log(functionStartLog + `Finished setting text title.`); // Log after update
+                  // Initiate background fetch ONLY if it hasn't been started/cached yet
+                  if (!cacheExists) {
+                       console.log(functionStartLog + `Triggering background fetch for ${id}.`);
+                       fetchAndCacheLogo(data);
+                  } else if (isPending) {
+                       console.log(functionStartLog + `Workspace already pending for ${id}.`);
+                  }
+             }
+             console.log(functionStartLog + `##### FINISHED update for ID ${id} #####`); // Log end
         };
 
             
