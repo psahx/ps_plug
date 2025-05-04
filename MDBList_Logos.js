@@ -135,9 +135,7 @@
                 
             onChange: function(value) {
                 var storageKey = 'show_logo_instead_of_title'; // Make sure this matches param.name
-                console.log(`Setting Changed: '${storageKey}' - UI selected value:`, value);
                 Lampa.Storage.set(storageKey, value); // Save to storage
-                console.log(`Setting Saved: '${storageKey}' set to '${value}' in storage.`);
             }
 
 
@@ -359,7 +357,6 @@
     function create() { 
         
         var html;
-        this.currentMovieData = null; // Store the data object of the currently displayed movie
         var timer; 
         var network = new Lampa.Reguest(); 
         var loaded = {}; 
@@ -368,68 +365,8 @@
             html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); 
         }; 
                 
-        /*this.update = function (data) { // --- ORIGINAL this.update --- //
-            var storageKey = 'show_logo_instead_of_title'; // Key used in settings
-            var _this = this;
-            // --- Find the title element once ---
-            var titleElement = html.find('.new-interface-info__title');
-
-
-
-            // --- Read storage directly when update is called ---
-            var storedValue = Lampa.Storage.get(storageKey, 'false');
-            // Check for both string 'true' and boolean true just in case Lampa storage behaves differently
-            var showLogos = (storedValue === 'true' || storedValue === true);
-            // Add log to see what's read and the type
-            console.log(`create.update: Reading '${storageKey}'. Stored Value:`, storedValue, `(Type: ${typeof storedValue}) ==> Show Logos:`, showLogos);
-            // --------------------------------------------------
-            console.log("create.update: showLogos from local state is:", showLogos); // <-- ADD
-            if (showLogos && data.id && data.method && data.title) {
-                console.log("create.update: Calling displayLogoInElement for focus."); // <-- ADD
-                // Call the helper function to display logo in the info panel title area
-                // Adjust image size and style as needed for the info panel
-                displayLogoInElement(
-                    titleElement,
-                    data, // Pass the movie data object
-                    'w500', // Image size (e.g., w500 is good for larger areas)
-                    'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;' // Example style
-                );
-            } else if (data.title) {
-                console.log("create.update: Setting text title (logo off or data missing)."); // <-- ADD
-                // Original behavior or fallback: Set text title
-                titleElement.text(data.title);
-            } else {
-                 // Clear if no title and no logo logic ran
-                 titleElement.empty();
-            }
-            // --- End Handle Title Display ---
-        
-            html.find('.new-interface-info__head,.new-interface-info__details').text('---'); 
-            // html.find('.new-interface-info__title').text(data.title); 
-            html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext')); 
-            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200')); 
-            delete mdblistRatingsCache[data.id]; 
-            delete mdblistRatingsPending[data.id];  
-            if (data.id && data.method) { 
-                mdblistRatingsPending[data.id] = true; 
-                fetchRatings(data, function(mdblistResult) { 
-                    mdblistRatingsCache[data.id] = mdblistResult; 
-                    delete mdblistRatingsPending[data.id]; 
-                    var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language')); 
-                    if (loaded[tmdb_url]) { _this.draw(loaded[tmdb_url]); } 
-                }); 
-            } 
-            else if (!data.method) { // Optional warning // } 
-            this.load(data); 
-        }; */
-
-            
         this.update = function(data) { // Called on focus change with new movie data
-            // console.log(`INSTANCE UPDATE: Received update for ID ${data.id} (${data.title})`); // Optional log
             var _this = this; // Keep if needed by fetchRatings callback's use of this.draw
-
-            // Store the data for the currently focused movie
-            this.currentMovieData = data; // Store full data object now
 
             // --- Standard updates (non-title) --
             html.find('.new-interface-info__head, .new-interface-info__details').text('---'); // Placeholder
@@ -442,7 +379,6 @@
             // --- Title Handling ---
             var storageKey = 'show_logo_instead_of_title'; // Or your simple key
             var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-            console.log(`create.update (ID ${data.id}): showLogos = ${showLogos}`);
 
             if (showLogos && data.id && data.method && data.title) {
                 this.displayLogoOrTitle(data); // <<-- CALL NEW HELPER
@@ -614,7 +550,6 @@
             if (!titleElement.length) return; // Ensure title element exists
             
             var id = movieData.id;
-            console.log(`displayLogoOrTitle (ID ${id}): Setting text placeholder: ${movieData.title}`);
             titleElement.text(movieData.title); // Set text placeholder immediately
             
             // Use the global network instance (ensure it's defined and accessible)
@@ -625,12 +560,9 @@
             var language = Lampa.Storage.get('language');
             var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
 
-            console.log(`displayLogoOrTitle (ID ${id}): Fetching logo: ${apiUrl}`);
-
             network.clear(); // Clear previous logo requests on the global instance
             network.timeout(config.request_timeout || 7000);
             network.silent(apiUrl, function (response) { // SUCCESS CALLBACK
-                console.log(`displayLogoOrTitle (ID ${id}): API Success.`);
                 var logoPath = null;
                 // ... logic to find logoPath from response ..
                 if (response && response.logos && response.logos.length > 0) {
@@ -644,19 +576,15 @@
 
             if (currentTitleElement && currentTitleElement.length) {
                 if (logoPath) {
-                     console.log(`displayLogoOrTitle (ID ${id}): Logo found. Updating UI.`);
                      var imageSize = 'w500'; // Size for info panel
                      var styleAttr = 'max-height: 60px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;'; // Style
                      var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                      var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
                      currentTitleElement.empty().html(imgTagHtml); // Update with fresh reference
-                     console.log(`displayLogoOrTitle (ID ${id}): UI updated with logo.`);
                 } else {
-                     console.log(`displayLogoOrTitle (ID ${id}): No logo found. Ensuring text remains.`);
                      currentTitleElement.text(movieData.title); // Ensure text is set if no logo
                 }
             } else {
-                 console.log(`displayLogoOrTitle (ID ${id}): Title element NOT FOUND during callback.`);
                  // Cannot update UI if element is gone
             }
 
@@ -921,7 +849,6 @@
                             if (targetElement.length > 0) {
                                 // JUST SET TEXT TITLE for now if logo mode enabled, or always? Let's always set it.
                                 targetElement.text(movie.title);
-                                console.log(`Listener (Full ID: ${movie.id}): Set text title.`);
                                 // We can add logo fetching/cache check here later if needed
                             }
                         }
