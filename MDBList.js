@@ -160,11 +160,15 @@
             param: {
                 name: 'info_panel_logo_max_height', // Storage key
                 type: 'select',
-                values: { 
+                values: {
+                    '50': '50px',
+                    '75': '75px',
                     '100': '100px',
                     '125': '125px',
                     '150': '150px',
+                    '175': '175px',
                     '200': '200px',
+                    '225': '225px',
                     '250': '250px',
                     '300': '300px',
                     '350': '350px',
@@ -408,48 +412,87 @@
         this.create = function () { // --- Original this.create --- //
             html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); 
         }; 
-                
+        
         this.update = function(data) { // Called on focus change with new movie data
             var _this = this; // Keep if needed by fetchRatings callback's use of this.draw
 
-            // --- Standard updates (non-title) --
-            html.find('.new-interface-info__head, .new-interface-info__details').text('---'); // Placeholder
-            html.find('.new-interface-info__description').text(data.overview || Lampa.Lang.translate('full_notext'));
-            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
-            delete mdblistRatingsCache[data.id]; // Existing logic
-            delete mdblistRatingsPending[data.id]; // Existing logic
-            // --- End Standard updates ---
-        
-            // --- Title Handling ---
-            var storageKey = 'show_logo_instead_of_title'; // Or your simple key
-            var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
+            // Ensure 'html' panel element is ready before doing anything
+            if (!html) {
+                console.error("create.update: 'html' element not ready.");
+                return;
+            }
+            // Ensure 'data' has minimum required fields (like id, title for fallbacks)
+            if (!data || !data.id || !data.title) {
+                 console.warn("create.update: Received incomplete 'data'.", data);
+                 // Clear relevant fields if data is bad? Or return? Returning is safer.
+                 return;
+            }
 
-            if (showLogos && data.id && data.method && data.title) {
-                this.displayLogoOrTitle(data); // <<-- CALL NEW HELPER
+            // --- Standard updates (non-title, non-description text) ---
+            html.find('.new-interface-info__head, .new-interface-info__details').text('---'); // Placeholder
+            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
+            delete mdblistRatingsCache[data.id]; // Existing logic for ratings
+            delete mdblistRatingsPending[data.id]; // Existing logic for ratings
+            // --- End Standard updates ---
+
+            // --- Set Description Text ---
+            // Set the actual description text content first
+            var descriptionText = data.overview || Lampa.Lang.translate('full_notext');
+            html.find('.new-interface-info__description').text(descriptionText);
+            // --- End Set Description Text ---
+
+
+            // --- Determine Logo Setting ---
+            var storageKey = 'show_logo_instead_of_title';
+            var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
+            
+
+            // --- Adjust Description Line Clamp Based on Setting ---
+            var descElement = html.find('.new-interface-info__description');
+            if (descElement.length) {
+                var targetLineClamp = showLogos ? '2' : '4'; // Determine target clamp value
+                descElement.css({ // Apply styles directly
+                    '-webkit-line-clamp': targetLineClamp,
+                    'line-clamp': targetLineClamp
+                    // 'display': '-webkit-box' // This should be set by the main CSS rule already
+                });
+            }
+            // --- End Adjust Line Clamp ---
+
+
+            // --- Title Handling ---
+            if (showLogos && data.method && data.title) { // Ensure method exists for logo fetch
+                this.displayLogoOrTitle(data); // Call helper for logo logic
             } else if (data.title) {
-                // Ensure html is defined before finding element
-                if (html) html.find('.new-interface-info__title').text(data.title); // Logo mode off
+                html.find('.new-interface-info__title').text(data.title); // Logo mode off, set text
             } else {
-                if (html) html.find('.new-interface-info__title').empty(); // No title, clear area
+                html.find('.new-interface-info__title').empty(); // No title, clear area
             }
             // --- End Title Handling ---
 
-            // --- Ratings Fetch (existing logic - keep as is) ---
+
+            // --- Ratings Fetch (existing logic) ---
             if (data.id && data.method) {
                 mdblistRatingsPending[data.id] = true;
-                fetchRatings(data, function(mdblistResult) { // fetchRatings callback
+                fetchRatings(data, function(mdblistResult) {
                     mdblistRatingsCache[data.id] = mdblistResult;
                     delete mdblistRatingsPending[data.id];
                     var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
                     // Ensure 'loaded' is defined/accessible in this scope if used here
+                    // Check if 'loaded' was defined within 'create' scope originally
                     if (typeof loaded !== 'undefined' && loaded[tmdb_url]) {
-                        _this.draw(loaded[tmdb_url]);
+                         _this.draw(loaded[tmdb_url]);
                     }
                 });
             }
-            this.load(data); // Load supplementary TMDB data (keep existing)
-        };
-     
+            // --- End Ratings Fetch ---
+
+
+            // --- Load supplementary TMDB data (existing logic) ---
+            this.load(data);
+
+        }; // --- END of this.update function ---
+
         this.draw = function (data) {
             var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
             var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
@@ -941,13 +984,16 @@
 
                                     if (currentTargetElement.length > 0) {
                                         if (logoPath) {
-                                             var imageSize = 'original'; // Size suitable for details page title
-                                             var styleAttr = 'margin-top: 5px; max-height: 200px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
-                                             var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
-                                             var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
-                                             currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
+                                            // --- Read Height Setting
+                                            var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '60'); // Read same setting, default 60
+                                            if (!/^\d+$/.test(selectedHeight)) { selectedHeight = '75'; } // Basic validation
+                                            var imageSize = 'original'; // Size suitable for details page title
+                                            var styleAttr = `margin-top: 5px; max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle;`; // Use selectedHeight
+                                            var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                                            var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
+                                            currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
                                         } else {
-                                             currentTargetElement.text(movie.title); // Ensure text is set if no logo
+                                            currentTargetElement.text(movie.title); // Ensure text is set if no logo
                                         }
                                     } else {
                                     }
