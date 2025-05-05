@@ -445,14 +445,12 @@
             // --- Determine Logo Setting ---
             var storageKey = 'show_logo_instead_of_title';
             var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-            // console.log(`create.update (ID ${data.id}): showLogos = ${showLogos}`); // Debug log
-
+            
 
             // --- Adjust Description Line Clamp Based on Setting ---
             var descElement = html.find('.new-interface-info__description');
             if (descElement.length) {
                 var targetLineClamp = showLogos ? '2' : '4'; // Determine target clamp value
-                // console.log(`create.update (ID ${data.id}): Setting line-clamp to ${targetLineClamp}`); // Debug log
                 descElement.css({ // Apply styles directly
                     '-webkit-line-clamp': targetLineClamp,
                     'line-clamp': targetLineClamp
@@ -989,7 +987,6 @@
                                             // --- Read Height Setting
                                             var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '60'); // Read same setting, default 60
                                             if (!/^\d+$/.test(selectedHeight)) { selectedHeight = '75'; } // Basic validation
-                                            console.log(`Listener (Full ID: ${id}): Using max-height: ${selectedHeight}px from setting.`); // Log height used
                                             var imageSize = 'original'; // Size suitable for details page title
                                             var styleAttr = `margin-top: 5px; max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle;`; // Use selectedHeight
                                             var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
