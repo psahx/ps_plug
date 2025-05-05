@@ -635,7 +635,7 @@
                              selectedHeight = '100';
                          }
 
-                         var imageSize = 'w500'; // Request a decent size image source
+                         var imageSize = 'original'; // Request a decent size image source
                          // Dynamically create the style string using the selected height
                          var styleAttr = `max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;`;
                          // --- End Style Building ---
@@ -941,7 +941,7 @@
 
                                     if (currentTargetElement.length > 0) {
                                         if (logoPath) {
-                                             var imageSize = 'w500'; // Size suitable for details page title
+                                             var imageSize = 'original'; // Size suitable for details page title
                                              var styleAttr = 'margin-top: 5px; max-height: 200px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
                                              var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                                              var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
