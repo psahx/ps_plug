@@ -643,7 +643,8 @@
             }
 
             var id = movieData.id;
-            titleElement.text(movieData.title); // Set text placeholder immediately
+            titleElement.empty(); // **Clear the title element**
+
 
             // Use the global network instance (ensure it's defined and accessible)
             if (!network) { console.error("displayLogoOrTitle: Global network missing."); return; }
