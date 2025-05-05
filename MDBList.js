@@ -941,8 +941,8 @@
 
                                     if (currentTargetElement.length > 0) {
                                         if (logoPath) {
-                                             var imageSize = 'w300'; // Size suitable for details page title
-                                             var styleAttr = 'margin-top: 5px; max-height: 125px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
+                                             var imageSize = 'w500'; // Size suitable for details page title
+                                             var styleAttr = 'margin-top: 5px; max-height: 200px; max-width: 100%; vertical-align: middle;'; // Style from original plugin
                                              var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                                              var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
                                              currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
