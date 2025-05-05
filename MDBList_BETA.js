@@ -160,11 +160,15 @@
             param: {
                 name: 'info_panel_logo_max_height', // Storage key
                 type: 'select',
-                values: { 
+                values: {
+                    '50': '50px',
+                    '75': '75px',
                     '100': '100px',
                     '125': '125px',
                     '150': '150px',
+                    '175': '175px',
                     '200': '200px',
+                    '225': '225px',
                     '250': '250px',
                     '300': '300px',
                     '350': '350px',
