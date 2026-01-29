@@ -1017,23 +1017,48 @@
         }
         // --- End Listener for Full Card ---
     
-        // --- Override Lampa.InteractionMain (Universal Fix) ---
-    Lampa.InteractionMain = function (object) { 
-        var use = new_interface; 
-        
-        // FIX: Instead of checking for specific source names (like 'tmdb' or 'cub'),
-        // we now simply check: "Does this object have a list of results?"
-        // If 'results' exists, it is a content list -> Use Plugin.
-        if (!object.results) use = old_interface; 
-        
-        // Mobile Check: Keep standard interface on small screens
-        if (window.innerWidth < 767) use = old_interface; 
-        
-        // Premium Check: Keep standard interface if no premium
-        if (!Lampa.Account.hasPremium()) use = old_interface; 
-        
-        return new use(object); 
-    };
+        // --- Override Logic (Universal & Timing Proof) ---
+    
+    // 1. Define the Override Wrapper
+    function applyOverride(OriginalClass, name) {
+        return function (object) {
+            var use = new_interface;
+            
+            // RELAXED CHECK: If it has results OR items, use plugin.
+            // If it's empty/error, revert to standard.
+            if (!object.results && !object.items) use = OriginalClass;
+            
+            // Standard constraints
+            if (window.innerWidth < 767) use = OriginalClass;
+            if (!Lampa.Account.hasPremium()) use = OriginalClass;
+            
+            console.log(">>> MDBList Plugin: Rendering " + name); 
+            return new use(object);
+        };
+    }
+
+    // 2. Override BOTH Main and Category (Covering Home + Movies/TV)
+    if (Lampa.InteractionMain) {
+        Lampa.InteractionMain = applyOverride(Lampa.InteractionMain, "Main");
+    }
+    if (Lampa.InteractionCategory) {
+        Lampa.InteractionCategory = applyOverride(Lampa.InteractionCategory, "Category");
+    }
+
+    // 3. THE KICKER: Force-Restart the current Activity
+    // This fixes the "Race Condition" where Lampa loaded before the plugin.
+    setTimeout(function() {
+        var active = Lampa.Activity.active();
+        if (active && (active.component === 'main' || active.component === 'category')) {
+            console.log(">>> MDBList Plugin: Detected active screen. Forcing Redraw...");
+            // We trick Lampa into reloading the current view to apply our new override
+            Lampa.Activity.replace({
+                component: active.component,
+                source: active.object.source,
+                page: 1
+            });
+        }
+    }, 500); // Wait 500ms to ensure overrides are settled
 
         // **MODIFIED CSS**: Adjusted padding for number divs
         var style_id = 'new_interface_style_adjusted_padding'; // Style ID
