@@ -737,15 +737,15 @@
         var background_last = ''; 
         var background_timer; 
         
-        // --- FIX 1 START: Updated this.create to detect all data types ---
+        // --- FIX #1: Auto-build the interface for the new Lampa version ---
         this.create = function () {
-            // Check for results OR items OR card (Handles new Lampa update)
+            // New Lampa uses 'results', 'items', or 'card' to store movie data.
+            // We look for ANY of these to ensure we don't end up with an empty screen.
             var data = object.results || object.items || object.card;
             if (data && data.length) {
                 this.build(data);
             }
         }; 
-        // --- FIX 1 END ---
         
         this.empty = function () { 
             var button; 
@@ -1023,26 +1023,26 @@
         }
         // --- End Listener for Full Card ---
     
-        // --- FIX 2 START: Correct Override & Registry Update --- 
+        // --- FIX #2: Updated Override Logic + Registry Update ---
         Lampa.InteractionMain = function (object) { 
             var use = new_interface; 
-            // New Logic: Check if it has data. If NOT (results, items, or card), use old interface.
+            
+            // Check ANY data field. If all are missing, revert to old interface.
             if (!object.results && !object.items && !object.card) use = old_interface; 
             
             // Standard constraints
             if (window.innerWidth < 767) use = old_interface; 
             if (!Lampa.Account.hasPremium()) use = old_interface; 
-            // Removed source check to be safer with updates
             
             return new use(object); 
         };
 
-        // Fix 3: Force update Lampa's internal registry
+        // Fix: Update internal registry so Lampa sees the change
         if (Lampa.Component && Lampa.Component.add) {
             Lampa.Component.add('main', Lampa.InteractionMain);
         }
-
-        // Fix 4: Force reload if screen is already visible
+        
+        // Fix: Force reload if main screen is already active
         setTimeout(function() {
             var active = Lampa.Activity.active();
             if (active && active.component === 'main') {
@@ -1053,7 +1053,6 @@
                 });
             }
         }, 500);
-        // --- FIX 2 END ---
 
         // **MODIFIED CSS**: Adjusted padding for number divs
         var style_id = 'new_interface_style_adjusted_padding'; // Style ID
