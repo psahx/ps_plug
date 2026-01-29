@@ -1017,13 +1017,48 @@
         }
         // --- End Listener for Full Card ---
     
-        // --- Override Lampa.InteractionMain --- (existing code)
+        // --- Override Lampa.InteractionMain (DEBUG VERSION) ---
         Lampa.InteractionMain = function (object) { 
             var use = new_interface; 
-            //if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; 
-            if (window.innerWidth < 767) use = old_interface; 
-            if (!Lampa.Account.hasPremium()) use = old_interface; 
-            if (Lampa.Manifest.app_digital < 153) use = old_interface; 
+            
+            // --- DIAGNOSTIC LOGS ---
+            console.group("Movie Logos Plugin Debug");
+            console.log("Event: InteractionMain Initialized");
+            console.log("Source:", object.source);
+            console.log("Data Object:", object); // This lets us inspect the whole object
+            
+            // Check specific conditions
+            var isTmdbOrCub = (object.source == 'tmdb' || object.source == 'cub');
+            console.log("Is TMDB or CUB?", isTmdbOrCub);
+            
+            var isMobile = (window.innerWidth < 767);
+            console.log("Is Mobile?", isMobile);
+            
+            var hasPremium = Lampa.Account.hasPremium();
+            console.log("Has Premium?", hasPremium);
+            
+            // --- ORIGINAL LOGIC ---
+            if (!isTmdbOrCub) {
+                console.warn("Reason for Revert: Source is not TMDB or CUB.");
+                use = old_interface; 
+            }
+            if (isMobile) {
+                console.warn("Reason for Revert: Screen is too narrow (Mobile).");
+                use = old_interface; 
+            }
+            if (!hasPremium) {
+                console.warn("Reason for Revert: User does not have Premium.");
+                use = old_interface; 
+            }
+            if (Lampa.Manifest.app_digital < 153) {
+                 console.warn("Reason for Revert: Lampa version too old.");
+                 use = old_interface; 
+            }
+            
+            console.log("Final Decision:", (use === new_interface ? "NEW Interface (Plugin Active)" : "OLD Interface (Standard Lampa)"));
+            console.groupEnd();
+            // -----------------------
+
             return new use(object); 
         };
 
