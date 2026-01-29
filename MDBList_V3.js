@@ -743,15 +743,15 @@
             // --- FIX 1: RESTORE INFINITE SCROLLING ---
             // We manually tell Lampa how to fetch Page 2, Page 3, etc.
             this.next = function (onComplete) {
-                if (typeof object.page === 'undefined') object.page = 1;
-                object.page++;
-                
-                Lampa.Api.main(object, function (result) {
-                    // Pass the new data back to the builder
-                    onComplete(result);
-                }, function () {
-                    // Stop scrolling on error
-                });
+            object.page = (object.page || 1) + 1;
+            var search_query = Object.assign({}, object);
+            search_query.page = object.page;
+
+            Lampa.Api.main(search_query, function (result) {
+                onComplete(result);
+            }, function () {
+                onComplete([]);
+            });
             };
 
             // --- FIX 2: HANDLE INITIAL DATA ---
@@ -856,6 +856,7 @@
             if (element.ready) return; 
             var _this3 = this; 
             element.ready = true; 
+            if (!element.img) element.img = element.poster || element.poster_path;
             var item = new Lampa.InteractionLine(element, { 
                 url: element.url, card_small: true, cardClass: element.cardClass, genres: object.genres, object: object, card_wide: true, nomore: element.nomore 
             }); 
