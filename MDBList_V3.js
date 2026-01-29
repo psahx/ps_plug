@@ -1,4 +1,4 @@
-// == Movie Logos | Clean and Working  ==
+// == Movie Logos | NEW LAMPA 90%  ==
 (function () {
     'use strict';
     
