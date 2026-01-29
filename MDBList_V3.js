@@ -376,8 +376,8 @@
         // Use Lampa's built-in Select component
         Lampa.Select.show({
             title: Lampa.Lang.translate('select_ratings_dialog_title'), // Translated title
-            items: selectItems,                                        // Items with checkboxes
-            onBack: function () {                                      // Handler for Back button
+            items: selectItems,                                     // Items with checkboxes
+            onBack: function () {                                     // Handler for Back button
                 Lampa.Controller.toggle(currentController || 'settings');
             },
             onCheck: function (item) { // Handler for when ANY checkbox is toggled
@@ -607,7 +607,7 @@
             // Set the new HTML structure into the details element
             html.find('.new-interface-info__details').html(finalDetailsHtml);
         }; // End draw function
-                       
+                        
         this.load = function (data) {
             var _this = this; 
             clearTimeout(timer); 
@@ -737,9 +737,15 @@
         var background_last = ''; 
         var background_timer; 
         
+        // --- FIX 1 START: Updated this.create to detect all data types ---
         this.create = function () {
-            
+            // Check for results OR items OR card (Handles new Lampa update)
+            var data = object.results || object.items || object.card;
+            if (data && data.length) {
+                this.build(data);
+            }
         }; 
+        // --- FIX 1 END ---
         
         this.empty = function () { 
             var button; 
@@ -1017,15 +1023,37 @@
         }
         // --- End Listener for Full Card ---
     
-        // --- Override Lampa.InteractionMain --- (existing code)
+        // --- FIX 2 START: Correct Override & Registry Update --- 
         Lampa.InteractionMain = function (object) { 
             var use = new_interface; 
-            if (!(object.source == 'tmdb' || object.source == 'cub')) use = old_interface; 
+            // New Logic: Check if it has data. If NOT (results, items, or card), use old interface.
+            if (!object.results && !object.items && !object.card) use = old_interface; 
+            
+            // Standard constraints
             if (window.innerWidth < 767) use = old_interface; 
             if (!Lampa.Account.hasPremium()) use = old_interface; 
-            if (Lampa.Manifest.app_digital < 153) use = old_interface; 
+            // Removed source check to be safer with updates
+            
             return new use(object); 
         };
+
+        // Fix 3: Force update Lampa's internal registry
+        if (Lampa.Component && Lampa.Component.add) {
+            Lampa.Component.add('main', Lampa.InteractionMain);
+        }
+
+        // Fix 4: Force reload if screen is already visible
+        setTimeout(function() {
+            var active = Lampa.Activity.active();
+            if (active && active.component === 'main') {
+                Lampa.Activity.replace({ 
+                    component: 'main', 
+                    source: active.object.source, 
+                    page: 1 
+                });
+            }
+        }, 500);
+        // --- FIX 2 END ---
 
         // **MODIFIED CSS**: Adjusted padding for number divs
         var style_id = 'new_interface_style_adjusted_padding'; // Style ID
