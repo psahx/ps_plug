@@ -738,7 +738,11 @@
         var background_timer; 
         
         this.create = function () {
-            
+            // FIX: Auto-build the list if data is present
+            // (Lampa's new engine doesn't call .build() automatically anymore)
+            if (object.results) {
+                this.build(object.results);
+            }
         }; 
         
         this.empty = function () { 
