@@ -376,8 +376,8 @@
         // Use Lampa's built-in Select component
         Lampa.Select.show({
             title: Lampa.Lang.translate('select_ratings_dialog_title'), // Translated title
-            items: selectItems,                                     // Items with checkboxes
-            onBack: function () {                                     // Handler for Back button
+            items: selectItems,                                        // Items with checkboxes
+            onBack: function () {                                      // Handler for Back button
                 Lampa.Controller.toggle(currentController || 'settings');
             },
             onCheck: function (item) { // Handler for when ANY checkbox is toggled
@@ -607,7 +607,7 @@
             // Set the new HTML structure into the details element
             html.find('.new-interface-info__details').html(finalDetailsHtml);
         }; // End draw function
-                        
+                       
         this.load = function (data) {
             var _this = this; 
             clearTimeout(timer); 
@@ -720,8 +720,7 @@
     }
 
 
-    // --- component function (Main List Handler) ---
-    // ORIGINAL FUNCTION - UNCHANGED
+   // --- component function (Main List Handler) ---
     function component(object) { 
         
         var network = new Lampa.Reguest(); 
@@ -737,13 +736,17 @@
         var background_last = ''; 
         var background_timer; 
         
-        // --- FIX #1: Auto-build the interface for the new Lampa version ---
         this.create = function () {
-            // New Lampa uses 'results', 'items', or 'card' to store movie data.
-            // We look for ANY of these to ensure we don't end up with an empty screen.
+            // --- FIX 1: Robust Data Detection ---
+            // Lampa uses 'results', 'items', or 'card' depending on the version and screen.
+            // We grab whichever one exists.
             var data = object.results || object.items || object.card;
+
             if (data && data.length) {
                 this.build(data);
+            } else {
+                // If no data found, fallback to empty state
+                this.empty();
             }
         }; 
         
@@ -932,9 +935,8 @@
 
     // --- Plugin Initialization Logic ---
     function startPlugin() {
-        // UNCHANGED Initialization setup...
         if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { 
-            console.error("NewInterface Adjust Padding: Missing Lampa components"); 
+            console.error("MDBList Plugin: Missing Lampa components"); 
             return; 
         }
         
@@ -942,150 +944,87 @@
         var old_interface = Lampa.InteractionMain; 
         var new_interface = component;
         
-        // --- Add Listener for Full Card Logo Replacement (Complete Logic) ---
-        if (Lampa.Listener && network) { // Check Listener and global network
+        // --- 1. Override Lampa's Main Interface (Explicit) ---
+        // We do this directly to avoid scope issues with helper functions
+        Lampa.InteractionMain = function(object) {
+            var use = new_interface;
+            
+            // FIX: Check ALL possible data names
+            if (!object.results && !object.items && !object.card) use = old_interface;
+            
+            // Standard constraints
+            if (window.innerWidth < 767) use = old_interface;
+            if (!Lampa.Account.hasPremium()) use = old_interface;
+            
+            return new use(object);
+        };
+
+        // --- 2. Update Internal Registry (The Fix for "Ignoring Plugin") ---
+        if (Lampa.Component && Lampa.Component.add) {
+            Lampa.Component.add('main', Lampa.InteractionMain);
+        }
+
+        // --- 3. Add Logo Listener ---
+        if (Lampa.Listener && network) { 
             Lampa.Listener.follow("full", function(eventData) {
                 var storageKey = 'show_logo_instead_of_title';
                 try {
-                    // Check if logo display is enabled
                     var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-
-                    // Only proceed if the view is complete and logos should be shown
                     if (eventData.type === 'complite' && showLogos) {
                         var movie = eventData.data.movie;
-
-                        // Check for essential movie data
                         if (movie && movie.id && movie.title) {
-                            movie.method = movie.name ? 'tv' : 'movie'; // Determine method if needed
+                            movie.method = movie.name ? 'tv' : 'movie'; 
                             var id = movie.id;
-
-                            // Find the target element where the title/logo goes
-                            // We need to potentially re-find this inside callbacks
                             var initialTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
-
                             if (initialTargetElement.length > 0) {
-                                // --- Set text title as placeholder immediately ---
                                 initialTargetElement.text(movie.title);
-
-                                // --- Fetch the logo ---
-                                if (!network) { console.error("Listener (Full): Global network missing."); return; }
-
+                                if (!network) return;
                                 var apiKey = Lampa.TMDB.key();
                                 var language = Lampa.Storage.get('language');
                                 var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
-
-                                network.clear(); // Clear previous requests on the global instance
-                                network.timeout(config.request_timeout || 7000);
-                                network.silent(apiUrl, function (response) { // SUCCESS CAL
+                                network.clear(); 
+                                network.timeout(10000);
+                                network.silent(apiUrl, function (response) { 
                                     var logoPath = null;
-                                    // Find the best logo path
                                     if (response && response.logos && response.logos.length > 0) {
                                         var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
                                         logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
                                     }
-
-                                    // --- Re-find the element inside callback and update ---
-                                    // Use the eventData again to ensure we have the right context
                                     var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
-
                                     if (currentTargetElement.length > 0) {
                                         if (logoPath) {
-                                            // --- Read Height Setting
-                                            var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '60'); // Read same setting, default 60
-                                            if (!/^\d+$/.test(selectedHeight)) { selectedHeight = '75'; } // Basic validation
-                                            var imageSize = 'original'; // Size suitable for details page title
-                                            var styleAttr = `margin-top: 5px; max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle;`; // Use selectedHeight
-                                            var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
+                                            var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100'); 
+                                            var styleAttr = `margin-top: 5px; max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle;`; 
+                                            var imgUrl = Lampa.TMDB.image('/t/p/original' + logoPath);
                                             var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movie.title} Logo" />`;
-                                            currentTargetElement.empty().html(imgTagHtml); // Update with fresh reference
+                                            currentTargetElement.empty().html(imgTagHtml); 
                                         } else {
-                                            currentTargetElement.text(movie.title); // Ensure text is set if no logo
+                                            currentTargetElement.text(movie.title); 
                                         }
-                                    } else {
                                     }
-
-                                }, function(xhr, status) { // ERROR CALLBACK
-                                     console.error(`Listener (Full ID: ${id}): API Error ${status}. Ensuring text remains.`);
-                                     // Ensure text title is displayed on error by re-finding element
-                                     var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title");
-                                      if (currentTargetElement && currentTargetElement.length) {
-                                          currentTargetElement.text(movie.title);
-                                      }
-                                }); // End network.silent
-
-                            } // End if initialTargetElement found
-                        } // End if movie data valid
-                    } // End if complite and showLogos
-                } catch (e) { console.error("Logo Listener (Full): Error in callback:", e); }
-            }); // End Lampa.Listener.follow
-        } else {
-             console.error("Logo Feature: Lampa.Listener or Global Network Instance not available. Full card logo disabled.");
+                                }); 
+                            } 
+                        } 
+                    } 
+                } catch (e) {}
+            }); 
         }
-        // --- End Listener for Full Card ---
-    
-        // --- FIX #2: Updated Override Logic + Registry Update ---
-        Lampa.InteractionMain = function (object) { 
-            var use = new_interface; 
-            
-            // Check ANY data field. If all are missing, revert to old interface.
-            if (!object.results && !object.items && !object.card) use = old_interface; 
-            
-            // Standard constraints
-            if (window.innerWidth < 767) use = old_interface; 
-            if (!Lampa.Account.hasPremium()) use = old_interface; 
-            
-            return new use(object); 
-        };
 
-        // Fix: Update internal registry so Lampa sees the change
-        if (Lampa.Component && Lampa.Component.add) {
-            Lampa.Component.add('main', Lampa.InteractionMain);
-        }
-        
-        // Fix: Force reload if main screen is already active
-        setTimeout(function() {
-            var active = Lampa.Activity.active();
-            if (active && active.component === 'main') {
-                Lampa.Activity.replace({ 
-                    component: 'main', 
-                    source: active.object.source, 
-                    page: 1 
-                });
-            }
-        }, 500);
-
-        // **MODIFIED CSS**: Adjusted padding for number divs
-        var style_id = 'new_interface_style_adjusted_padding'; // Style ID
+        // --- 4. Inject CSS ---
+        var style_id = 'new_interface_style_adjusted_padding'; 
         if (!$('style[data-id="' + style_id + '"]').length) {
-             $('style[data-id^="new_interface_style_"]').remove(); // Clean up previous
-
+            $('style[data-id^="new_interface_style_"]').remove(); 
             Lampa.Template.add(style_id, `
             <style data-id="${style_id}">
-            /* Base styles... (kept from pivot point script) */
             .new-interface .card--small.card--wide { width: 18.3em; }
-            .new-interface-info { position: relative; padding: 1.5em; height: 24em; } /* original was 24em*/
-            /* ... rest of base styles identical to pivot script ... */
+            .new-interface-info { position: relative; padding: 1.5em; height: 24em; } 
             .new-interface-info__body { width: 80%; padding-top: 1.1em; }
             .new-interface-info__head { color: rgba(255, 255, 255, 0.6); margin-bottom: 1em; font-size: 1.3em; min-height: 1em; }
             .new-interface-info__head span { color: #fff; }
             .new-interface-info__title { font-size: 4em; font-weight: 600; margin-bottom: 0.3em; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; margin-left: -0.03em; line-height: 1.3; }
-            /* .new-interface-info__details { margin-bottom: 1.6em; display: flex; align-items: center; flex-wrap: wrap; min-height: 1.9em; font-size: 1.1em; } */
-                        
-            .new-interface-info__details {
-                margin-bottom: 1em; 
-                display: block;
-                min-height: 1.9em;
-                font-size: 1.1em;
-            }
-            .line-one-details {
-                margin-bottom: 0.6em;
-                line-height: 1.5;
-            }
-            .genre-details-line {
-                margin-top: 1em;
-                line-height: 1.5;
-            }
-
+            .new-interface-info__details { margin-bottom: 1em; display: block; min-height: 1.9em; font-size: 1.1em; }
+            .line-one-details { margin-bottom: 0.6em; line-height: 1.5; }
+            .genre-details-line { margin-top: 1em; line-height: 1.5; }
             .new-interface-info__split { margin: 0 0.5em; font-size: 0.7em; }
             .new-interface-info__description { font-size: 1.2em; font-weight: 300; line-height: 1.5; overflow: hidden; text-overflow: "."; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; width: 70%; }
             .new-interface .card-more__box { padding-bottom: 95%; }
@@ -1097,56 +1036,28 @@
             body.light--version .new-interface-info { height: 25.3em; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.focus .card__view { animation: animation-card-focus 0.2s; }
             body.advanced--animation:not(.no--animation) .new-interface .card--small.card--wide.animate-trigger-enter .card__view { animation: animation-trigger-enter 0.2s forwards; }
-
-
-            /* --- Rating Box Styles --- */
-            .new-interface .full-start__rate {
-                font-size: 1.3em;        /* Lampa Source base size is 1.3, we had it 1.45 */
-                margin-right: 0em;        /* modified was 1em */
-                display: inline-flex;
-                align-items: center;
-                vertical-align: middle;
-                background-color: rgba(255, 255, 255, 0.12); /* Light wrapper background */
-                padding: 0 0.2em 0 0; /* Zero Left Padding */
-                border-radius: 0.3em;  /* Smoother edges */
-                gap: 0.4em; /* modified was 0.5 */
-                overflow: hidden;
-                height: auto;
-            }
-            /* Style for the Number Div (common to all ratings) */
-            .new-interface .full-start__rate > div {
-                font-weight: normal;      /* Normal weight */
-                font-size: 0.9em;         /* Changing back to original from 0.9 */
-                justify-content: center;  /* From source analysis */
-                background-color: rgba(0, 0, 0, 0.4); /* Darker background */
-                color: #ffffff;
-                padding: 0em 0.2em;     /* ** MODIFIED: Narrower L/R padding (was 0.3em) ** */
-                border-radius: 0.3em;       /* Smoother edges */
-                line-height: 1;          /* MODIFIED: Was 1.3 */
-                order: 1;
-                display: flex;
-                align-items: center;
-                flex-shrink: 0;
-            }
-         
-            /* General Logo Style - UNCHANGED from pivot point */
-            .rating-logo {
-                height: 1.1em;
-                width: auto;
-                max-width: 75px; /* changed from 55 */
-                vertical-align: middle;
-                order: 2;
-                line-height: 0;
-            }
-             /* Specific Logo Adjustments - UNCHANGED from pivot point */
+            .new-interface .full-start__rate { font-size: 1.3em; margin-right: 0em; display: inline-flex; align-items: center; vertical-align: middle; background-color: rgba(255, 255, 255, 0.12); padding: 0 0.2em 0 0; border-radius: 0.3em; gap: 0.4em; overflow: hidden; height: auto; }
+            .new-interface .full-start__rate > div { font-weight: normal; font-size: 0.9em; justify-content: center; background-color: rgba(0, 0, 0, 0.4); color: #ffffff; padding: 0em 0.2em; border-radius: 0.3em; line-height: 1; order: 1; display: flex; align-items: center; flex-shrink: 0; }
+            .rating-logo { height: 1.1em; width: auto; max-width: 75px; vertical-align: middle; order: 2; line-height: 0; }
             .tmdb-logo { height: 0.9em; }
             .rt-logo { height: 1.1em; }
-            /* --- End Rating Box Styles --- */
-
             </style>
             `);
           $('body').append(Lampa.Template.get(style_id, {}, true));
         }
+
+        // --- 5. FORCE REDRAW (The final Kicker) ---
+        // If the main screen is already visible, reload it to apply changes.
+        setTimeout(function() {
+            var active = Lampa.Activity.active();
+            if (active && (active.component === 'main')) {
+                Lampa.Activity.replace({ 
+                    component: 'main', 
+                    source: active.object.source, 
+                    page: 1 
+                });
+            }
+        }, 200);
     }
 
     // Original check before starting
