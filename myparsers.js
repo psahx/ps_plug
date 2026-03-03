@@ -69,7 +69,7 @@
       base: 'jacred_xyz',
       name: 'Jacred.xyz',
       settings: {
-        url: 'https://jacred.xyz',
+        url: 'https://jac.red',
         key: '',
         parser_torrent_type: 'jackett'
       }
