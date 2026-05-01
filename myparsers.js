@@ -45,7 +45,7 @@
       base: 'lampa_app',
       name: 'Lampa.app',
       settings: {
-        url: 'http://lampa.app',
+        url: 'lampa.app',
         key: '1',
         parser_torrent_type: 'jackett'
       }
@@ -53,7 +53,7 @@
       base: 'jacred_viewbox_dev',
       name: 'Viewbox',
       settings: {
-        url: 'http://jacred.viewbox.dev',
+        url: 'jacred.viewbox.dev',
         key: 'viewbox',
         parser_torrent_type: 'jackett'
       }
@@ -61,7 +61,7 @@
       base: 'jacred_my_to',
       name: 'Jacred.my.to',
       settings: {
-        url: 'http://jacred.my.to',
+        url: 'jacred.my.to',
         key: '',
         parser_torrent_type: 'jackett'
       }
@@ -69,7 +69,7 @@
       base: 'jacred_xyz',
       name: 'Jacred.xyz',
       settings: {
-        url: 'http://jac.red',
+        url: 'jac.red',
         key: '',
         parser_torrent_type: 'jackett'
       }
