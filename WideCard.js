@@ -1,44 +1,60 @@
-// == Lampa Homepage Wide Card PROOF ==
+// == Lampa Homepage Tracer ==
 (function () {
     'use strict';
 
-    function proveWideCards() {
-        if (!window.Lampa || !Lampa.InteractionLine) return;
-        if (window.proof_wide_ready) return;
-        window.proof_wide_ready = true;
+    console.log("[Tracer] Script injected. Waiting for Lampa to boot...");
 
-        // 1. Save Lampa's native row builder
-        var original_line = Lampa.InteractionLine;
+    function startTracer() {
+        if (!window.Lampa) {
+            console.log("[Tracer] ERROR: Lampa core not found after delay.");
+            return;
+        }
+        if (window.tracer_ready) return;
+        window.tracer_ready = true;
 
-        // 2. Intercept it when it tries to draw a row
-        Lampa.InteractionLine = function (data, params) {
-            
-            // 3. Safely check if we are on the Home screen ('main' component)
-            var activity = Lampa.Activity.active();
-            if (activity && activity.component === 'main') {
+        console.log("[Tracer] Lampa core found. Hooking into render engines...");
+
+        // 1. Trace the Row Builder
+        if (Lampa.InteractionLine) {
+            var original_line = Lampa.InteractionLine;
+            Lampa.InteractionLine = function (data, params) {
+                var activity = Lampa.Activity ? Lampa.Activity.active() : null;
+                var current_component = activity ? activity.component : 'unknown';
                 
-                // 4. Force the native wide card layout
-                if (!params) params = {};
-                params.card_wide = true;
-                
-                // 5. Inject a fallback synopsis so the wide template doesn't crash
-                if (data && (data.results || data.items || data.card)) {
-                    var items = data.results || data.items || data.card;
-                    items.forEach(function(movie) {
-                        if (!movie.overview) {
-                            movie.overview = "Synopsis not provided by Home Page API, but the wide layout is rendering successfully.";
-                        }
+                // Only log if we are on the Home screen ('main')
+                if (current_component === 'main') {
+                    console.log("[Tracer] InteractionLine building row on Home screen.", {
+                        has_data: !!data,
+                        params_provided: params
                     });
                 }
-            }
-            
-            // Pass the modified instructions back to Lampa
-            return new original_line(data, params);
-        };
-        
-        console.log("Proof Script: Native wide layout forced on Home Page.");
+                return new original_line(data, params);
+            };
+            console.log("[Tracer] InteractionLine hooked successfully.");
+        } else {
+            console.log("[Tracer] WARNING: Lampa.InteractionLine does not exist.");
+        }
+
+        // 2. Trace the Card Builder to see if Home screen uses it directly
+        if (Lampa.Card) {
+            var original_card = Lampa.Card;
+            Lampa.Card = function (data, params) {
+                var activity = Lampa.Activity ? Lampa.Activity.active() : null;
+                if (activity && activity.component === 'main') {
+                    // We only log once per row to avoid flooding the console
+                    if (!window.card_logged_once) {
+                        console.log("[Tracer] First Card building on Home screen.", {
+                            params_provided: params
+                        });
+                        window.card_logged_once = true;
+                    }
+                }
+                return new original_card(data, params);
+            };
+            console.log("[Tracer] Card factory hooked successfully.");
+        }
     }
 
-    // Wait 1 second to ensure Lampa's core is fully loaded before intercepting
-    setTimeout(proveWideCards, 1000);
+    // Wait exactly 2 seconds for Lampa and all native plugins to finish loading
+    setTimeout(startTracer, 2000);
 })();
