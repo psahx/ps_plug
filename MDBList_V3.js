@@ -740,19 +740,27 @@
         this.create = function () {
             var _this = this;
 
-            // --- FIX 1: RESTORE INFINITE SCROLLING ---
+            // --- FIX 1: RESTORE INFINITE SCROLLING (WITH DASHBOARD SAFETY) ---
             // We manually tell Lampa how to fetch Page 2, Page 3, etc.
             this.next = function (onComplete) {
-            object.page = (object.page || 1) + 1;
-            var search_query = Object.assign({}, object);
-            search_query.page = object.page;
+                // SAFETY CHECK: Is this the Home dashboard? 
+                // Dashboard rows have a 'results' array inside them. Single movies do not.
+                if (object.results && object.results.length > 0 && object.results[0].results) {
+                    onComplete([]); // Tell Lampa to stop asking for Page 2 on the Home screen
+                    return;
+                }
 
-            Lampa.Api.main(search_query, function (result) {
-                onComplete(result);
-            }, function () {
-                onComplete([]);
-            });
+                object.page = (object.page || 1) + 1;
+                var search_query = Object.assign({}, object);
+                search_query.page = object.page;
+                
+                Lampa.Api.main(search_query, function (result) {
+                    onComplete(result);
+                }, function () {
+                    onComplete([]);
+                });
             };
+
 
             // --- FIX 2: HANDLE INITIAL DATA ---
             // Check if Lampa passed us data (Old way) or if we must fetch it (New way)
