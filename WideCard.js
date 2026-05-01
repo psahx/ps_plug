@@ -1,35 +1,44 @@
-// == Lampa Wide Card Layout Test V2 ==
+// == Lampa Homepage Wide Card PROOF ==
 (function () {
     'use strict';
 
-    function startLayoutTest() {
-        if (!window.Lampa || !Lampa.Card) return;
-        window.layout_test_ready = true;
+    function proveWideCards() {
+        if (!window.Lampa || !Lampa.InteractionLine) return;
+        if (window.proof_wide_ready) return;
+        window.proof_wide_ready = true;
 
-        // 1. Save Lampa's native Card builder
-        var original_card = Lampa.Card;
+        // 1. Save Lampa's native row builder
+        var original_line = Lampa.InteractionLine;
 
-        // 2. Intercept it at the moment a card is created
-        Lampa.Card = function (data, params) {
-            // Check what page we are currently on
-            var current_activity = Lampa.Activity.active();
+        // 2. Intercept it when it tries to draw a row
+        Lampa.InteractionLine = function (data, params) {
             
-            // If we are on the Home page ('main' component)...
-            if (current_activity && current_activity.component === 'main') {
+            // 3. Safely check if we are on the Home screen ('main' component)
+            var activity = Lampa.Activity.active();
+            if (activity && activity.component === 'main') {
+                
+                // 4. Force the native wide card layout
                 if (!params) params = {};
-                // ...force the Card Factory to use the "Watch in cinemas" wide layout
-                params.card_wide = true; 
+                params.card_wide = true;
+                
+                // 5. Inject a fallback synopsis so the wide template doesn't crash
+                if (data && (data.results || data.items || data.card)) {
+                    var items = data.results || data.items || data.card;
+                    items.forEach(function(movie) {
+                        if (!movie.overview) {
+                            movie.overview = "Synopsis not provided by Home Page API, but the wide layout is rendering successfully.";
+                        }
+                    });
+                }
             }
             
-            // Pass it back to Lampa to draw
-            return new original_card(data, params);
+            // Pass the modified instructions back to Lampa
+            return new original_line(data, params);
         };
-
-        console.log("Layout Test V2: Card interceptor applied.");
+        
+        console.log("Proof Script: Native wide layout forced on Home Page.");
     }
 
-    // Give Lampa a split second to load its native classes before intercepting
-    setTimeout(function() {
-        if (!window.layout_test_ready) startLayoutTest();
-    }, 500);
+    // Wait 1 second to ensure Lampa's core is fully loaded before intercepting
+    setTimeout(proveWideCards, 1000);
 })();
