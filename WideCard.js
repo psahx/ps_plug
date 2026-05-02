@@ -1,4 +1,4 @@
-// == Lampa Homepage MDBList Phase 3 (Visual Injection) ==
+// == Lampa Homepage MDBList Phase 3.1 (Horizontal Visual Injection) ==
 (function () {
     'use strict';
 
@@ -10,7 +10,17 @@
             .card--wide .card__vote { display: none !important; }
             
             /* Container for our custom array */
-            .mdblist-ratings-wrapper { position: absolute; bottom: 0.5em; left: 0.5em; display: flex; flex-direction: column; gap: 0.3em; z-index: 10; align-items: flex-start; }
+            .mdblist-ratings-wrapper { 
+                position: absolute; 
+                bottom: 0.5em; 
+                left: 0.5em; 
+                display: flex; 
+                flex-direction: row; /* FIX: Places items side by side */
+                flex-wrap: wrap;     /* FIX: Drops to a new line if too many are active */
+                gap: 0.4em; 
+                z-index: 10; 
+                align-items: center; 
+            }
             
             /* Your exact master script rating styles */
             .mdblist-ratings-wrapper .full-start__rate { font-size: 1.1em; display: inline-flex; align-items: center; vertical-align: middle; background-color: rgba(255, 255, 255, 0.12); padding: 0 0.2em 0 0; border-radius: 0.3em; gap: 0.4em; overflow: hidden; height: auto; }
@@ -42,7 +52,7 @@
     const letterboxdLogoUrl = 'https://psahx.github.io/ps_plug/letterboxd-decal-dots-pos-rgb.svg';
     const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
 
-    // --- 3. Language Strings (EXACT COPY) ---
+    // --- 3. Language Strings ---
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
             mdblist_api_key_desc: { ru: "Введите ваш API ключ с сайта MDBList.com", en: "Enter your API key from MDBList.com", uk: "Введіть ваш API ключ з сайту MDBList.com" },
@@ -59,7 +69,7 @@
         });
     }
 
-    // --- 4. Settings UI Registration (EXACT COPY) ---
+    // --- 4. Settings UI Registration ---
     if (window.Lampa && Lampa.SettingsApi) {
         Lampa.SettingsApi.addComponent({
             component: 'additional_ratings',
@@ -96,7 +106,7 @@
         });
     }
 
-    // --- 5. Rating Selection Dialog (EXACT COPY) ---
+    // --- 5. Rating Selection Dialog ---
     function showRatingProviderSelection() {
         const providers = [
             { title: 'IMDb', id: 'show_rating_imdb', default: true },
@@ -148,7 +158,6 @@
     }
 
     function fetchRatings(movieData, callback) {
-        // Isolated network request for grid loading
         var net = (window.Lampa && Lampa.Reguest) ? new Lampa.Reguest() : null;
         if (!net || !movieData || !movieData.id || !callback) return;
 
@@ -199,11 +208,10 @@
                     
                     card.find('.card__title, .card__age').remove();
                     
-                    // Promo wrapper holding the text/logo
                     var promoBox = $('<div class="card__promo"><div class="card__promo-title">' + titleText + '</div><div class="card__promo-text">' + synopsis + '</div></div>');
                     card.find('.card__view').append(promoBox);
 
-                    // 2. Fetch and Inject TMDB Logo (If Enabled)
+                    // 2. Fetch and Inject TMDB Logo
                     var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true' || Lampa.Storage.get('show_logo_instead_of_title', false) === true;
                     if (showLogos) {
                         var logoNet = new Lampa.Reguest();
@@ -232,7 +240,6 @@
                             var lineOneDetails = [];
                             var vote = parseFloat((movie.vote_average || 0) + '').toFixed(1);
                             
-                            // Check Toggles
                             let showImdb = Lampa.Storage.get('show_rating_imdb', true) === true || Lampa.Storage.get('show_rating_imdb', true) === 'true';
                             let showTmdb = Lampa.Storage.get('show_rating_tmdb', true) === true || Lampa.Storage.get('show_rating_tmdb', true) === 'true';
                             let showTomatoes = Lampa.Storage.get('show_rating_tomatoes', false) === true || Lampa.Storage.get('show_rating_tomatoes', false) === 'true';
