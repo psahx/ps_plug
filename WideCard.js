@@ -1,60 +1,41 @@
-// == Lampa Homepage Tracer ==
+// == Lampa Homepage Tracer V2 ==
 (function () {
     'use strict';
 
-    console.log("[Tracer] Script injected. Waiting for Lampa to boot...");
+    console.log("[Tracer V2] Booting scanner...");
 
-    function startTracer() {
-        if (!window.Lampa) {
-            console.log("[Tracer] ERROR: Lampa core not found after delay.");
-            return;
-        }
-        if (window.tracer_ready) return;
-        window.tracer_ready = true;
+    var hookedLine = false;
 
-        console.log("[Tracer] Lampa core found. Hooking into render engines...");
-
-        // 1. Trace the Row Builder
-        if (Lampa.InteractionLine) {
+    function tryHook() {
+        if (window.Lampa && Lampa.InteractionLine && !hookedLine) {
             var original_line = Lampa.InteractionLine;
+            
             Lampa.InteractionLine = function (data, params) {
-                var activity = Lampa.Activity ? Lampa.Activity.active() : null;
-                var current_component = activity ? activity.component : 'unknown';
+                // Get the current active screen
+                var act = window.Lampa.Activity ? window.Lampa.Activity.active() : null;
+                var comp = act ? act.component : 'unknown_boot';
                 
-                // Only log if we are on the Home screen ('main')
-                if (current_component === 'main') {
-                    console.log("[Tracer] InteractionLine building row on Home screen.", {
-                        has_data: !!data,
-                        params_provided: params
-                    });
-                }
+                // Log every single row Lampa tries to draw, right as it happens
+                console.log("[Tracer V2] Drawing Row! Component:", comp, " | Wide Param:", (params ? params.card_wide : false));
+                
                 return new original_line(data, params);
             };
-            console.log("[Tracer] InteractionLine hooked successfully.");
-        } else {
-            console.log("[Tracer] WARNING: Lampa.InteractionLine does not exist.");
-        }
-
-        // 2. Trace the Card Builder to see if Home screen uses it directly
-        if (Lampa.Card) {
-            var original_card = Lampa.Card;
-            Lampa.Card = function (data, params) {
-                var activity = Lampa.Activity ? Lampa.Activity.active() : null;
-                if (activity && activity.component === 'main') {
-                    // We only log once per row to avoid flooding the console
-                    if (!window.card_logged_once) {
-                        console.log("[Tracer] First Card building on Home screen.", {
-                            params_provided: params
-                        });
-                        window.card_logged_once = true;
-                    }
-                }
-                return new original_card(data, params);
-            };
-            console.log("[Tracer] Card factory hooked successfully.");
+            
+            hookedLine = true;
+            console.log("[Tracer V2] Hooked InteractionLine successfully!");
         }
     }
 
-    // Wait exactly 2 seconds for Lampa and all native plugins to finish loading
-    setTimeout(startTracer, 2000);
+    // Try hooking immediately
+    tryHook();
+    
+    // If Lampa isn't ready yet, check every 50 milliseconds until it is
+    var scanner = setInterval(function() {
+        if (hookedLine) {
+            clearInterval(scanner); // Stop scanning once we hook it
+        } else {
+            tryHook();
+        }
+    }, 50);
+
 })();
