@@ -1,4 +1,4 @@
-// == Lampa Homepage MDBList Phase 3.1 (Horizontal Visual Injection) ==
+// == Lampa Homepage MDBList Phase 3.2 (Visual Injection + STRICT Master Menus) ==
 (function () {
     'use strict';
 
@@ -15,8 +15,8 @@
                 bottom: 0.5em; 
                 left: 0.5em; 
                 display: flex; 
-                flex-direction: row; /* FIX: Places items side by side */
-                flex-wrap: wrap;     /* FIX: Drops to a new line if too many are active */
+                flex-direction: row; 
+                flex-wrap: wrap;     
                 gap: 0.4em; 
                 z-index: 10; 
                 align-items: center; 
@@ -52,61 +52,168 @@
     const letterboxdLogoUrl = 'https://psahx.github.io/ps_plug/letterboxd-decal-dots-pos-rgb.svg';
     const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
 
-    // --- 3. Language Strings ---
+    // --- 3. Language Strings (EXACT COPY) ---
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
-            mdblist_api_key_desc: { ru: "Введите ваш API ключ с сайта MDBList.com", en: "Enter your API key from MDBList.com", uk: "Введіть ваш API ключ з сайту MDBList.com" },
-            additional_ratings_title: { ru: "Дополнительные Рейтинги", en: "Additional Ratings", uk: "Додаткові Рейтинги" },
-            select_ratings_button_name: { en: "Select Rating Providers", ru: "Выбрать Источники Рейтингов", uk: "Обрати Джерела Рейтингів" },
-            select_ratings_button_desc: { en: "Choose which ratings to display", ru: "Выберите, какие рейтинги отображать", uk: "Оберіть, які рейтинги відображати" },
-            select_ratings_dialog_title: { en: "Select Ratings", ru: "Выбор Рейтингов", uk: "Вибір Рейтингів" },
-            logo_toggle_name: { ru: "Логотип вместо заголовка", en: "Logo Instead of Title", uk: "Логотип замість заголовка" },
-            logo_toggle_desc: { ru: "Заменяет текстовый заголовок фильма логотипом", en: "Replaces movie text title with a logo", uk: "Замінює текстовий заголовок логотипом" },
-            settings_show: { ru: "Показать", en: "Show", uk: "Показати" },
-            settings_hide: { ru: "Скрыть", en: "Hide", uk: "Приховати" },
-            info_panel_logo_height_name: { ru: "Размер логотипа", en: "Logo Size", uk: "Висота логотипу" },
-            info_panel_logo_height_desc: { ru: "Максимальная высота логотипа", en: "Maximum logo height", uk: "Максимальна высота логотипу" }
+            mdblist_api_key_desc: {
+                ru: "Введите ваш API ключ с сайта MDBList.com",
+                en: "Enter your API key from MDBList.com",
+                uk: "Введіть ваш API ключ з сайту MDBList.com"
+            },
+            additional_ratings_title: {
+                 ru: "Дополнительные Рейтинги", 
+                 en: "Additional Ratings",
+                 uk: "Додаткові Рейтинги"
+            },
+            select_ratings_button_name: {
+                 en: "Select Rating Providers",
+                 ru: "Выбрать Источники Рейтингов",
+                 uk: "Обрати Джерела Рейтингів"
+            },
+            select_ratings_button_desc: {
+                 en: "Choose which ratings to display",
+                 ru: "Выберите, какие рейтинги отображать",
+                 uk: "Оберіть, які рейтинги відображати"
+            },
+            select_ratings_dialog_title: {
+                 en: "Select Ratings",
+                 ru: "Выбор Рейтингов",
+                 uk: "Вибір Рейтингів"
+            },
+            logo_toggle_name: {
+                ru: "Логотип вместо заголовка",
+                en: "Logo Instead of Title",
+                uk: "Логотип замість заголовка"
+            },
+            logo_toggle_desc: {
+                ru: "Заменяет текстовый заголовок фильма логотипом",
+                en: "Replaces movie text title with a logo",
+                uk: "Замінює текстовий заголовок логотипом"
+            },
+            settings_show: {
+                ru: "Показать",
+                en: "Show", 
+                uk: "Показати"
+            },
+            settings_hide: {
+                ru: "Скрыть",
+                en: "Hide", 
+                uk: "Приховати"
+            },
+            full_notext: { 
+                en: 'No description', 
+                ru: 'Нет описания',
+                uk: 'Немає опису'
+            },
+            info_panel_logo_height_name: {
+                ru: "Размер логотипа",
+                en: "Logo Size",
+                uk: "Висота логотипу"
+            },
+            info_panel_logo_height_desc: {
+                ru: "Максимальная высота логотипа",
+                en: "Maximum logo height",
+                uk: "Максимальна высота логотипу"
+            }
         });
     }
 
-    // --- 4. Settings UI Registration ---
+    // --- 4. Settings UI Registration (EXACT COPY) ---
     if (window.Lampa && Lampa.SettingsApi) {
         Lampa.SettingsApi.addComponent({
             component: 'additional_ratings',
             name: Lampa.Lang.translate('additional_ratings_title'),
-            icon: '<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>'
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24" xml:space="preserve" width="32" height="32" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>'
         });
 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings', 
-            param: { name: 'mdblist_api_key', type: 'input', 'default': '', placeholder: 'Enter your MDBList API Key' },
-            field: { name: 'MDBList API Key', description: Lampa.Lang.translate('mdblist_api_key_desc') },
-            onChange: function() { Lampa.Settings.update(); }
+            param: {
+                name: 'mdblist_api_key', 
+                type: 'input',          
+                'default': '',          
+                values: {},             
+                placeholder: 'Enter your MDBList API Key' 
+            },
+            field: {
+                name: 'MDBList API Key', 
+                description: Lampa.Lang.translate('mdblist_api_key_desc') 
+            },
+            onChange: function() {
+                Lampa.Settings.update();
+            }
         });
 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings', 
-            param: { name: 'select_ratings_button', type: 'button' },
-            field: { name: Lampa.Lang.translate('select_ratings_button_name'), description: Lampa.Lang.translate('select_ratings_button_desc') },
-            onChange: function () { showRatingProviderSelection(); }
+            param: {
+                name: 'select_ratings_button', 
+                type: 'button'                 
+            },
+            field: {
+                name: Lampa.Lang.translate('select_ratings_button_name'),
+                description: Lampa.Lang.translate('select_ratings_button_desc')
+            },
+            onChange: function () {
+                showRatingProviderSelection();
+            }
         });
                 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',        
-            param: { name: 'show_logo_instead_of_title', type: 'select', values: { 'true': Lampa.Lang.translate('settings_show'), 'false': Lampa.Lang.translate('settings_hide') }, 'default': 'false' },
-            field: { name: Lampa.Lang.translate('logo_toggle_name'), description: Lampa.Lang.translate('logo_toggle_desc') },
-            onChange: function(value) { Lampa.Storage.set('show_logo_instead_of_title', value); }
+            param: {
+                name: 'show_logo_instead_of_title', 
+                type: 'select',                     
+                values: {                           
+                    'true': Lampa.Lang.translate('settings_show'), 
+                    'false': Lampa.Lang.translate('settings_hide') 
+                },
+                'default': 'false'                  
+            },
+            field: {
+                name: Lampa.Lang.translate('logo_toggle_name'), 
+                description: Lampa.Lang.translate('logo_toggle_desc') 
+            },
+            onChange: function(value) {
+                var storageKey = 'show_logo_instead_of_title'; 
+                Lampa.Storage.set(storageKey, value); 
+            }
         });
                 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings', 
-            param: { name: 'info_panel_logo_max_height', type: 'select', values: { '50': '50px', '75': '75px', '100': '100px', '125': '125px', '150': '150px', '175': '175px', '200': '200px', '250': '250px', '300': '300px' }, 'default': '100' },
-            field: { name: Lampa.Lang.translate('info_panel_logo_height_name'), description: Lampa.Lang.translate('info_panel_logo_height_desc') },
-            onChange: function(value) { Lampa.Storage.set('info_panel_logo_max_height', value); }
+            param: {
+                name: 'info_panel_logo_max_height', 
+                type: 'select',
+                values: {
+                    '50': '50px',
+                    '75': '75px',
+                    '100': '100px',
+                    '125': '125px',
+                    '150': '150px',
+                    '175': '175px',
+                    '200': '200px',
+                    '225': '225px',
+                    '250': '250px',
+                    '300': '300px',
+                    '350': '350px',
+                    '400': '400px',
+                    '450': '450px',
+                    '500': '500px'
+                },
+                'default': '100'
+            },
+            field: {
+                name: Lampa.Lang.translate('info_panel_logo_height_name'), 
+                description: Lampa.Lang.translate('info_panel_logo_height_desc') 
+            },
+            onChange: function(value) {
+                Lampa.Storage.set('info_panel_logo_max_height', value);
+            }
         });
     }
 
-    // --- 5. Rating Selection Dialog ---
+    // --- 5. Rating Selection Dialog (EXACT COPY) ---
     function showRatingProviderSelection() {
         const providers = [
             { title: 'IMDb', id: 'show_rating_imdb', default: true },
@@ -121,18 +228,30 @@
 
         let selectItems = providers.map(provider => {
             let storedValue = Lampa.Storage.get(provider.id, provider.default);
-            return { title: provider.title, id: provider.id, checkbox: true, checked: (storedValue === true || storedValue === 'true'), default: provider.default };
+            let isChecked = (storedValue === true || storedValue === 'true');
+            return {
+                title: provider.title,
+                id: provider.id,          
+                checkbox: true,         
+                checked: isChecked,       
+                default: provider.default 
+            };
         });
 
         var currentController = Lampa.Controller.enabled().name;
+
         Lampa.Select.show({
             title: Lampa.Lang.translate('select_ratings_dialog_title'), 
             items: selectItems,                                        
-            onBack: function () { Lampa.Controller.toggle(currentController || 'settings'); },
+            onBack: function () {                                      
+                Lampa.Controller.toggle(currentController || 'settings');
+            },
             onCheck: function (item) { 
-                let newState = !(Lampa.Storage.get(item.id, item.default) === true || Lampa.Storage.get(item.id, item.default) === 'true');
-                Lampa.Storage.set(item.id, newState);
-                item.checked = newState;
+                let oldValue = Lampa.Storage.get(item.id, item.default);
+                let oldStateIsChecked = (oldValue === true || oldValue === 'true');
+                let newStateIsChecked = !oldStateIsChecked;
+                Lampa.Storage.set(item.id, newStateIsChecked);
+                item.checked = newStateIsChecked;
             }
         });
     }
