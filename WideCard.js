@@ -19,7 +19,7 @@
             .full-mdblist-ratings { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.3em; margin-top: 0.5em; margin-bottom: 0.5em; }
 
             /* Squeezed paddings/fonts so all 8 fit on one line */
-            .mdblist-ratings-wrapper .full-start__rate, .full-mdblist-ratings .full-start__rate { font-size: 1.3em; display: inline-flex; align-items: center; vertical-align: middle; background-color: rgba(255, 255, 255, 0.12); padding: 0 0.15em 0 0; border-radius: 0.3em; gap: 0.15em; overflow: hidden; height: auto; margin-right: 0; }
+            .mdblist-ratings-wrapper .full-start__rate, .full-mdblist-ratings .full-start__rate { font-size: 1.3em; display: inline-flex; align-items: center; vertical-align: middle; background-color: rgba(255, 255, 255, 0.12); padding: 0 0.12em 0 0; border-radius: 0.3em; gap: 0.15em; overflow: hidden; height: auto; margin-right: 0; }
             .mdblist-ratings-wrapper .full-start__rate > div, .full-mdblist-ratings .full-start__rate > div { font-weight: normal; font-size: 0.9em; justify-content: center; background-color: rgba(0, 0, 0, 0.4); color: #ffffff; padding: 0em 0.2em; border-radius: 0.3em; line-height: 1; order: 1; display: flex; align-items: center; flex-shrink: 0; }
             .mdblist-ratings-wrapper .rating-logo, .full-mdblist-ratings .rating-logo { height: 1.0em; width: auto; max-width: 75px; vertical-align: middle; order: 2; line-height: 0; }
             .mdblist-ratings-wrapper .tmdb-logo, .full-mdblist-ratings .tmdb-logo { height: 0.85em; }
