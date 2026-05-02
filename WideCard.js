@@ -1,16 +1,21 @@
-// == Lampa Homepage Wide Card DOM Proof V8 ==
+// == Lampa Homepage Wide Card DOM Proof V9 ==
 (function () {
     'use strict';
 
     window.lampa_movie_dict = window.lampa_movie_dict || {};
 
-    // 1. Safely extract just the filename (e.g., "image.jpg") to guarantee a match
+    // 1. The scrubbed filename matcher (Strips out ?v=123 tags)
     function getSafeFilename(path) {
         if (!path) return null;
-        return path.split('/').pop(); 
+        var file = path.split('/').pop(); // Get the last part
+        file = file.split('?')[0].split('#')[0]; // Strip any extra URL parameters
+        // Only return if it's an actual image file, ignore local placeholders
+        if (file && (file.indexOf('.jpg') > -1 || file.indexOf('.png') > -1)) {
+            return file;
+        }
+        return null;
     }
 
-    // 2. Safe Extractor: Digs into the data whether it's an array, object, movie, or TV show
     function extractMoviesSafe(data) {
         if (!data) return;
         
@@ -19,7 +24,6 @@
                 extractMoviesSafe(item);
             });
         } else if (typeof data === 'object') {
-            // Found a movie/show! Save it to the dictionary.
             if (data.id && (data.poster_path || data.backdrop_path)) {
                 var pName = getSafeFilename(data.poster_path);
                 var bName = getSafeFilename(data.backdrop_path);
@@ -27,7 +31,6 @@
                 if (bName) window.lampa_movie_dict[bName] = data;
             }
             
-            // Check all the standard folders Lampa uses for Movies and TV Shows
             if (data.results) extractMoviesSafe(data.results);
             if (data.items) extractMoviesSafe(data.items);
             if (data.movies) extractMoviesSafe(data.movies);
@@ -35,7 +38,7 @@
         }
     }
 
-    // 3. The Ultimate Hook: Catches data from BOTH the Network and Local Cache
+    // 2. Hook immediately to catch instant-cache loads
     function hookLampaApi() {
         if (!window.Lampa || !Lampa.Api) return false;
         
@@ -44,7 +47,7 @@
                 var original = Lampa.Api[method];
                 Lampa.Api[method] = function(params, onsuccess, onerror) {
                     return original.call(Lampa.Api, params, function(result) {
-                        try { extractMoviesSafe(result); } catch (e) {} // Save data instantly
+                        try { extractMoviesSafe(result); } catch (e) {}
                         if (onsuccess) onsuccess(result);
                     }, onerror);
                 };
@@ -53,13 +56,14 @@
         });
         return true;
     }
+    
+    // Try to hook immediately on script load
+    hookLampaApi();
 
-    // 4. The DOM Watcher
-    function proveWideDOM_V8() {
+    function proveWideDOM_V9() {
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             
-            // Apply to Home page ('main') and category pages
             if (activity && (activity.component === 'main' || activity.component === 'category')) {
                 
                 $('.card:not(.card--wide):visible').each(function() {
@@ -69,36 +73,32 @@
                     var currentSrc = imgElement.attr('src') || imgElement.attr('data-src') || "";
                     if (!currentSrc) return;
 
-                    // Match the card's image to our dictionary
                     var filename = getSafeFilename(currentSrc);
                     var movie = window.lampa_movie_dict[filename];
                     
-                    if (!movie) return; // If data isn't loaded yet, skip for now
+                    if (!movie) return;
 
                     // Make it physically wide
                     card.addClass('card--wide');
                     
-                    // Upgrade Image: Horizontal backdrop, aligned to top
-                    var hdImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
-                    if (hdImage) {
-                        imgElement.attr('src', Lampa.Api.img(hdImage, 'w780'));
+                    // Prioritize horizontal backdrop, fallback to vertical poster if TMDB doesn't have one
+                    var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
+                    if (targetImage) {
+                        imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
                         imgElement.css({
                             'object-fit': 'cover',
                             'object-position': 'top'
                         });
                     }
                     
-                    // Truncate synopsis to 115 chars
                     var titleText = movie.title || movie.name || "Unknown";
                     var synopsis = movie.overview || "No description available.";
                     if (synopsis.length > 115) {
                         synopsis = synopsis.substring(0, 115) + '...';
                     }
                     
-                    // Clean old text
                     card.find('.card__title, .card__age').remove();
                     
-                    // Inject exact wide template
                     var promoHtml = $(
                         '<div class="card__promo">' + 
                             '<div class="card__promo-title">' + titleText + '</div>' + 
@@ -112,12 +112,12 @@
         }, 500); 
     }
 
-    // Rapid-fire boot sequence to catch Lampa before it draws the screen
+    // Keep trying to hook just in case Lampa loaded slower than the script
     var bootInterval = setInterval(function() {
         if (hookLampaApi()) {
             clearInterval(bootInterval);
-            proveWideDOM_V8(); // Start watcher immediately
         }
     }, 50);
 
+    setTimeout(proveWideDOM_V9, 500);
 })();
