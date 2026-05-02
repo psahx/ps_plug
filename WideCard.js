@@ -1,58 +1,69 @@
-// == Lampa Homepage Wide Card DOM Proof V2 ==
+// == Lampa Homepage Wide Card DOM Proof V4 ==
 (function () {
     'use strict';
 
-    function proveWideDOM_V2() {
+    // 1. Intercept the Home Page API call to capture Lampa's raw TMDB payload
+    var original_main_api = Lampa.Api.main;
+    Lampa.Api.main = function(params, onsuccess, onerror) {
+        return original_main_api(params, function(data) {
+            // Save the real TMDB data array so we can extract backdrops and synopses
+            window.lampa_master_cache = data;
+            onsuccess(data);
+        }, onerror);
+    };
+
+    function proveWideDOM_V4() {
         // Run a silent background check twice a second
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             
-            // Only trigger if we are actively looking at the Home page
-            if (activity && activity.component === 'main') {
+            // Only trigger if we are actively looking at the Home page and have the cache
+            if (activity && activity.component === 'main' && window.lampa_master_cache) {
                 
-                // Find all standard cards that haven't been converted yet
-                var normalCards = $('.card:not(.card--wide):visible');
-                
-                normalCards.each(function() {
-                    var card = $(this);
-                    
-                    // 1. Secret Sauce: Tap into Lampa's hidden data attached to the HTML element
-                    var movie = card[0].data; 
-                    
-                    // If no data is attached yet, skip and wait for the next cycle
-                    if (!movie) return; 
+                // Loop through each physical row on the screen
+                $('.items-line').each(function(rowIndex) {
+                    // Match the physical row to the cached data array row
+                    var rowData = window.lampa_master_cache[rowIndex];
+                    if (!rowData || !rowData.results) return;
 
-                    // 2. Make it physically wide
-                    card.addClass('card--wide');
-                    
-                    // 3. Fix Image & Quality: Swap vertical poster for high-res horizontal backdrop
-                    var imgElement = card.find('.card__img');
-                    var horizontalImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
-                    if (horizontalImage) {
-                        // Use Lampa's native image API to get the w780 version safely
-                        imgElement.attr('src', Lampa.Api.img(horizontalImage, 'w780'));
-                    }
-                    
-                    // 4. Delete Lampa's outside text elements
-                    card.find('.card__title, .card__age').remove();
-                    
-                    // 5. Inject the exact layout using the REAL hidden data
-                    var titleText = movie.title || movie.name || "Unknown Title";
-                    var synopsis = movie.overview || "No description available.";
-                    
-                    var promoHtml = $(
-                        '<div class="card__promo">' + 
-                            '<div class="card__promo-title">' + titleText + '</div>' + 
-                            '<div class="card__promo-text">' + synopsis + '</div>' + 
-                        '</div>'
-                    );
-                    
-                    card.find('.card__view').append(promoHtml);
+                    // Loop through each un-converted card in this row
+                    $(this).find('.card:not(.card--wide):visible').each(function(cardIndex) {
+                        var card = $(this);
+                        
+                        // Match the physical card to the cached movie data
+                        var movie = rowData.results[cardIndex];
+                        if (!movie) return;
+
+                        // 2. Make it physically wide
+                        card.addClass('card--wide');
+                        
+                        // 3. Upgrade to the real HD Horizontal Backdrop from the cache
+                        var hdImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
+                        if (hdImage) {
+                            card.find('.card__img').attr('src', Lampa.Api.img(hdImage, 'w780'));
+                        }
+                        
+                        // 4. Remove Lampa's outside text elements
+                        card.find('.card__title, .card__age').remove();
+                        
+                        // 5. Inject the REAL title and REAL synopsis from the cache
+                        var titleText = movie.title || movie.name || "Unknown";
+                        var synopsis = movie.overview || "No description available.";
+                        
+                        var promoHtml = $(
+                            '<div class="card__promo">' + 
+                                '<div class="card__promo-title">' + titleText + '</div>' + 
+                                '<div class="card__promo-text">' + synopsis + '</div>' + 
+                            '</div>'
+                        );
+                        
+                        card.find('.card__view').append(promoHtml);
+                    });
                 });
             }
         }, 500); 
     }
 
     // Wait a brief moment for Lampa to boot, then start the watcher
-    setTimeout(proveWideDOM_V2, 500);
+    setTimeout(proveWideDOM_V4, 500);
 })();
