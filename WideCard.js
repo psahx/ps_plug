@@ -1,38 +1,30 @@
-// == Lampa Homepage Tracer V2 ==
+// == Lampa Homepage Tracer V3 ==
 (function () {
     'use strict';
 
-    console.log("[Tracer V2] Booting scanner...");
-
-    var hookedLine = false;
+    console.log("[Tracer V3] Booting Card scanner...");
+    var hookedCard = false;
 
     function tryHook() {
-        if (window.Lampa && Lampa.InteractionLine && !hookedLine) {
-            var original_line = Lampa.InteractionLine;
+        if (window.Lampa && Lampa.Card && !hookedCard) {
+            var original_card = Lampa.Card;
             
-            Lampa.InteractionLine = function (data, params) {
-                // Get the current active screen
-                var act = window.Lampa.Activity ? window.Lampa.Activity.active() : null;
-                var comp = act ? act.component : 'unknown_boot';
+            Lampa.Card = function (data, params) {
+                // Log when a card is built, and what instructions it was given
+                console.log("[Tracer V3] Building Card | Title:", (data.title || data.name), "| Params:", params);
                 
-                // Log every single row Lampa tries to draw, right as it happens
-                console.log("[Tracer V2] Drawing Row! Component:", comp, " | Wide Param:", (params ? params.card_wide : false));
-                
-                return new original_line(data, params);
+                return new original_card(data, params);
             };
             
-            hookedLine = true;
-            console.log("[Tracer V2] Hooked InteractionLine successfully!");
+            hookedCard = true;
+            console.log("[Tracer V3] Hooked Lampa.Card successfully!");
         }
     }
 
-    // Try hooking immediately
     tryHook();
-    
-    // If Lampa isn't ready yet, check every 50 milliseconds until it is
     var scanner = setInterval(function() {
-        if (hookedLine) {
-            clearInterval(scanner); // Stop scanning once we hook it
+        if (hookedCard) {
+            clearInterval(scanner);
         } else {
             tryHook();
         }
