@@ -13,7 +13,7 @@
             .card--wide .card__promo { padding-bottom: 2.6em !important; }
             
             /* Container for Grid */
-            .mdblist-ratings-wrapper { position: absolute; bottom: 0.5em; left: 0.5em; display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.4em; z-index: 10; align-items: center; }
+            .mdblist-ratings-wrapper { position: absolute; bottom: 0.5em; left: 0.5em; display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.35em; z-index: 10; align-items: center; }
             
             /* Container for Full Page (Inside Card) */
             .full-mdblist-ratings { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.3em; margin-top: 0.5em; margin-bottom: 0.5em; }
