@@ -1,4 +1,4 @@
-// == Lampa Hover Trigger Proof V11 ==
+// == Lampa Missing Data Bounty Hunter ==
 (function () {
     'use strict';
 
@@ -30,7 +30,7 @@
         }
     }
 
-    // Catch the instant cache for the first 6 rows
+    // Hook the instant cache load
     if (window.Lampa && Lampa.Api) {
         ['main', 'list', 'get', 'search'].forEach(function(method) {
             if (Lampa.Api[method] && !Lampa.Api[method]._hooked) {
@@ -46,75 +46,38 @@
         });
     }
 
-    // The Master Layout Changer
-    function applyWideStyle(card) {
-        if (card.hasClass('card--wide')) return;
-        
-        var imgElement = card.find('.card__img');
-        var currentSrc = imgElement.attr('src') || imgElement.attr('data-src') || "";
-        if (!currentSrc) return;
-
-        var filename = getSafeFilename(currentSrc);
-        var movie = window.lampa_movie_dict[filename];
-
-        // Make it physically wide
-        card.addClass('card--wide');
-        
-        var titleText = card.find('.card__title').text() || "Unknown";
-        var synopsis = ""; 
-
-        // Scenario A: We have the real data from the dictionary
-        if (movie) {
-            titleText = movie.title || movie.name || titleText;
-            synopsis = movie.overview || "";
-            if (synopsis.length > 115) synopsis = synopsis.substring(0, 115) + '...';
-            
-            var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
-            if (targetImage) {
-                imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
-                imgElement.css({'object-fit': 'cover', 'object-position': 'top'});
-            }
-        } 
-        // Scenario B: Missing data fallback (Upgrades DOM, leaves text blank)
-        else {
-            var hdSrc = currentSrc.replace('/w500/', '/w780/').replace('/w342/', '/w780/');
-            imgElement.attr('src', hdSrc);
-            imgElement.css({'object-fit': 'cover', 'object-position': 'center'});
-        }
-
-        card.find('.card__title, .card__age').remove();
-        
-        var promoHtml = $(
-            '<div class="card__promo">' + 
-                '<div class="card__promo-title">' + titleText + '</div>' + 
-                '<div class="card__promo-text">' + synopsis + '</div>' + 
-            '</div>'
-        );
-        
-        card.find('.card__view').append(promoHtml);
-    }
-
-    // 1. Initial automated sweep (Only applies if data is perfectly matched)
+    // The Ghost Hunter Watcher
     setInterval(function() {
         var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
         if (activity && (activity.component === 'main' || activity.component === 'category')) {
+            
+            // Look at every single standard card
             $('.card:not(.card--wide):visible').each(function() {
                 var card = $(this);
-                var filename = getSafeFilename(card.find('.card__img').attr('src'));
-                // Auto-convert ONLY the first rows that we have guaranteed data for
-                if (window.lampa_movie_dict[filename]) {
-                    applyWideStyle(card);
+                
+                // If we already marked it as a ghost, skip it
+                if (card.hasClass('ghost-marked')) return;
+
+                var imgElement = card.find('.card__img');
+                var currentSrc = imgElement.attr('src') || imgElement.attr('data-src') || "";
+                
+                // If it hasn't loaded an image yet, skip for now
+                if (!currentSrc || currentSrc.indexOf('noposter') > -1) return;
+
+                var filename = getSafeFilename(currentSrc);
+                var movie = window.lampa_movie_dict[filename];
+
+                // If the dictionary DOES NOT have this movie... we caught a ghost!
+                if (!movie) {
+                    card.addClass('ghost-marked');
+                    card.css('border', '3px solid red'); // Visually mark it on screen
+                    
+                    console.log("👻 GHOST CARD CAUGHT!");
+                    console.log("Failed Image URL:", currentSrc);
+                    console.log("Raw HTML:", card[0].outerHTML);
                 }
             });
         }
-    }, 500);
-
-    // 2. The User's Hover Trigger (Catches everything else)
-    $(document).on('mouseenter focus hover:focus', '.card:not(.card--wide)', function() {
-        var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
-        if (activity && (activity.component === 'main' || activity.component === 'category')) {
-            applyWideStyle($(this));
-        }
-    });
+    }, 1000); 
 
 })();
