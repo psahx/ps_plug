@@ -1,8 +1,8 @@
-// == Lampa Homepage Wide Card DOM Proof ==
+// == Lampa Homepage Wide Card DOM Proof V2 ==
 (function () {
     'use strict';
 
-    function proveWideDOM() {
+    function proveWideDOM_V2() {
         // Run a silent background check twice a second
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
@@ -16,20 +16,34 @@
                 normalCards.each(function() {
                     var card = $(this);
                     
-                    // 1. Make it physically wide
+                    // 1. Secret Sauce: Tap into Lampa's hidden data attached to the HTML element
+                    var movie = card[0].data; 
+                    
+                    // If no data is attached yet, skip and wait for the next cycle
+                    if (!movie) return; 
+
+                    // 2. Make it physically wide
                     card.addClass('card--wide');
                     
-                    // 2. Extract the existing title that Lampa placed outside
-                    var titleText = card.find('.card__title').text();
+                    // 3. Fix Image & Quality: Swap vertical poster for high-res horizontal backdrop
+                    var imgElement = card.find('.card__img');
+                    var horizontalImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
+                    if (horizontalImage) {
+                        // Use Lampa's native image API to get the w780 version safely
+                        imgElement.attr('src', Lampa.Api.img(horizontalImage, 'w780'));
+                    }
                     
-                    // 3. Delete Lampa's outside text elements
+                    // 4. Delete Lampa's outside text elements
                     card.find('.card__title, .card__age').remove();
                     
-                    // 4. Inject the exact HTML structure of a Wide Card inside the image view
+                    // 5. Inject the exact layout using the REAL hidden data
+                    var titleText = movie.title || movie.name || "Unknown Title";
+                    var synopsis = movie.overview || "No description available.";
+                    
                     var promoHtml = $(
                         '<div class="card__promo">' + 
                             '<div class="card__promo-title">' + titleText + '</div>' + 
-                            '<div class="card__promo-text">Design proof: Wide layout successfully forced via DOM injection. No lag, no loops.</div>' + 
+                            '<div class="card__promo-text">' + synopsis + '</div>' + 
                         '</div>'
                     );
                     
@@ -39,6 +53,6 @@
         }, 500); 
     }
 
-    // Wait a brief moment for Lampa to boot, then start the silent watcher
-    setTimeout(proveWideDOM, 500);
+    // Wait a brief moment for Lampa to boot, then start the watcher
+    setTimeout(proveWideDOM_V2, 500);
 })();
