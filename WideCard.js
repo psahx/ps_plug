@@ -1,15 +1,13 @@
-// == Lampa Homepage Wide Card DOM Proof V9 ==
+// == Lampa Homepage Wide Card DOM Proof V10 ==
 (function () {
     'use strict';
 
     window.lampa_movie_dict = window.lampa_movie_dict || {};
 
-    // 1. The scrubbed filename matcher (Strips out ?v=123 tags)
     function getSafeFilename(path) {
         if (!path) return null;
-        var file = path.split('/').pop(); // Get the last part
-        file = file.split('?')[0].split('#')[0]; // Strip any extra URL parameters
-        // Only return if it's an actual image file, ignore local placeholders
+        var file = path.split('/').pop();
+        file = file.split('?')[0].split('#')[0]; 
         if (file && (file.indexOf('.jpg') > -1 || file.indexOf('.png') > -1)) {
             return file;
         }
@@ -38,10 +36,9 @@
         }
     }
 
-    // 2. Hook immediately to catch instant-cache loads
+    // Hook 1: Catch initial loads from the Local Cache
     function hookLampaApi() {
         if (!window.Lampa || !Lampa.Api) return false;
-        
         ['main', 'list', 'get', 'search'].forEach(function(method) {
             if (Lampa.Api[method] && !Lampa.Api[method]._hooked) {
                 var original = Lampa.Api[method];
@@ -56,11 +53,32 @@
         });
         return true;
     }
-    
-    // Try to hook immediately on script load
-    hookLampaApi();
 
-    function proveWideDOM_V9() {
+    // Hook 2: Catch lazy-loaded rows from the Network while scrolling
+    function hookLampaNetwork() {
+        if (window.Lampa && Lampa.Reguest && !Lampa.Reguest._hooked) {
+            var orig_silent = Lampa.Reguest.prototype.silent;
+            Lampa.Reguest.prototype.silent = function(url, onsuccess, onerror) {
+                var new_onsuccess = function(data) {
+                    try { extractMoviesSafe(data); } catch (e) {}
+                    if (onsuccess) onsuccess(data);
+                };
+                return orig_silent.call(this, url, new_onsuccess, onerror);
+            };
+
+            var orig_request = Lampa.Reguest.prototype.request;
+            Lampa.Reguest.prototype.request = function(url, onsuccess, onerror) {
+                var new_onsuccess = function(data) {
+                    try { extractMoviesSafe(data); } catch (e) {}
+                    if (onsuccess) onsuccess(data);
+                };
+                return orig_request.call(this, url, new_onsuccess, onerror);
+            };
+            Lampa.Reguest._hooked = true;
+        }
+    }
+
+    function proveWideDOM_V10() {
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             
@@ -78,10 +96,8 @@
                     
                     if (!movie) return;
 
-                    // Make it physically wide
                     card.addClass('card--wide');
                     
-                    // Prioritize horizontal backdrop, fallback to vertical poster if TMDB doesn't have one
                     var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
                     if (targetImage) {
                         imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
@@ -112,12 +128,13 @@
         }, 500); 
     }
 
-    // Keep trying to hook just in case Lampa loaded slower than the script
+    // Deploy both hooks immediately on boot
     var bootInterval = setInterval(function() {
         if (hookLampaApi()) {
+            hookLampaNetwork(); // Activate Hook 2 once Lampa is ready
             clearInterval(bootInterval);
         }
     }, 50);
 
-    setTimeout(proveWideDOM_V9, 500);
+    setTimeout(proveWideDOM_V10, 500);
 })();
