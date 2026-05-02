@@ -1,4 +1,4 @@
-// == Lampa MDBList Phase 5 (The Strict Master Fusion) ==
+// == Lampa MDBList Phase 6 (The Flawless Fusion) ==
 (function () {
     'use strict';
 
@@ -6,26 +6,9 @@
     if (!$('style[data-id="mdblist_homepage_cards"]').length) {
         $('head').append(`
         <style data-id="mdblist_homepage_cards">
-            /* Hide Lampa's native rating badge */
             .card--wide .card__vote { display: none !important; }
-            
-            /* TWEAK: Push text/logo up to prevent overlap with ratings */
             .card--wide .card__promo { padding-bottom: 2.2em !important; }
-            
-            /* Container for our custom array */
-            .mdblist-ratings-wrapper { 
-                position: absolute; 
-                bottom: 0.5em; 
-                left: 0.5em; 
-                display: flex; 
-                flex-direction: row; 
-                flex-wrap: wrap;     
-                gap: 0.15em; /* TWEAK: Ratings closer together */
-                z-index: 10; 
-                align-items: center; 
-            }
-            
-            /* TWEAK: Squeezed paddings to fit more on one line */
+            .mdblist-ratings-wrapper { position: absolute; bottom: 0.5em; left: 0.5em; display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.15em; z-index: 10; align-items: center; }
             .mdblist-ratings-wrapper .full-start__rate { font-size: 1.1em; display: inline-flex; align-items: center; vertical-align: middle; background-color: rgba(255, 255, 255, 0.12); padding: 0 0.1em 0 0; border-radius: 0.3em; gap: 0.2em; overflow: hidden; height: auto; }
             .mdblist-ratings-wrapper .full-start__rate > div { font-weight: normal; font-size: 0.9em; justify-content: center; background-color: rgba(0, 0, 0, 0.4); color: #ffffff; padding: 0em 0.2em; border-radius: 0.3em; line-height: 1; order: 1; display: flex; align-items: center; flex-shrink: 0; }
             .mdblist-ratings-wrapper .rating-logo { height: 1.1em; width: auto; max-width: 75px; vertical-align: middle; order: 2; line-height: 0; }
@@ -35,7 +18,7 @@
         `);
     }
 
-    // --- 2. Master Script Variables ---
+    // --- 2. Master Script Configuration ---
     var config = {
         api_url: 'https://api.mdblist.com/tmdb/', 
         cache_time: 60 * 60 * 12 * 1000, 
@@ -44,8 +27,10 @@
         request_timeout: 10000 
     };
 
-    var mdblistRatingsCache = {}; 
+    // RESTORED: The crucial global variables from your Master Script
+    var mdblistRatingsCache = {};
     var mdblistRatingsPending = {};
+    var network = (window.Lampa && Lampa.Reguest) ? new Lampa.Reguest() : null; // <--- The missing piece that caused the crash!
 
     const imdbLogoUrl = 'https://psahx.github.io/ps_plug/IMDb_3_2_Logo_GOLD.png';
     const tmdbLogoUrl = 'https://psahx.github.io/ps_plug/TMDB.svg';
@@ -58,7 +43,7 @@
     const letterboxdLogoUrl = 'https://psahx.github.io/ps_plug/letterboxd-decal-dots-pos-rgb.svg';
     const rogerEbertLogoUrl = 'https://psahx.github.io/ps_plug/Roger_Ebert.jpeg';
 
-    // --- 3. Language Strings (UNCOMPRESSED) ---
+    // --- 3. EXACT COPY: Language Strings ---
     if (window.Lampa && Lampa.Lang) {
         Lampa.Lang.add({
             mdblist_api_key_desc: { ru: "Введите ваш API ключ с сайта MDBList.com", en: "Enter your API key from MDBList.com", uk: "Введіть ваш API ключ з сайту MDBList.com" },
@@ -76,7 +61,7 @@
         });
     }
 
-    // --- 4. Settings UI Registration (UNCOMPRESSED) ---
+    // --- 4. EXACT COPY: Settings UI Registration ---
     if (window.Lampa && Lampa.SettingsApi) {
         Lampa.SettingsApi.addComponent({
             component: 'additional_ratings',
@@ -86,57 +71,25 @@
 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings', 
-            param: {
-                name: 'mdblist_api_key', 
-                type: 'input',          
-                'default': '',          
-                values: {},             
-                placeholder: 'Enter your MDBList API Key' 
-            },
-            field: {
-                name: 'MDBList API Key', 
-                description: Lampa.Lang.translate('mdblist_api_key_desc') 
-            },
-            onChange: function() {
-                Lampa.Settings.update();
-            }
+            param: { name: 'mdblist_api_key', type: 'input', 'default': '', values: {}, placeholder: 'Enter your MDBList API Key' },
+            field: { name: 'MDBList API Key', description: Lampa.Lang.translate('mdblist_api_key_desc') },
+            onChange: function() { Lampa.Settings.update(); }
         });
 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings', 
-            param: {
-                name: 'select_ratings_button', 
-                type: 'button'                 
-            },
-            field: {
-                name: Lampa.Lang.translate('select_ratings_button_name'),
-                description: Lampa.Lang.translate('select_ratings_button_desc')
-            },
-            onChange: function () {
-                showRatingProviderSelection();
-            }
+            param: { name: 'select_ratings_button', type: 'button' },
+            field: { name: Lampa.Lang.translate('select_ratings_button_name'), description: Lampa.Lang.translate('select_ratings_button_desc') },
+            onChange: function () { showRatingProviderSelection(); }
         });
                 
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings',        
-            param: {
-                name: 'show_logo_instead_of_title', 
-                type: 'select',                     
-                values: {                           
-                    'true': Lampa.Lang.translate('settings_show'), 
-                    'false': Lampa.Lang.translate('settings_hide') 
-                },
-                'default': 'false'                  
-            },
-            field: {
-                name: Lampa.Lang.translate('logo_toggle_name'), 
-                description: Lampa.Lang.translate('logo_toggle_desc') 
-            },
+            param: { name: 'show_logo_instead_of_title', type: 'select', values: { 'true': Lampa.Lang.translate('settings_show'), 'false': Lampa.Lang.translate('settings_hide') }, 'default': 'false' },
+            field: { name: Lampa.Lang.translate('logo_toggle_name'), description: Lampa.Lang.translate('logo_toggle_desc') },
             onChange: function(value) {
-                var storageKey = 'show_logo_instead_of_title'; 
-                Lampa.Storage.set(storageKey, value); 
-                // INSTANT GRID REFRESH
-                $('.card__promo-title').empty();
+                Lampa.Storage.set('show_logo_instead_of_title', value); 
+                $('.card__promo-title').empty(); // Instant UI update
                 $('.card').each(function() { this.logo_fetched = false; });
             }
         });
@@ -144,30 +97,20 @@
         Lampa.SettingsApi.addParam({
             component: 'additional_ratings', 
             param: {
-                name: 'info_panel_logo_max_height', 
-                type: 'select',
-                values: {
-                    '50': '50px', '75': '75px', '100': '100px', '125': '125px',
-                    '150': '150px', '175': '175px', '200': '200px', '225': '225px',
-                    '250': '250px', '300': '300px', '350': '350px', '400': '400px',
-                    '450': '450px', '500': '500px'
-                },
+                name: 'info_panel_logo_max_height', type: 'select',
+                values: { '50': '50px', '75': '75px', '100': '100px', '125': '125px', '150': '150px', '175': '175px', '200': '200px', '225': '225px', '250': '250px', '300': '300px', '350': '350px', '400': '400px', '450': '450px', '500': '500px' },
                 'default': '100'
             },
-            field: {
-                name: Lampa.Lang.translate('info_panel_logo_height_name'), 
-                description: Lampa.Lang.translate('info_panel_logo_height_desc') 
-            },
+            field: { name: Lampa.Lang.translate('info_panel_logo_height_name'), description: Lampa.Lang.translate('info_panel_logo_height_desc') },
             onChange: function(value) {
                 Lampa.Storage.set('info_panel_logo_max_height', value);
-                // INSTANT GRID REFRESH
-                $('.card__promo-title').empty();
+                $('.card__promo-title').empty(); // Instant UI update
                 $('.card').each(function() { this.logo_fetched = false; });
             }
         });
     }
 
-    // --- 5. Rating Selection Dialog (UNCOMPRESSED) ---
+    // --- 5. EXACT COPY: Rating Selection Dialog ---
     function showRatingProviderSelection() {
         const providers = [
             { title: 'IMDb', id: 'show_rating_imdb', default: true },
@@ -183,23 +126,14 @@
         let selectItems = providers.map(provider => {
             let storedValue = Lampa.Storage.get(provider.id, provider.default);
             let isChecked = (storedValue === true || storedValue === 'true');
-            return {
-                title: provider.title,
-                id: provider.id,          
-                checkbox: true,         
-                checked: isChecked,       
-                default: provider.default 
-            };
+            return { title: provider.title, id: provider.id, checkbox: true, checked: isChecked, default: provider.default };
         });
 
         var currentController = Lampa.Controller.enabled().name;
-
         Lampa.Select.show({
             title: Lampa.Lang.translate('select_ratings_dialog_title'), 
             items: selectItems,                                        
-            onBack: function () {                                      
-                Lampa.Controller.toggle(currentController || 'settings');
-            },
+            onBack: function () { Lampa.Controller.toggle(currentController || 'settings'); },
             onCheck: function (item) { 
                 let oldValue = Lampa.Storage.get(item.id, item.default);
                 let oldStateIsChecked = (oldValue === true || oldValue === 'true');
@@ -207,19 +141,19 @@
                 Lampa.Storage.set(item.id, newStateIsChecked);
                 item.checked = newStateIsChecked;
 
-                // INSTANT GRID REFRESH
-                $('.mdblist-ratings-wrapper').remove();
+                $('.mdblist-ratings-wrapper').remove(); // Instant UI update
                 $('.card').each(function() { this.mdblist_fetched = false; });
             }
         });
     }
 
-    // --- 6. Caching & Fetching Functions ---
+    // --- 6. EXACT COPY: Caching ---
     function getCache(tmdb_id) {
         if (!window.Lampa || !Lampa.Storage) return false;
+        var timestamp = new Date().getTime();
         var cache = Lampa.Storage.cache(config.cache_key, config.cache_limit, {}); 
         if (cache[tmdb_id]) {
-            if ((new Date().getTime() - cache[tmdb_id].timestamp) > config.cache_time) {
+            if ((timestamp - cache[tmdb_id].timestamp) > config.cache_time) {
                 delete cache[tmdb_id]; Lampa.Storage.set(config.cache_key, cache); return false;
             } 
           return cache[tmdb_id].data; 
@@ -229,13 +163,14 @@
 
     function setCache(tmdb_id, data) {
         if (!window.Lampa || !Lampa.Storage) return;
+        var timestamp = new Date().getTime();
         var cache = Lampa.Storage.cache(config.cache_key, config.cache_limit, {});
-        cache[tmdb_id] = { timestamp: new Date().getTime(), data: data };
+        cache[tmdb_id] = { timestamp: timestamp, data: data };
         Lampa.Storage.set(config.cache_key, cache); 
     }
 
+    // --- 7. MDBList Fetcher (With Parallel Fix) ---
     function fetchRatings(movieData, callback) {
-        // Parallel-safe local network request
         var localNet = (window.Lampa && Lampa.Reguest) ? new Lampa.Reguest() : null;
         if (!localNet || !movieData || !movieData.id || !callback) return;
 
@@ -243,28 +178,31 @@
         if (cached_ratings) { callback(cached_ratings); return; }
 
         var apiKey = Lampa.Storage.get('mdblist_api_key');
-        if (!apiKey) { callback({ error: "No API Key" }); return; }
+        if (!apiKey) { callback({ error: "MDBList API Key not configured" }); return; }
 
-        var api_url = "".concat(config.api_url).concat(movieData.method === 'tv' ? 'show' : 'movie', "/").concat(movieData.id, "?apikey=").concat(apiKey);
+        var media_type = movieData.method === 'tv' ? 'show' : 'movie';
+        var api_url = "".concat(config.api_url).concat(media_type, "/").concat(movieData.id, "?apikey=").concat(apiKey);
         
+        localNet.clear(); 
         localNet.timeout(config.request_timeout);
         localNet.silent(api_url, function (response) {
             var ratingsResult = { error: null }; 
             if (response && response.ratings && Array.isArray(response.ratings)) {
                  response.ratings.forEach(function(rating) {
-                     if (rating.source && rating.value !== null) ratingsResult[rating.source] = rating.value;
+                     if (rating.source && rating.value !== null) { ratingsResult[rating.source] = rating.value; }
                  });
-            } else if (response && response.error) {
-                ratingsResult.error = response.error;
-            }
-            if (!ratingsResult.error || !ratingsResult.error.toLowerCase().includes("invalid api key")) {
-                setCache(movieData.id, ratingsResult);
-            }
+            } else if (response && response.error) { ratingsResult.error = "MDBList API Error: " + response.error; } 
+            else { ratingsResult.error = "Invalid response format"; }
+            if (ratingsResult.error === null || (ratingsResult.error && !ratingsResult.error.toLowerCase().includes("invalid api key"))) { setCache(movieData.id, ratingsResult); }
             callback(ratingsResult);
-        }, function () { callback({ error: "Network Failed" }); }); 
+        }, function (xhr, status) {
+            var errorResult = { error: "MDBList request failed" };
+            if (status !== 401 && status !== 403) { setCache(movieData.id, errorResult); }
+            callback(errorResult);
+        }); 
     }
 
-    // --- 7. The V14 Grid Watcher ---
+    // --- 8. The Grid Watcher (Wide Cards) ---
     function applyWideDOM() {
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
@@ -350,7 +288,7 @@
         }, 500); 
     }
 
-    // --- 8. EXACT COPY: Old Plugin Info Panel (UNCOMPRESSED) ---
+    // --- 9. EXACT COPY: Old Plugin Info Panel ---
     function create() { 
         var html;
         var timer; 
@@ -363,7 +301,6 @@
         
         this.update = function(data) { 
             var _this = this; 
-
             if (!html) return;
             if (!data || !data.id || !data.title) return;
 
@@ -381,10 +318,7 @@
             var descElement = html.find('.new-interface-info__description');
             if (descElement.length) {
                 var targetLineClamp = showLogos ? '2' : '4'; 
-                descElement.css({ 
-                    '-webkit-line-clamp': targetLineClamp,
-                    'line-clamp': targetLineClamp
-                });
+                descElement.css({ '-webkit-line-clamp': targetLineClamp, 'line-clamp': targetLineClamp });
             }
 
             if (showLogos && data.method && data.title) { 
@@ -510,9 +444,7 @@
             }, 300); 
         };
         
-        this.render = function () { 
-            return html; 
-        };
+        this.render = function () { return html; };
         
         this.displayLogoOrTitle = function(movieData) {
             if (!html) return; 
@@ -546,27 +478,20 @@
                 if (currentTitleElement && currentTitleElement.length) {
                     if (logoPath) {
                          var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100'); 
-                         if (!/^\d+$/.test(selectedHeight)) {
-                             selectedHeight = '100';
-                         }
+                         if (!/^\d+$/.test(selectedHeight)) { selectedHeight = '100'; }
                          var imageSize = 'original'; 
                          var styleAttr = `max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;`;
                          var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
                          var imgTagHtml = `<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`;
                          currentTitleElement.empty().html(imgTagHtml); 
-                    } else {
-                         currentTitleElement.text(movieData.title); 
-                    }
+                    } else { currentTitleElement.text(movieData.title); }
                 }
 
             }, function(xhr, status) { 
                  var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
                   if (currentTitleElement && currentTitleElement.length) {
-                      if(movieData && movieData.title) {
-                           currentTitleElement.text(movieData.title);
-                      } else {
-                           currentTitleElement.empty(); 
-                      }
+                      if(movieData && movieData.title) { currentTitleElement.text(movieData.title); } 
+                      else { currentTitleElement.empty(); }
                   }
             }); 
         }; 
@@ -582,7 +507,7 @@
         }; 
     }
 
-    // --- 9. EXACT COPY: Old Plugin Grid Replacement (UNCOMPRESSED) ---
+    // --- 10. EXACT COPY: Old Plugin Grid Replacement ---
     function component(object) { 
         var network = new Lampa.Reguest(); 
         var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); 
@@ -597,9 +522,7 @@
         var background_last = ''; 
         var background_timer; 
         
-        this.create = function () {
-            
-        }; 
+        this.create = function () {}; 
         
         this.empty = function () { 
             var button; 
@@ -625,9 +548,7 @@
                     _this.next_wait = false; 
                     new_data.forEach(_this.append.bind(_this)); 
                     Lampa.Layer.visible(items[active + 1].render(true)); 
-                }, function () { 
-                    _this.next_wait = false; 
-                }); 
+                }, function () { _this.next_wait = false; }); 
             } 
         }; 
         
@@ -666,16 +587,10 @@
             if (new_background == background_last) return; 
             background_timer = setTimeout(function () { 
                 background_img.removeClass('loaded'); 
-                background_img[0].onload = function () { 
-                    background_img.addClass('loaded'); 
-                }; 
-                background_img[0].onerror = function () { 
-                    background_img.removeClass('loaded'); 
-                }; 
+                background_img[0].onload = function () { background_img.addClass('loaded'); }; 
+                background_img[0].onerror = function () { background_img.removeClass('loaded'); }; 
                 background_last = new_background; 
-                setTimeout(function () { 
-                    if (background_img[0]) background_img[0].src = background_last; 
-                }, 300); 
+                setTimeout(function () { if (background_img[0]) background_img[0].src = background_last; }, 300); 
             }, 1000); 
         }; 
         
@@ -690,83 +605,37 @@
             item.onDown = this.down.bind(this); 
             item.onUp = this.up.bind(this); 
             item.onBack = this.back.bind(this); 
-            item.onToggle = function () { 
-                active = items.indexOf(item); 
-            }; 
+            item.onToggle = function () { active = items.indexOf(item); }; 
             if (this.onMore) item.onMore = this.onMore.bind(this); 
-            item.onFocus = function (elem) { 
-                if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); 
-            }; 
-            item.onHover = function (elem) { 
-                if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; 
-                info.update(elem); 
-                _this3.background(elem); 
-            }; 
+            item.onFocus = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; 
+            item.onHover = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; 
             item.onFocusMore = info.empty.bind(info); 
             scroll.append(item.render()); 
             items.push(item); 
         }; 
         
-        this.back = function () { 
-            Lampa.Activity.backward(); 
-        }; 
-        
-        this.down = function () { 
-            active++; 
-            active = Math.min(active, items.length - 1); 
-            if (!viewall && lezydata) lezydata.slice(0, active + 2).forEach(this.append.bind(this)); 
-            items[active].toggle(); 
-            scroll.update(items[active].render()); 
-        }; 
-        
-        this.up = function () { 
-            active--; 
-            if (active < 0) { 
-                active = 0; Lampa.Controller.toggle('head'); 
-            } else { 
-                items[active].toggle(); scroll.update(items[active].render()); 
-            } 
-        }; 
+        this.back = function () { Lampa.Activity.backward(); }; 
+        this.down = function () { active++; active = Math.min(active, items.length - 1); if (!viewall && lezydata) lezydata.slice(0, active + 2).forEach(this.append.bind(this)); items[active].toggle(); scroll.update(items[active].render()); }; 
+        this.up = function () { active--; if (active < 0) { active = 0; Lampa.Controller.toggle('head'); } else { items[active].toggle(); scroll.update(items[active].render()); } }; 
         
         this.start = function () {
             var _this4 = this; 
             Lampa.Controller.add('content', { 
-                link: this, toggle: function toggle() { 
-                    if (_this4.activity.canRefresh()) return false; 
-                    if (items.length) { 
-                        items[active].toggle(); 
-                    } 
-                }, 
+                link: this, toggle: function toggle() { if (_this4.activity.canRefresh()) return false; if (items.length) { items[active].toggle(); } }, 
                 update: function update() {}, 
-                left: function left() { 
-                    if (Navigator.canmove('left')) Navigator.move('left'); 
-                    else Lampa.Controller.toggle('menu'); 
-                }, 
-                right: function right() { 
-                    Navigator.move('right'); 
-                }, 
-                up: function up() { 
-                    if (Navigator.canmove('up')) Navigator.move('up'); 
-                    else Lampa.Controller.toggle('head'); 
-                }, 
-                down: function down() { 
-                    if (Navigator.canmove('down')) Navigator.move('down'); 
-                }, 
+                left: function left() { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, 
+                right: function right() { Navigator.move('right'); }, 
+                up: function up() { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, 
+                down: function down() { if (Navigator.canmove('down')) Navigator.move('down'); }, 
                 back: this.back 
             }); 
             Lampa.Controller.toggle('content'); 
         }; 
         
-        this.refresh = function () { 
-            this.activity.loader(true); 
-            this.activity.need_refresh = true; 
-        }; 
-        
+        this.refresh = function () { this.activity.loader(true); this.activity.need_refresh = true; }; 
         this.pause = function () {}; 
         this.stop = function () {}; 
-        this.render = function () { 
-            return html; 
-        }; 
+        this.render = function () { return html; }; 
         
         this.destroy = function () {
             clearTimeout(background_timer); 
@@ -775,15 +644,11 @@
             scroll.destroy(); 
             if (info) info.destroy(); 
             if (html) html.remove(); 
-            items = null; 
-            network = null; 
-            lezydata = null; 
-            info = null; 
-            html = null; 
+            items = null; network = null; lezydata = null; info = null; html = null; 
         }; 
     }
 
-    // --- 10. EXACT COPY: Old Plugin Init & Full Listener (UNCOMPRESSED) ---
+    // --- 11. EXACT COPY: Old Plugin Init & Full Listener ---
     function startPlugin() {
         if (!window.Lampa || !Lampa.Utils || !Lampa.Lang || !Lampa.Storage || !Lampa.TMDB || !Lampa.Template || !Lampa.Reguest || !Lampa.Api || !Lampa.InteractionLine || !Lampa.Scroll || !Lampa.Activity || !Lampa.Controller) { 
             console.error("NewInterface Adjust Padding: Missing Lampa components"); 
@@ -815,10 +680,10 @@
                                 var apiKey = Lampa.TMDB.key();
                                 var language = Lampa.Storage.get('language');
                                 var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
-                                
-                                var masterNet = new Lampa.Reguest();
-                                masterNet.timeout(config.request_timeout || 7000);
-                                masterNet.silent(apiUrl, function (response) { 
+
+                                network.clear(); 
+                                network.timeout(config.request_timeout || 7000);
+                                network.silent(apiUrl, function (response) { 
                                     var logoPath = null;
                                     if (response && response.logos && response.logos.length > 0) {
                                         var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
@@ -900,7 +765,8 @@
         }
     }
 
-    // --- 11. Boot Sequence ---
+    // --- 12. Boot Sequence ---
     if (!window.plugin_interface_ready) startPlugin();
-    setTimeout(applyWideDOM, 500); // Start our Grid Watcher
+    setTimeout(applyWideDOM, 500); 
+
 })();
