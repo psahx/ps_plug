@@ -1,4 +1,4 @@
-// == Lampa Homepage Wide Card V12 (The Memory Scraper) ==
+// == Lampa Homepage Wide Card V13 (Active Search Fallback) ==
 (function () {
     'use strict';
 
@@ -12,6 +12,7 @@
         return null;
     }
 
+    // 1. Standard Dictionary Builder
     function extractMoviesSafe(data) {
         if (!data) return;
         if (Array.isArray(data)) {
@@ -30,21 +31,8 @@
         }
     }
 
-    // 1. NEW: Scrape Lampa's Offline Local Databases (History, Bookmarks, Watched)
-    function scrapeOfflineMemory() {
-        if (!window.Lampa || !Lampa.Storage) return;
-        var localDBs = ['history', 'wath', 'favorite', 'like', 'book', 'look'];
-        localDBs.forEach(function(db) {
-            try {
-                var data = Lampa.Storage.get(db);
-                if (data) extractMoviesSafe(data);
-            } catch (e) {}
-        });
-    }
-
-    // 2. Hook API for Instant Cache Loads
-    function hookLampaApi() {
-        if (!window.Lampa || !Lampa.Api) return false;
+    // 2. Network Hooks (Catches the standard TMDB stuff)
+    if (window.Lampa && Lampa.Api) {
         ['main', 'list', 'get', 'search'].forEach(function(method) {
             if (Lampa.Api[method] && !Lampa.Api[method]._hooked) {
                 var original = Lampa.Api[method];
@@ -57,34 +45,67 @@
                 Lampa.Api[method]._hooked = true;
             }
         });
-        return true;
     }
 
-    // 3. Hook Network for Lazy Loads
-    function hookLampaNetwork() {
-        if (window.Lampa && Lampa.Reguest && !Lampa.Reguest._hooked) {
-            var orig_silent = Lampa.Reguest.prototype.silent;
-            Lampa.Reguest.prototype.silent = function(url, onsuccess, onerror) {
-                var new_onsuccess = function(data) {
-                    try { extractMoviesSafe(data); } catch (e) {}
-                    if (onsuccess) onsuccess(data);
-                };
-                return orig_silent.call(this, url, new_onsuccess, onerror);
-            };
-
-            var orig_request = Lampa.Reguest.prototype.request;
-            Lampa.Reguest.prototype.request = function(url, onsuccess, onerror) {
-                var new_onsuccess = function(data) {
-                    try { extractMoviesSafe(data); } catch (e) {}
-                    if (onsuccess) onsuccess(data);
-                };
-                return orig_request.call(this, url, new_onsuccess, onerror);
-            };
-            Lampa.Reguest._hooked = true;
+    // 3. The Layout Transformer Function
+    function convertToWide(card, movie, currentSrc) {
+        card.addClass('card--wide');
+        
+        var imgElement = card.find('.card__img');
+        var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
+        
+        if (targetImage) {
+            imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
+            imgElement.css({ 'object-fit': 'cover', 'object-position': 'top' });
         }
+        
+        var titleText = movie.title || movie.name || card.find('.card__title').text() || "Unknown";
+        var synopsis = movie.overview || "No description available.";
+        if (synopsis.length > 115) synopsis = synopsis.substring(0, 115) + '...';
+        
+        card.find('.card__title, .card__age').remove();
+        card.find('.card__view').append(
+            '<div class="card__promo">' + 
+                '<div class="card__promo-title">' + titleText + '</div>' + 
+                '<div class="card__promo-text">' + synopsis + '</div>' + 
+            '</div>'
+        );
     }
 
-    // 4. The Layout Transformer
+    // 4. The Active Search Fallback
+    function fetchMissingData(card, title, year, currentSrc, filename) {
+        // Mark as searching so we don't spam the API
+        card.addClass('is-searching-data'); 
+        
+        // Use Lampa's native search API to bypass TMDB blocks/proxies
+        Lampa.Api.search({ query: title }, function(data) {
+            if (data && data.results && data.results.length > 0) {
+                var exactMatch = null;
+                
+                // Try to match the exact release year to prevent wrong movies
+                for (var i = 0; i < data.results.length; i++) {
+                    var r = data.results[i];
+                    var rYear = (r.release_date || r.first_air_date || "").split('-')[0];
+                    if (rYear === year) {
+                        exactMatch = r;
+                        break;
+                    }
+                }
+                
+                // Fallback to the first result if the year is slightly off
+                if (!exactMatch) exactMatch = data.results[0];
+
+                // Add to dictionary and transform!
+                window.lampa_movie_dict[filename] = exactMatch;
+                convertToWide(card, exactMatch, currentSrc);
+            }
+        }, function() {
+            // If search fails, just remove the flag so it can try again later
+            card.removeClass('is-searching-data'); 
+        });
+    }
+
+    // 5. The Watcher
     function applyWideDOM() {
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
@@ -92,7 +113,8 @@
                 
                 $('.card:not(.card--wide):visible').each(function() {
                     var card = $(this);
-                    
+                    if (card.hasClass('is-searching-data')) return; // Already searching
+
                     var imgElement = card.find('.card__img');
                     var currentSrc = imgElement.attr('src') || imgElement.attr('data-src') || "";
                     if (!currentSrc || currentSrc.indexOf('noposter') > -1) return;
@@ -100,43 +122,22 @@
                     var filename = getSafeFilename(currentSrc);
                     var movie = window.lampa_movie_dict[filename];
                     
-                    if (!movie) return; // Still waiting for data match
-
-                    card.addClass('card--wide');
-                    
-                    var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
-                    if (targetImage) {
-                        imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
-                        imgElement.css({ 'object-fit': 'cover', 'object-position': 'top' });
+                    // IF WE HAVE DATA: Transform immediately
+                    if (movie) {
+                        convertToWide(card, movie, currentSrc);
+                    } 
+                    // IF DATA IS MISSING: Scrape DOM and search TMDB
+                    else {
+                        var domTitle = card.find('.card__title').text();
+                        var domYear = card.find('.card__age').text();
+                        if (domTitle && domYear) {
+                            fetchMissingData(card, domTitle, domYear, currentSrc, filename);
+                        }
                     }
-                    
-                    var titleText = movie.title || movie.name || card.find('.card__title').text() || "Unknown";
-                    var synopsis = movie.overview || "No description available.";
-                    if (synopsis.length > 115) synopsis = synopsis.substring(0, 115) + '...';
-                    
-                    card.find('.card__title, .card__age').remove();
-                    
-                    var promoHtml = $(
-                        '<div class="card__promo">' + 
-                            '<div class="card__promo-title">' + titleText + '</div>' + 
-                            '<div class="card__promo-text">' + synopsis + '</div>' + 
-                        '</div>'
-                    );
-                    
-                    card.find('.card__view').append(promoHtml);
                 });
             }
         }, 500); 
     }
-
-    // Boot Sequence
-    var bootInterval = setInterval(function() {
-        if (hookLampaApi()) {
-            scrapeOfflineMemory(); // Pull offline data instantly
-            hookLampaNetwork();    // Watch the network
-            clearInterval(bootInterval);
-        }
-    }, 50);
 
     setTimeout(applyWideDOM, 500);
 })();
