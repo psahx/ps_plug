@@ -1,58 +1,58 @@
-// == Lampa Homepage Wide Card DOM Proof V6 ==
+// == Lampa Homepage Wide Card DOM Proof V7 ==
 (function () {
     'use strict';
 
-    // 1. Create a bulletproof dictionary
+    // 1. Create our master dictionary
     window.lampa_movie_dict = window.lampa_movie_dict || {};
 
-    function extractMovies(items) {
-        if (!items) return;
-        
-        // Handle both arrays and wrapped result objects
-        if (Array.isArray(items)) {
-            items.forEach(function(item) {
-                if (item && typeof item === 'object') {
-                    // Map BOTH image types so we never miss a lookup
-                    if (item.poster_path) window.lampa_movie_dict[item.poster_path] = item;
-                    if (item.backdrop_path) window.lampa_movie_dict[item.backdrop_path] = item;
-                    
-                    // Dig deeper if there are nested results
-                    if (item.results) extractMovies(item.results);
-                    if (item.items) extractMovies(item.items); 
-                }
-            });
-        } else if (items.results) {
-            extractMovies(items.results);
-        } else if (items.items) {
-            extractMovies(items.items);
+    // 2. The Deep Scanner: Recursively searches the entire API response for movies/shows
+    function extractMoviesDeep(obj) {
+        if (!obj || typeof obj !== 'object') return;
+
+        // If this specific object has an ID and an image, it's a movie/show. Save it!
+        if (obj.id && (obj.poster_path || obj.backdrop_path)) {
+            if (obj.poster_path) {
+                var pPath = obj.poster_path.split('/').pop(); // Get exact filename
+                window.lampa_movie_dict[pPath] = obj;
+            }
+            if (obj.backdrop_path) {
+                var bPath = obj.backdrop_path.split('/').pop();
+                window.lampa_movie_dict[bPath] = obj;
+            }
         }
+
+        // Keep digging deeper into the data structure
+        Object.values(obj).forEach(function(val) {
+            if (val && typeof val === 'object') {
+                extractMoviesDeep(val);
+            }
+        });
     }
 
-    // 2. The Master Network Hook: Catch everything, including lazy-loaded rows
-    if (window.Lampa && Lampa.Reguest) {
-        if (!window.lampa_network_hooked) {
-            var orig_silent = Lampa.Reguest.prototype.silent;
-            Lampa.Reguest.prototype.silent = function(url, onsuccess, onerror) {
-                var new_onsuccess = function(data) {
-                    try { if (data) extractMovies(data); } catch (e) {}
-                    if (onsuccess) onsuccess(data);
-                };
-                return orig_silent.call(this, url, new_onsuccess, onerror);
+    // 3. The Network Hook: Catch every single TMDB request Lampa makes
+    if (window.Lampa && Lampa.Reguest && !window.lampa_network_hooked_v7) {
+        var orig_silent = Lampa.Reguest.prototype.silent;
+        Lampa.Reguest.prototype.silent = function(url, onsuccess, onerror) {
+            var new_onsuccess = function(data) {
+                try { extractMoviesDeep(data); } catch (e) {}
+                if (onsuccess) onsuccess(data);
             };
+            return orig_silent.call(this, url, new_onsuccess, onerror);
+        };
 
-            var orig_request = Lampa.Reguest.prototype.request;
-            Lampa.Reguest.prototype.request = function(url, onsuccess, onerror) {
-                var new_onsuccess = function(data) {
-                    try { if (data) extractMovies(data); } catch (e) {}
-                    if (onsuccess) onsuccess(data);
-                };
-                return orig_request.call(this, url, new_onsuccess, onerror);
+        var orig_request = Lampa.Reguest.prototype.request;
+        Lampa.Reguest.prototype.request = function(url, onsuccess, onerror) {
+            var new_onsuccess = function(data) {
+                try { extractMoviesDeep(data); } catch (e) {}
+                if (onsuccess) onsuccess(data);
             };
-            window.lampa_network_hooked = true;
-        }
+            return orig_request.call(this, url, new_onsuccess, onerror);
+        };
+        window.lampa_network_hooked_v7 = true;
     }
 
-    function proveWideDOM_V6() {
+    // 4. The DOM Watcher
+    function proveWideDOM_V7() {
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             
@@ -62,20 +62,19 @@
                     var card = $(this);
                     
                     var imgElement = card.find('.card__img');
-                    // Check 'data-src' just in case Lampa is lazy-loading the image
                     var currentSrc = imgElement.attr('src') || imgElement.attr('data-src') || "";
                     if (!currentSrc) return;
 
-                    var pathParts = currentSrc.split('/');
-                    var filename = '/' + pathParts[pathParts.length - 1]; 
+                    // Extract the raw filename to match the Deep Scanner
+                    var filename = currentSrc.split('/').pop(); 
                     
                     var movie = window.lampa_movie_dict[filename];
                     if (!movie) return; // Wait for the data to arrive
 
-                    // 3. Make it physically wide
+                    // Make it physically wide
                     card.addClass('card--wide');
                     
-                    // 4. Fix Image: Use horizontal backdrop and align to the top
+                    // Fix Image: Use horizontal backdrop and align to the top
                     var hdImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
                     if (hdImage) {
                         imgElement.attr('src', Lampa.Api.img(hdImage, 'w780'));
@@ -85,16 +84,17 @@
                         });
                     }
                     
-                    // 5. Truncate text cleanly
+                    // Truncate text cleanly (115 characters max)
                     var titleText = movie.title || movie.name || "Unknown";
                     var synopsis = movie.overview || "No description available.";
                     if (synopsis.length > 115) {
                         synopsis = synopsis.substring(0, 115) + '...';
                     }
                     
+                    // Remove Lampa's outside text elements
                     card.find('.card__title, .card__age').remove();
                     
-                    // 6. Inject the exact native layout
+                    // Inject the exact native layout
                     var promoHtml = $(
                         '<div class="card__promo">' + 
                             '<div class="card__promo-title">' + titleText + '</div>' + 
@@ -108,5 +108,5 @@
         }, 500); 
     }
 
-    setTimeout(proveWideDOM_V6, 500);
+    setTimeout(proveWideDOM_V7, 500);
 })();
