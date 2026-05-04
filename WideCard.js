@@ -331,7 +331,7 @@
                             if (logoPath) {
                                 var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100');
                                 if (!/^\d+$/.test(selectedHeight)) selectedHeight = '100';
-                                var styleAttr = `max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;`;
+                                var styleAttr = `max-height: ${selectedHeight}px; max-width: 50%; vertical-align: middle; margin-bottom: 0.1em;`;
                                 currentPromoBox.find('.card__promo-title').empty().html(`<img src="${Lampa.TMDB.image('/t/p/original' + logoPath)}" style="${styleAttr}" alt="${titleText} Logo" />`);
                             } else {
                                 currentPromoBox.find('.card__promo-title').text(titleText);
