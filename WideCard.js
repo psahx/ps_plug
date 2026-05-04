@@ -226,48 +226,49 @@
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             if (activity && (activity.component === 'main' || activity.component === 'category')) {
                 
-                $('.card:not(.card--wide):visible').each(function() {
+                // FIX: Target all visible cards, not just non-wide ones
+                $('.card:visible').each(function() {
                     var card = $(this);
                     var movie = this.card_data; 
                     if (!movie || !movie.id) return; 
 
-                    card.addClass('card--wide');
-                    var imgElement = card.find('.card__img');
-                    var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
-                    if (targetImage) {
-                        imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
-                        imgElement.css({ 'object-fit': 'cover', 'object-position': 'top' });
+                    // Structural setup (only run once per card to save CPU)
+                    if (!this.mdblist_structure_applied) {
+                        this.mdblist_structure_applied = true;
+                        card.addClass('card--wide');
+                        var imgElement = card.find('.card__img');
+                        var targetImage = movie.backdrop_path ? movie.backdrop_path : movie.poster_path;
+                        if (targetImage) {
+                            imgElement.attr('src', Lampa.Api.img(targetImage, 'w780'));
+                            imgElement.css({ 'object-fit': 'cover', 'object-position': 'top' });
+                        }
+                        card.find('.card__title, .card__age').remove();
+                        if (card.find('.card__promo').length === 0) {
+                            card.find('.card__view').append('<div class="card__promo"><div class="card__promo-title"></div><div class="card__promo-text"></div></div>');
+                        }
                     }
-                    
-                    var titleText = movie.title || movie.name || card.find('.card__title').text() || "Unknown";
-                    var synopsis = movie.overview || "";
+
+                    var currentPromoBox = card.find('.card__promo');
+                    var titleText = movie.title || movie.name || "Unknown";
+                    // Fallback to Lampa's native translation if TMDB has no plot
+                    var synopsis = movie.overview || Lampa.Lang.translate('full_notext') || "";
                     if (synopsis.length > 115) synopsis = synopsis.substring(0, 115) + '...';
                     
-                    card.find('.card__title, .card__age').remove();
-                    
-                    if (card.find('.card__promo').length === 0) {
-                        card.find('.card__view').append('<div class="card__promo"><div class="card__promo-title"></div><div class="card__promo-text"></div></div>');
-                    }
-                    var currentPromoBox = card.find('.card__promo');
-                    currentPromoBox.find('.card__promo-text').text(synopsis);
-
                     var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true' || Lampa.Storage.get('show_logo_instead_of_title', false) === true;
+                    
                     if (showLogos && !this.logo_fetched) {
                         this.logo_fetched = true;
                         var logoNet = new Lampa.Reguest();
-                        var apiUrl = Lampa.TMDB.api(((movie.method || (movie.name ? 'tv' : 'movie')) === 'tv' ? 'tv/' : 'movie/') + movie.id + '/images?api_key=' + Lampa.TMDB.key() + '&language=' + Lampa.Storage.get('language'));
-                        
+                        var lang = Lampa.Storage.get('language');
+                        // Fallback logic for localized logos included
+                        var apiUrl = Lampa.TMDB.api(((movie.method || (movie.name ? 'tv' : 'movie')) === 'tv' ? 'tv/' : 'movie/') + movie.id + '/images?api_key=' + Lampa.TMDB.key() + '&language=' + lang + '&include_image_language=' + lang + ',en,null');
                         
                         logoNet.silent(apiUrl, function(res) {
                             var logoPath = null;
-                            
-                            // Find the logo if it exists
                             if (res && res.logos && res.logos.length > 0) {
                                 var pngLogo = res.logos.find(l => l.file_path && !l.file_path.endsWith('.svg'));
                                 logoPath = pngLogo ? pngLogo.file_path : res.logos[0].file_path;
                             }
-
-                            // Inject Logo OR Fallback to Text
                             if (logoPath) {
                                 var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100');
                                 if (!/^\d+$/.test(selectedHeight)) selectedHeight = '100';
@@ -277,12 +278,14 @@
                                 currentPromoBox.find('.card__promo-title').text(titleText);
                             }
                         });
-
-
-                        
                     } else if (!showLogos && !this.logo_fetched) {
                         this.logo_fetched = true; 
                         currentPromoBox.find('.card__promo-title').text(titleText);
+                    }
+
+                    // Safely update synopsis text
+                    if (currentPromoBox.find('.card__promo-text').text() !== synopsis) {
+                        currentPromoBox.find('.card__promo-text').text(synopsis);
                     }
 
                     if (!this.mdblist_fetched) {
