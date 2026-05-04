@@ -314,12 +314,20 @@
                         var logoNet = new Lampa.Reguest();
                         var apiUrl = Lampa.TMDB.api(((movie.method || (movie.name ? 'tv' : 'movie')) === 'tv' ? 'tv/' : 'movie/') + movie.id + '/images?api_key=' + Lampa.TMDB.key() + '&language=' + currentLang + '&include_image_language=' + currentLang + ',en,null');
                         
-                        logoNet.silent(apiUrl, function(res) {
+                            logoNet.silent(apiUrl, function(res) {
                             var logoPath = null;
                             if (res && res.logos && res.logos.length > 0) {
-                                var pngLogo = res.logos.find(l => l.file_path && !l.file_path.endsWith('.svg'));
-                                logoPath = pngLogo ? pngLogo.file_path : res.logos[0].file_path;
+                                // 1. Isolate logos that exactly match your current language
+                                var langLogos = res.logos.filter(l => l.iso_639_1 === currentLang);
+                                
+                                // 2. If none exist, fall back to the whole list (English/Null)
+                                if (langLogos.length === 0) langLogos = res.logos; 
+                                
+                                // 3. Grab a PNG from that specific language group, or accept the SVG if it's the only one
+                                var bestLogo = langLogos.find(l => l.file_path && !l.file_path.endsWith('.svg')) || langLogos[0];
+                                logoPath = bestLogo.file_path;
                             }
+
                             if (logoPath) {
                                 var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100');
                                 if (!/^\d+$/.test(selectedHeight)) selectedHeight = '100';
