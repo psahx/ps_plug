@@ -15,7 +15,7 @@
             /* Make the custom metadata text smaller and dimmer */
             .card--wide .card__promo-text { 
             font-size: 0.85em !important; 
-            color: rgba(255, 255, 255, 0.5) !important; }
+            color: rgba(255, 255, 255, 0.75) !important; }
             
             /* Container for Grid */
             .mdblist-ratings-wrapper { position: absolute; bottom: 0.5em; right: 1.5em !important; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 0.3em; z-index: 10; align-items: center; }
