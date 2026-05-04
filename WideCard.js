@@ -227,13 +227,44 @@
 
     // --- 7. The Grid Watcher (Wide Cards) ---
     function applyWideDOM() {
-        // Tiny dictionary to instantly translate TMDB genre numbers into words
-        var tmdbGenres = {
+        // Fallback English dictionary while the network fetches the translated one
+        var fallbackGenres = {
             28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Sci-Fi", 10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
             10759: "Action & Adv", 10762: "Kids", 10763: "News", 10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap", 10767: "Talk", 10768: "War & Politics"
         };
 
+        // Create global cache so we only fetch this once per language change
+        if (!window.mdblist_genres_cache) window.mdblist_genres_cache = {};
+        if (!window.mdblist_genres_lang) window.mdblist_genres_lang = '';
+        if (!window.mdblist_genres_fetching) window.mdblist_genres_fetching = false;
+
         setInterval(function() {
+            var currentLang = Lampa.Storage.get('language') || 'en';
+            
+            // --- SINGLE NETWORK FETCH FOR LOCALIZED GENRES ---
+            if (window.mdblist_genres_lang !== currentLang && !window.mdblist_genres_fetching) {
+                window.mdblist_genres_fetching = true;
+                var net = new Lampa.Reguest();
+                
+                // Fetch Movie Genres
+                var m_url = Lampa.TMDB.api('genre/movie/list?api_key=' + Lampa.TMDB.key() + '&language=' + currentLang);
+                net.silent(m_url, function(m_res) {
+                    if (m_res && m_res.genres) m_res.genres.forEach(function(g) { window.mdblist_genres_cache[g.id] = g.name; });
+                    
+                    // Fetch TV Genres
+                    var t_url = Lampa.TMDB.api('genre/tv/list?api_key=' + Lampa.TMDB.key() + '&language=' + currentLang);
+                    net.silent(t_url, function(t_res) {
+                        if (t_res && t_res.genres) t_res.genres.forEach(function(g) { window.mdblist_genres_cache[g.id] = g.name; });
+                        
+                        window.mdblist_genres_lang = currentLang;
+                        window.mdblist_genres_fetching = false;
+                        
+                        // Force all visible cards to instantly refresh their text in the new language
+                        $('.card--wide').each(function() { this.mdblist_text_rendered = false; });
+                    }, function() { window.mdblist_genres_fetching = false; });
+                }, function() { window.mdblist_genres_fetching = false; });
+            }
+
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             if (activity && (activity.component === 'main' || activity.component === 'category')) {
                 
@@ -262,28 +293,39 @@
                     var titleText = movie.title || movie.name || "Unknown";
                     
                     // --- NEW METADATA STRING LOGIC ---
-                    var year = (movie.release_date || movie.first_air_date || "").substring(0, 4);
-                    var lang = (movie.original_language || "").toUpperCase();
-                    var genreNames = [];
-                    
-                    if (movie.genre_ids && movie.genre_ids.length > 0) {
-                        // Grab up to the first 3 genres and translate them using our dictionary
-                        movie.genre_ids.slice(0, 3).forEach(function(id) { 
-                            if (tmdbGenres[id]) genreNames.push(tmdbGenres[id]);
-                        });
-                    }
-                    var genresString = genreNames.join(' | ');
+                    // Re-render if it's the first time, or if the language just changed
+                    if (!this.mdblist_text_rendered || this.mdblist_text_lang !== currentLang) {
+                        this.mdblist_text_rendered = true;
+                        this.mdblist_text_lang = currentLang;
 
-                    // Assemble the final string (e.g., 2024  •  EN  •  Action | Sci-Fi)
-                    var metaParts = [];
-                    if (year) metaParts.push(year);
-                    if (lang) metaParts.push(lang);
-                    if (genresString) metaParts.push(genresString);
+                        var year = (movie.release_date || movie.first_air_date || "").substring(0, 4);
+                        var langCode = (movie.original_language || "").toUpperCase();
+                        var genreNames = [];
+                        
+                        if (movie.genre_ids && movie.genre_ids.length > 0) {
+                            movie.genre_ids.slice(0, 3).forEach(function(id) { 
+                                // Use the dynamic cache, fallback to English if it's still downloading
+                                var gName = window.mdblist_genres_cache[id] || fallbackGenres[id];
+                                if (gName) {
+                                    // Capitalize the first letter (fixes Russian lowercase genres)
+                                    genreNames.push(gName.charAt(0).toUpperCase() + gName.slice(1));
+                                }
+                            });
+                        }
+                        var genresString = genreNames.join(' | ');
+
+                        var metaParts = [];
+                        if (year) metaParts.push(year);
+                        if (langCode) metaParts.push(langCode);
+                        if (genresString) metaParts.push(genresString);
+                        
+                        var customMetadata = metaParts.join('  •  ');
+                        if (!customMetadata) customMetadata = Lampa.Lang.translate('full_notext') || "";
+
+                        currentPromoBox.find('.card__promo-text').text(customMetadata);
+                    }
                     
-                    var customMetadata = metaParts.join('  •  ');
-                    if (!customMetadata) customMetadata = Lampa.Lang.translate('full_notext') || "";
-                    // ---------------------------------
-                    
+                    // --- LOGO LOGIC ---
                     var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true' || Lampa.Storage.get('show_logo_instead_of_title', false) === true;
                     
                     if (showLogos && !this.logo_fetched) {
@@ -312,11 +354,7 @@
                         currentPromoBox.find('.card__promo-title').text(titleText);
                     }
 
-                    // Inject our new custom metadata string instead of the synopsis
-                    if (currentPromoBox.find('.card__promo-text').text() !== customMetadata) {
-                        currentPromoBox.find('.card__promo-text').text(customMetadata);
-                    }
-
+                    // --- RATINGS LOGIC ---
                     if (!this.mdblist_fetched) {
                         this.mdblist_fetched = true;
                         fetchRatings({ id: movie.id, method: movie.method || (movie.name ? 'tv' : 'movie') }, function(ratings) {
@@ -333,6 +371,7 @@
             }
         }, 500); 
     }
+
 
 
     // --- 8. EXACT COPY: Old Plugin Info Panel ---
