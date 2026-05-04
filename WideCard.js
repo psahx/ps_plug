@@ -222,17 +222,22 @@
 
     // --- 7. The Grid Watcher (Wide Cards) ---
     function applyWideDOM() {
+        // Tiny dictionary to instantly translate TMDB genre numbers into words
+        var tmdbGenres = {
+            28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Sci-Fi", 10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
+            10759: "Action & Adv", 10762: "Kids", 10763: "News", 10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap", 10767: "Talk", 10768: "War & Politics"
+        };
+
         setInterval(function() {
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
             if (activity && (activity.component === 'main' || activity.component === 'category')) {
                 
-                // FIX: Target all visible cards, not just non-wide ones
                 $('.card:visible').each(function() {
                     var card = $(this);
                     var movie = this.card_data; 
                     if (!movie || !movie.id) return; 
 
-                    // Structural setup (only run once per card to save CPU)
+                    // Structural setup
                     if (!this.mdblist_structure_applied) {
                         this.mdblist_structure_applied = true;
                         card.addClass('card--wide');
@@ -250,18 +255,37 @@
 
                     var currentPromoBox = card.find('.card__promo');
                     var titleText = movie.title || movie.name || "Unknown";
-                    // Fallback to Lampa's native translation if TMDB has no plot
-                    var synopsis = movie.overview || Lampa.Lang.translate('full_notext') || "";
-                    if (synopsis.length > 115) synopsis = synopsis.substring(0, 115) + '...';
+                    
+                    // --- NEW METADATA STRING LOGIC ---
+                    var year = (movie.release_date || movie.first_air_date || "").substring(0, 4);
+                    var lang = (movie.original_language || "").toUpperCase();
+                    var genreNames = [];
+                    
+                    if (movie.genre_ids && movie.genre_ids.length > 0) {
+                        // Grab up to the first 3 genres and translate them using our dictionary
+                        movie.genre_ids.slice(0, 3).forEach(function(id) { 
+                            if (tmdbGenres[id]) genreNames.push(tmdbGenres[id]);
+                        });
+                    }
+                    var genresString = genreNames.join(' | ');
+
+                    // Assemble the final string (e.g., 2024  •  EN  •  Action | Sci-Fi)
+                    var metaParts = [];
+                    if (year) metaParts.push(year);
+                    if (lang) metaParts.push(lang);
+                    if (genresString) metaParts.push(genresString);
+                    
+                    var customMetadata = metaParts.join('  •  ');
+                    if (!customMetadata) customMetadata = Lampa.Lang.translate('full_notext') || "";
+                    // ---------------------------------
                     
                     var showLogos = Lampa.Storage.get('show_logo_instead_of_title', 'false') === 'true' || Lampa.Storage.get('show_logo_instead_of_title', false) === true;
                     
                     if (showLogos && !this.logo_fetched) {
                         this.logo_fetched = true;
                         var logoNet = new Lampa.Reguest();
-                        var lang = Lampa.Storage.get('language');
-                        // Fallback logic for localized logos included
-                        var apiUrl = Lampa.TMDB.api(((movie.method || (movie.name ? 'tv' : 'movie')) === 'tv' ? 'tv/' : 'movie/') + movie.id + '/images?api_key=' + Lampa.TMDB.key() + '&language=' + lang + '&include_image_language=' + lang + ',en,null');
+                        var apiLang = Lampa.Storage.get('language');
+                        var apiUrl = Lampa.TMDB.api(((movie.method || (movie.name ? 'tv' : 'movie')) === 'tv' ? 'tv/' : 'movie/') + movie.id + '/images?api_key=' + Lampa.TMDB.key() + '&language=' + apiLang + '&include_image_language=' + apiLang + ',en,null');
                         
                         logoNet.silent(apiUrl, function(res) {
                             var logoPath = null;
@@ -283,9 +307,9 @@
                         currentPromoBox.find('.card__promo-title').text(titleText);
                     }
 
-                    // Safely update synopsis text
-                    if (currentPromoBox.find('.card__promo-text').text() !== synopsis) {
-                        currentPromoBox.find('.card__promo-text').text(synopsis);
+                    // Inject our new custom metadata string instead of the synopsis
+                    if (currentPromoBox.find('.card__promo-text').text() !== customMetadata) {
+                        currentPromoBox.find('.card__promo-text').text(customMetadata);
                     }
 
                     if (!this.mdblist_fetched) {
@@ -304,6 +328,7 @@
             }
         }, 500); 
     }
+
 
     // --- 8. EXACT COPY: Old Plugin Info Panel ---
     function create() { 
