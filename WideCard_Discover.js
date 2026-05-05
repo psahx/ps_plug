@@ -770,7 +770,7 @@
 
 
     
-    // --- 13. MDBList Grid Component (With Pagination & Safety Limits) ---
+    // --- 13. MDBList Grid Component (With 202 Polling & Safety Limits) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true });
@@ -784,13 +784,41 @@
         this.create = function () {
             var _this = this;
             this.activity.loader(true);
+            var fetchUrl = object.url;
+            if (next_cursor) fetchUrl += '&cursor=' + next_cursor;
             
-            network.silent(object.url, function (data) {
-                if (data && data.items && data.items.length) {
-                    next_cursor = data.next_cursor || null;
-                    _this.build(_this.formatData(data.items));
-                } else { _this.empty(); }
-            }, function() { _this.empty(); });
+            var retries = 0;
+
+            // Recursive fetch function to handle MDBList's "202 Building Cache" state
+            function doFetch() {
+                network.timeout(15000); 
+                network.silent(fetchUrl, function (data, status, xhr) {
+                    // Success with data
+                    if (data && data.items && data.items.length) {
+                        next_cursor = data.next_cursor || null;
+                        _this.build(_this.formatData(data.items));
+                    } 
+                    // API is building the cache (202) or returned empty body while processing
+                    else if (retries < 6) { 
+                        retries++;
+                        console.log("MDBList Catalog building... Retrying in 5s (Attempt " + retries + ")");
+                        setTimeout(doFetch, 5000);
+                    } 
+                    // Out of retries or genuinely empty
+                    else { _this.empty(); }
+                }, function(xhr, status) { 
+                    // If the network request itself fails but it's a 202 Accepted
+                    if (xhr && xhr.status === 202 && retries < 6) {
+                        retries++;
+                        console.log("MDBList Catalog 202 Accepted... Retrying in 5s (Attempt " + retries + ")");
+                        setTimeout(doFetch, 5000);
+                    } else {
+                        _this.empty();
+                    }
+                });
+            }
+            
+            doFetch(); // Start the first attempt
         };
 
         this.formatData = function(api_items) {
@@ -826,7 +854,7 @@
             this.appendCards(data);
             html.append(scroll.render());
             
-            // Connect Infinite Scroll to Lampa's native scroll engine
+            // Connect Infinite Scroll
             scroll.onEnd = function() { _this.loadNext(); };
             
             Lampa.Layer.update(html);
@@ -836,16 +864,35 @@
 
         this.loadNext = function() {
             var _this = this;
-            if (loading || !next_cursor || items.length >= MAX_ITEMS) return; // The Safeguard!
+            if (loading || !next_cursor || items.length >= MAX_ITEMS) return;
             loading = true;
             
-            network.silent(object.url + '&cursor=' + next_cursor, function (data) {
-                if (data && data.items && data.items.length) {
-                    next_cursor = data.next_cursor || null;
-                    _this.appendCards(_this.formatData(data.items));
-                } else { next_cursor = null; }
-                loading = false;
-            }, function() { loading = false; });
+            var nextUrl = object.url + '&cursor=' + next_cursor;
+            var loadRetries = 0;
+            
+            function doNextFetch() {
+                network.silent(nextUrl, function (data) {
+                    if (data && data.items && data.items.length) {
+                        next_cursor = data.next_cursor || null;
+                        _this.appendCards(_this.formatData(data.items));
+                        loading = false;
+                    } else if (loadRetries < 3) {
+                        loadRetries++;
+                        setTimeout(doNextFetch, 5000);
+                    } else { 
+                        next_cursor = null; 
+                        loading = false; 
+                    }
+                }, function(xhr) { 
+                    if (xhr && xhr.status === 202 && loadRetries < 3) {
+                        loadRetries++;
+                        setTimeout(doNextFetch, 5000);
+                    } else {
+                        loading = false;
+                    }
+                });
+            }
+            doNextFetch();
         };
 
         this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
