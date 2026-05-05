@@ -305,7 +305,10 @@
             }
 
             var activity = window.Lampa && Lampa.Activity ? Lampa.Activity.active() : null;
-            if (activity && (activity.component === 'main' || activity.component === 'category')) {
+           
+            // Add 'mdblist_catalog' to the allowed components
+            if (activity && (activity.component === 'main' || activity.component === 'category' || activity.component === 'mdblist_catalog')) {
+
                 
                 $('.card:visible').each(function() {
                     var card = $(this);
@@ -770,7 +773,7 @@
 
 
     
-    // --- 13. MDBList Grid Component (SAFE 5-ITEM TMDB TEST + LOGS) ---
+    // --- 13. MDBList Grid Component (Stable TMDB Hybrid) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true });
@@ -781,43 +784,31 @@
         this.create = function () {
             var _this = this;
             this.activity.loader(true);
-            
-            // 1. One single request to MDBList.
             network.silent(object.url, function (data) {
                 var resultsArray = data ? (data.movies || data.shows || data.items || []) : [];
-                
                 if (resultsArray.length > 0) {
-                    // 2. HARD LIMIT: Take only the first 5 results.
-                    var top5 = resultsArray.slice(0, 5);
-                    console.log("DEBUG_TMDB: MDBList returned " + resultsArray.length + " items. Taking top 5.");
-                    _this.build(top5);
-                } else { 
-                    _this.empty(); 
-                }
+                    // Take a safe batch (20 items) to prevent TV memory overload
+                    _this.build(resultsArray.slice(0, 20));
+                } else { _this.empty(); }
             }, function() { _this.empty(); });
         };
 
         this.build = function (api_items) {
             var _this = this;
             var isTv = object.method === 'show' || object.method === 'tv';
-            
-            // 3. Loop through the 5 items and ask TMDB for the details
+            var loadedCount = 0;
+
             api_items.forEach(function(i) {
                 var tmdb_id = i.ids ? i.ids.tmdbid : i.id;
                 if (!tmdb_id) return;
 
                 var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + tmdb_id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
                 
-                console.log("DEBUG_TMDB REQUESTING:", tmdbUrl); // <-- Tracks the outgoing TMDB call
-
                 network.silent(tmdbUrl, function(tmdb_data) {
-                    var titleText = tmdb_data.title || tmdb_data.name;
-                    console.log("DEBUG_TMDB SUCCESS FOR ID " + tmdb_id + ":", titleText); // <-- Tracks the incoming TMDB data
-                    
                     var elem = {
                         id: tmdb_id,
-                        title: titleText,
-                        name: titleText,
+                        title: tmdb_data.title || tmdb_data.name,
+                        name: tmdb_data.title || tmdb_data.name,
                         poster_path: tmdb_data.poster_path,
                         backdrop_path: tmdb_data.backdrop_path,
                         vote_average: tmdb_data.vote_average || 0,
@@ -828,6 +819,9 @@
 
                     var card = new Lampa.Card(elem, { card_wide: true, object: object });
                     card.create();
+                    // Add a safety check for the toggle function
+                    card.toggle = card.toggle || function() { card.render().addClass('focus'); };
+                    
                     card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
                     card.onUp = function() { if (active > 0) { active--; items[active].toggle(); } else Lampa.Controller.toggle('head'); };
                     card.onDown = function() { if (active < items.length - 1) { active++; items[active].toggle(); } };
@@ -835,23 +829,31 @@
                     
                     scroll.append(card.render());
                     items.push(card);
-                }, function(xhr) {
-                    console.log("DEBUG_TMDB FAILED FOR ID " + tmdb_id, xhr ? xhr.status : 'Unknown Error');
+                    
+                    loadedCount++;
+                    if (loadedCount === 1) { // Toggle first item only when it exists
+                        _this.activity.loader(false);
+                        _this.activity.toggle();
+                    }
                 });
             });
 
             html.append(scroll.render());
             Lampa.Layer.update(html);
-            
-            // 4. INFINITE SCROLL IS DEAD.
-            scroll.onEnd = function() {}; 
-            
-            this.activity.loader(false);
-            this.activity.toggle();
         };
 
         this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
-        this.start = function() { Lampa.Controller.add('content', { link: this, toggle: function() { if (items.length) items[active].toggle(); }, up: function() { items[active].onUp(); }, down: function() { items[active].onDown(); }, back: function() { Lampa.Activity.backward(); } }); Lampa.Controller.toggle('content'); };
+        this.start = function() { 
+            var _this = this;
+            Lampa.Controller.add('content', { 
+                link: this, 
+                toggle: function() { if (items[active] && items[active].toggle) items[active].toggle(); }, 
+                up: function() { if (items[active]) items[active].onUp(); }, 
+                down: function() { if (items[active]) items[active].onDown(); }, 
+                back: function() { Lampa.Activity.backward(); } 
+            }); 
+            Lampa.Controller.toggle('content'); 
+        };
         this.pause = function() {}; this.stop = function() {}; this.render = function() { return html; };
         this.destroy = function() { network.clear(); scroll.destroy(); if(html) html.remove(); items = null; };
     }
