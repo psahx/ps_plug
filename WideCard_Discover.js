@@ -140,8 +140,13 @@
             component: 'additional_ratings', 
             param: { name: 'show_mdblist_discover', type: 'select', values: { 'true': Lampa.Lang.translate('settings_show'), 'false': Lampa.Lang.translate('settings_hide') }, 'default': 'true' },
             field: { name: Lampa.Lang.translate('discover_toggle_name'), description: Lampa.Lang.translate('discover_toggle_desc') },
-            onChange: function(value) { Lampa.Storage.set('show_mdblist_discover', value); }
+            onChange: function(value) { 
+                Lampa.Storage.set('show_mdblist_discover', value); 
+                if (value === 'true' || value === true) { if (typeof injectDiscoverMenu === 'function') injectDiscoverMenu(); } 
+                else { $('.menu__item[data-action="mdblist_discover"]').remove(); }
+            }
         });
+
 
     }
 
@@ -156,7 +161,7 @@
                 if (Lampa.Storage.get('show_mdblist_discover', 'true') === 'true' || Lampa.Storage.get('show_mdblist_discover', true) === true) {
                     if (!$('.menu__item[data-action="mdblist_discover"]').length) {
                         var discoverBtn = $('<li class="menu__item selector" data-action="mdblist_discover"><div class="menu__ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div><div class="menu__text">' + Lampa.Lang.translate('title_discover') + '</div></li>');
-                        discoverBtn.on('hover:enter', function() { console.log('Discover Triggered - Ready for Section 12 logic'); });
+                        discoverBtn.on('hover:enter', function() { showMDBListDiscoverMenu(); });
                         menuList.append(discoverBtn);
                     }
                 }
@@ -687,6 +692,42 @@
         }
     }
 
+
+    // --- 12. MDBList Discover Engine ---
+    function showMDBListDiscoverMenu() {
+        if (!window.Lampa) return;
+        var currentController = Lampa.Controller.enabled().name;
+        
+        var items = [
+            { title: Lampa.Lang.translate('title_type'), subtitle: DiscoverState.types.join(', '), action: 'type' },
+            { title: Lampa.Lang.translate('title_provider'), subtitle: DiscoverState.providers.join(', '), action: 'provider' },
+            { title: Lampa.Lang.translate('title_min_score'), subtitle: DiscoverState.score_min, action: 'min_score' },
+            { title: Lampa.Lang.translate('title_max_score'), subtitle: DiscoverState.score_max, action: 'max_score' },
+            { title: Lampa.Lang.translate('title_year_min'), subtitle: DiscoverState.year_min, action: 'year_min' },
+            { title: Lampa.Lang.translate('title_year_max'), subtitle: DiscoverState.year_max, action: 'year_max' },
+            { title: Lampa.Lang.translate('title_genre'), subtitle: DiscoverState.genres.length ? DiscoverState.genres.length + ' selected' : Lampa.Lang.translate('title_any'), action: 'genre' },
+            { title: Lampa.Lang.translate('title_generate'), action: 'generate' }
+        ];
+
+        Lampa.Select.show({
+            title: Lampa.Lang.translate('title_discover'),
+            items: items,
+            onBack: function () { Lampa.Controller.toggle(currentController || 'menu'); },
+            onSelect: function (item) {
+                if (item.action === 'generate') {
+                    console.log("READY TO BUILD CATALOG:", DiscoverState);
+                    // The MDBList API fetch logic will go here
+                } else {
+                    console.log("Opening sub-menu for:", item.action);
+                    // The hybrid sub-menus will go here
+                }
+            }
+        });
+    }
+
+    
+    
+    
     // --- 11. Boot Sequence ---
     if (!window.plugin_interface_ready) startPlugin();
     setTimeout(applyWideDOM, 500);
