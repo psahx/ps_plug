@@ -734,8 +734,9 @@
 
     function showMDBListDiscoverMenu() {
         if (!window.Lampa) return;
+        var isMovie = DiscoverState.types[0] === 'movie';
         var items = [
-            { title: Lampa.Lang.translate('title_type'), subtitle: DiscoverState.types.join(', '), action: 'types' },
+            { title: Lampa.Lang.translate('title_type'), subtitle: isMovie ? 'Movies' : 'TV Shows', action: 'types' },
             { title: Lampa.Lang.translate('title_provider'), subtitle: DiscoverState.providers.join(', '), action: 'providers' },
             { title: Lampa.Lang.translate('title_min_score'), subtitle: DiscoverState.score_min, action: 'score_min' },
             { title: Lampa.Lang.translate('title_max_score'), subtitle: DiscoverState.score_max, action: 'score_max' },
@@ -751,10 +752,17 @@
             onBack: function () { Lampa.Controller.toggle('menu'); },
             onSelect: function (item) {
                 if (item.action === 'generate') {
-                    console.log("EXECUTE MDBLIST API WITH:", DiscoverState);
-                    // The MDBList fetching logic is the final piece
+                    var apiKey = Lampa.Storage.get('mdblist_api_key');
+                    if (!apiKey) { Lampa.Noty.show('MDBList API Key is missing in settings!'); return; }
+                    var url = 'https://api.mdblist.com/catalog/' + DiscoverState.types[0] + '/?apikey=' + apiKey;
+                    DiscoverState.providers.forEach(function(prov) { url += '&filter_' + prov + 'rating_min=' + DiscoverState.score_min + '&filter_' + prov + 'rating_max=' + DiscoverState.score_max; });
+                    if (DiscoverState.genres.length) url += '&filter_genre=' + DiscoverState.genres.join(',');
+                    url += '&year_min=' + DiscoverState.year_min + '&year_max=' + DiscoverState.year_max;
+                    
+                    Lampa.Activity.push({ url: url, title: Lampa.Lang.translate('title_discover'), component: 'mdblist_catalog', page: 1, method: DiscoverState.types[0] });
                 } 
-                else if (['types', 'providers', 'genres'].indexOf(item.action) !== -1) showCheckboxMenu(item.action);
+                else if (item.action === 'types') { DiscoverState.types = isMovie ? ['show'] : ['movie']; showMDBListDiscoverMenu(); }
+                else if (['providers', 'genres'].indexOf(item.action) !== -1) showCheckboxMenu(item.action);
                 else if (['score_min', 'score_max', 'year_min', 'year_max'].indexOf(item.action) !== -1) showNumberMenu(item.action);
             }
         });
@@ -762,7 +770,65 @@
 
 
     
-    
+    // --- 13. MDBList Grid Component ---
+    function MDBListCatalogComponent(object) {
+        var network = new Lampa.Reguest();
+        var scroll = new Lampa.Scroll({ mask: true, over: true });
+        var items = [];
+        var html = $('<div></div>');
+        var next_cursor = null;
+        var active = 0;
+
+        this.create = function () {
+            var _this = this;
+            this.activity.loader(true);
+            var fetchUrl = object.url;
+            if (next_cursor) fetchUrl += '&cursor=' + next_cursor;
+
+            network.silent(fetchUrl, function (data) {
+                if (data && data.items && data.items.length) {
+                    next_cursor = data.next_cursor || null;
+                    var results = data.items.map(function(i) {
+                        var isTv = object.method === 'show' || object.method === 'tv';
+                        return {
+                            id: i.ids ? i.ids.tmdb : i.id,
+                            title: i.title, name: i.title,
+                            poster_path: i.poster_path, backdrop_path: i.backdrop_path,
+                            vote_average: i.score ? (i.score / 10) : 0,
+                            release_date: i.release_year ? i.release_year + '-01-01' : '',
+                            first_air_date: i.release_year ? i.release_year + '-01-01' : '',
+                            method: isTv ? 'tv' : 'movie'
+                        };
+                    });
+                    _this.build(results);
+                } else { _this.empty(); }
+            }, function() { _this.empty(); });
+        };
+
+        this.build = function (data) {
+            var _this = this;
+            data.forEach(function (elem) {
+                var card = new Lampa.Card(elem, { card_wide: true, object: object });
+                card.create();
+                card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
+                card.onUp = function() { if (active > 0) { active--; items[active].toggle(); } else Lampa.Controller.toggle('head'); };
+                card.onDown = function() { if (active < items.length - 1) { active++; items[active].toggle(); } };
+                card.onBack = function() { Lampa.Activity.backward(); };
+                scroll.append(card.render());
+                items.push(card);
+            });
+            html.append(scroll.render());
+            Lampa.Layer.update(html);
+            this.activity.loader(false);
+            this.activity.toggle();
+        };
+
+        this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
+        this.start = function() { Lampa.Controller.add('content', { link: this, toggle: function() { if (items.length) items[active].toggle(); }, up: function() { items[active].onUp(); }, down: function() { items[active].onDown(); }, back: function() { Lampa.Activity.backward(); } }); Lampa.Controller.toggle('content'); };
+        this.pause = function() {}; this.stop = function() {}; this.render = function() { return html; };
+        this.destroy = function() { network.clear(); scroll.destroy(); if(html) html.remove(); items = null; };
+    }
+    Lampa.Component.add('mdblist_catalog', MDBListCatalogComponent);
     
     // --- 11. Boot Sequence ---
     if (!window.plugin_interface_ready) startPlugin();
