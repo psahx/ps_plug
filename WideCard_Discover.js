@@ -703,8 +703,13 @@
         items.forEach(function(i) { i.checkbox = true; i.checked = stateArray.indexOf(i.id) !== -1; });
         Lampa.Select.show({ title: title, items: items, onBack: showMDBListDiscoverMenu, onCheck: function(i) {
             var idx = stateArray.indexOf(i.id);
-            if (i.checked && idx !== -1) { stateArray.splice(idx, 1); i.checked = false; }
-            else if (!i.checked && idx === -1) { stateArray.push(i.id); i.checked = true; }
+            if (idx !== -1) { 
+                stateArray.splice(idx, 1); 
+                i.checked = false; 
+            } else { 
+                stateArray.push(i.id); 
+                i.checked = true; 
+            }
         }});
     }
 
