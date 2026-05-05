@@ -770,123 +770,84 @@
 
 
     
-    // --- 13. MDBList Grid Component (With 202 Polling & Safety Limits) ---
+    // --- 13. MDBList Grid Component (SAFE 5-ITEM TMDB TEST + LOGS) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true });
         var items = [];
         var html = $('<div></div>');
-        var next_cursor = null;
         var active = 0;
-        var loading = false;
-        var MAX_ITEMS = 200; // Hard memory limit to prevent TV freezing
 
         this.create = function () {
             var _this = this;
             this.activity.loader(true);
-            var fetchUrl = object.url;
-            if (next_cursor) fetchUrl += '&cursor=' + next_cursor;
             
-            var retries = 0;
+            // 1. One single request to MDBList.
+            network.silent(object.url, function (data) {
+                var resultsArray = data ? (data.movies || data.shows || data.items || []) : [];
+                
+                if (resultsArray.length > 0) {
+                    // 2. HARD LIMIT: Take only the first 5 results.
+                    var top5 = resultsArray.slice(0, 5);
+                    console.log("DEBUG_TMDB: MDBList returned " + resultsArray.length + " items. Taking top 5.");
+                    _this.build(top5);
+                } else { 
+                    _this.empty(); 
+                }
+            }, function() { _this.empty(); });
+        };
 
-            // Recursive fetch function to handle MDBList's "202 Building Cache" state
-            function doFetch() {
-                console.log("DEBUG_MDB REQUEST_URL:", fetchUrl); // <--- Added Log
-                network.timeout(15000); 
-                network.silent(fetchUrl, function (data, status, xhr) {
-                    console.log("DEBUG_MDB SUCCESS_DATA:", data); // <--- Added Log
+        this.build = function (api_items) {
+            var _this = this;
+            var isTv = object.method === 'show' || object.method === 'tv';
+            
+            // 3. Loop through the 5 items and ask TMDB for the details
+            api_items.forEach(function(i) {
+                var tmdb_id = i.ids ? i.ids.tmdbid : i.id;
+                if (!tmdb_id) return;
+
+                var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + tmdb_id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
+                
+                console.log("DEBUG_TMDB REQUESTING:", tmdbUrl); // <-- Tracks the outgoing TMDB call
+
+                network.silent(tmdbUrl, function(tmdb_data) {
+                    var titleText = tmdb_data.title || tmdb_data.name;
+                    console.log("DEBUG_TMDB SUCCESS FOR ID " + tmdb_id + ":", titleText); // <-- Tracks the incoming TMDB data
                     
-                    if (data && data.items && data.items.length) {
-                        next_cursor = data.next_cursor || null;
-                        _this.build(_this.formatData(data.items));
-                    } else if (retries < 6) { 
-                        retries++;
-                        console.log("MDBList Catalog building... Retrying in 5s (Attempt " + retries + ")");
-                        setTimeout(doFetch, 5000);
-                    } else { _this.empty(); }
-                }, function(xhr, status) { 
-                    console.log("DEBUG_MDB ERROR_DATA:", xhr ? xhr.status : status, xhr ? xhr.responseText : ''); // <--- Added Log
+                    var elem = {
+                        id: tmdb_id,
+                        title: titleText,
+                        name: titleText,
+                        poster_path: tmdb_data.poster_path,
+                        backdrop_path: tmdb_data.backdrop_path,
+                        vote_average: tmdb_data.vote_average || 0,
+                        release_date: tmdb_data.release_date || tmdb_data.first_air_date || '',
+                        first_air_date: tmdb_data.release_date || tmdb_data.first_air_date || '',
+                        method: isTv ? 'tv' : 'movie'
+                    };
+
+                    var card = new Lampa.Card(elem, { card_wide: true, object: object });
+                    card.create();
+                    card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
+                    card.onUp = function() { if (active > 0) { active--; items[active].toggle(); } else Lampa.Controller.toggle('head'); };
+                    card.onDown = function() { if (active < items.length - 1) { active++; items[active].toggle(); } };
+                    card.onBack = function() { Lampa.Activity.backward(); };
                     
-                    if (xhr && xhr.status === 202 && retries < 6) {
-                        retries++;
-                        console.log("MDBList Catalog 202 Accepted... Retrying in 5s (Attempt " + retries + ")");
-                        setTimeout(doFetch, 5000);
-                    } else {
-                        _this.empty();
-                    }
+                    scroll.append(card.render());
+                    items.push(card);
+                }, function(xhr) {
+                    console.log("DEBUG_TMDB FAILED FOR ID " + tmdb_id, xhr ? xhr.status : 'Unknown Error');
                 });
-            }
-            
-            doFetch(); // Start the first attempt
-        };
-
-        this.formatData = function(api_items) {
-            return api_items.map(function(i) {
-                return {
-                    id: i.ids ? i.ids.tmdbid : i.id,
-                    method: (object.method === 'show' || object.method === 'tv') ? 'tv' : 'movie'
-                };
             });
-        };
 
-        this.appendCards = function(data) {
-            var _this = this;
-            data.forEach(function (elem) {
-                var card = new Lampa.Card(elem, { card_wide: true, object: object });
-                card.create();
-                card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
-                card.onUp = function() { if (active > 0) { active--; items[active].toggle(); } else Lampa.Controller.toggle('head'); };
-                card.onDown = function() { if (active < items.length - 1) { active++; items[active].toggle(); } };
-                card.onBack = function() { Lampa.Activity.backward(); };
-                scroll.append(card.render());
-                items.push(card);
-            });
-        };
-
-        this.build = function (data) {
-            var _this = this;
-            this.appendCards(data);
             html.append(scroll.render());
-            
-            // Connect Infinite Scroll
-            scroll.onEnd = function() { _this.loadNext(); };
-            
             Lampa.Layer.update(html);
+            
+            // 4. INFINITE SCROLL IS DEAD.
+            scroll.onEnd = function() {}; 
+            
             this.activity.loader(false);
             this.activity.toggle();
-        };
-
-        this.loadNext = function() {
-            var _this = this;
-            if (loading || !next_cursor || items.length >= MAX_ITEMS) return;
-            loading = true;
-            
-            var nextUrl = object.url + '&cursor=' + next_cursor;
-            var loadRetries = 0;
-            
-            function doNextFetch() {
-                network.silent(nextUrl, function (data) {
-                    if (data && data.items && data.items.length) {
-                        next_cursor = data.next_cursor || null;
-                        _this.appendCards(_this.formatData(data.items));
-                        loading = false;
-                    } else if (loadRetries < 3) {
-                        loadRetries++;
-                        setTimeout(doNextFetch, 5000);
-                    } else { 
-                        next_cursor = null; 
-                        loading = false; 
-                    }
-                }, function(xhr) { 
-                    if (xhr && xhr.status === 202 && loadRetries < 3) {
-                        loadRetries++;
-                        setTimeout(doNextFetch, 5000);
-                    } else {
-                        loading = false;
-                    }
-                });
-            }
-            doNextFetch();
         };
 
         this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
@@ -895,6 +856,7 @@
         this.destroy = function() { network.clear(); scroll.destroy(); if(html) html.remove(); items = null; };
     }
     Lampa.Component.add('mdblist_catalog', MDBListCatalogComponent);
+
     
     // --- 11. Boot Sequence ---
     if (!window.plugin_interface_ready) startPlugin();
