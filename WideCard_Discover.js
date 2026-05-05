@@ -791,23 +791,22 @@
 
             // Recursive fetch function to handle MDBList's "202 Building Cache" state
             function doFetch() {
+                console.log("DEBUG_MDB REQUEST_URL:", fetchUrl); // <--- Added Log
                 network.timeout(15000); 
                 network.silent(fetchUrl, function (data, status, xhr) {
-                    // Success with data
+                    console.log("DEBUG_MDB SUCCESS_DATA:", data); // <--- Added Log
+                    
                     if (data && data.items && data.items.length) {
                         next_cursor = data.next_cursor || null;
                         _this.build(_this.formatData(data.items));
-                    } 
-                    // API is building the cache (202) or returned empty body while processing
-                    else if (retries < 6) { 
+                    } else if (retries < 6) { 
                         retries++;
                         console.log("MDBList Catalog building... Retrying in 5s (Attempt " + retries + ")");
                         setTimeout(doFetch, 5000);
-                    } 
-                    // Out of retries or genuinely empty
-                    else { _this.empty(); }
+                    } else { _this.empty(); }
                 }, function(xhr, status) { 
-                    // If the network request itself fails but it's a 202 Accepted
+                    console.log("DEBUG_MDB ERROR_DATA:", xhr ? xhr.status : status, xhr ? xhr.responseText : ''); // <--- Added Log
+                    
                     if (xhr && xhr.status === 202 && retries < 6) {
                         retries++;
                         console.log("MDBList Catalog 202 Accepted... Retrying in 5s (Attempt " + retries + ")");
