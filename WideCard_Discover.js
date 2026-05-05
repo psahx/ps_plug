@@ -32,6 +32,17 @@
         </style>
         `);
     }
+        // --- GLOBAL DISCOVER STATE ---
+        var DiscoverState = {
+            types: ['movie'], 
+            providers: ['imdb'], 
+            score_min: 70,
+            score_max: 100,
+            genres: [],
+            year_min: 2000,
+            year_max: 2026
+        };
+
 
     // --- 2. Master Script Configuration ---
     var config = {
@@ -71,7 +82,18 @@
             settings_hide: { ru: "Скрыть", en: "Hide", uk: "Приховати" },
             full_notext: { en: 'No description', ru: 'Нет описания', uk: 'Немає опису' },
             info_panel_logo_height_name: { ru: "Размер логотипа", en: "Logo Size", uk: "Висота логотипу" },
-            info_panel_logo_height_desc: { ru: "Максимальная высота логотипа", en: "Maximum logo height", uk: "Максимальна высота логотипу" }
+            info_panel_logo_height_desc: { ru: "Максимальная высота логотипа", en: "Maximum logo height", uk: "Максимальна высота логотипу" },
+            discover_toggle_name: {ru: 'Показывать меню Открытие', en: 'Show Discover Menu'},
+            discover_toggle_desc: {ru: 'Отображать пункт MDBList в боковом меню', en: 'Display the MDBList item in the side menu'},
+            title_discover: {ru: 'Открытие', en: 'Discover'},
+            title_type: {ru: 'Тип контента', en: 'Media Type'},
+            title_provider: {ru: 'Провайдер', en: 'Provider'},
+            title_min_score: {ru: 'Мин. рейтинг', en: 'Min Score'},
+            title_max_score: {ru: 'Макс. рейтинг', en: 'Max Score'},
+            title_year_min: {ru: 'Год от', en: 'Year From'},
+            title_year_max: {ru: 'Год до', en: 'Year To'},
+            title_generate: {ru: 'Создать каталог', en: 'Generate Catalog'}
+
         });
     }
 
@@ -114,6 +136,32 @@
             field: { name: Lampa.Lang.translate('info_panel_logo_height_name'), description: Lampa.Lang.translate('info_panel_logo_height_desc') },
             onChange: function(value) { Lampa.Storage.set('info_panel_logo_max_height', value); }
         });
+        Lampa.SettingsApi.addParam({
+            component: 'additional_ratings', 
+            param: { name: 'show_mdblist_discover', type: 'select', values: { 'true': Lampa.Lang.translate('settings_show'), 'false': Lampa.Lang.translate('settings_hide') }, 'default': 'true' },
+            field: { name: Lampa.Lang.translate('discover_toggle_name'), description: Lampa.Lang.translate('discover_toggle_desc') },
+            onChange: function(value) { Lampa.Storage.set('show_mdblist_discover', value); }
+        });
+
+    }
+
+
+    // --- 4.5. STRICT Left Menu Injection ---
+    function injectDiscoverMenu() {
+        if (!window.Lampa) return;
+        var checkMenu = setInterval(function() {
+            var menuList = $('.menu .menu__list');
+            if (menuList.length) {
+                clearInterval(checkMenu);
+                if (Lampa.Storage.get('show_mdblist_discover', 'true') === 'true' || Lampa.Storage.get('show_mdblist_discover', true) === true) {
+                    if (!$('.menu__item[data-action="mdblist_discover"]').length) {
+                        var discoverBtn = $('<li class="menu__item selector" data-action="mdblist_discover"><div class="menu__ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div><div class="menu__text">' + Lampa.Lang.translate('title_discover') + '</div></li>');
+                        discoverBtn.on('hover:enter', function() { console.log('Discover Triggered - Ready for Section 12 logic'); });
+                        menuList.append(discoverBtn);
+                    }
+                }
+            }
+        }, 500);
     }
 
     // --- 5. STRICT Rating Selection Dialog ---
@@ -641,6 +689,7 @@
 
     // --- 11. Boot Sequence ---
     if (!window.plugin_interface_ready) startPlugin();
-    setTimeout(applyWideDOM, 500); 
+    setTimeout(applyWideDOM, 500);
+    injectDiscoverMenu();
 
 })();
