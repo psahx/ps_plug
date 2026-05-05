@@ -770,7 +770,7 @@
 
 
     
-    // --- 13. MDBList Grid Component ---
+    // --- 13. MDBList Grid Component (With Pagination & Safety Limits) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true });
@@ -778,34 +778,36 @@
         var html = $('<div></div>');
         var next_cursor = null;
         var active = 0;
+        var loading = false;
+        var MAX_ITEMS = 200; // Hard memory limit to prevent TV freezing
 
         this.create = function () {
             var _this = this;
             this.activity.loader(true);
-            var fetchUrl = object.url;
-            if (next_cursor) fetchUrl += '&cursor=' + next_cursor;
-
-            network.silent(fetchUrl, function (data) {
+            
+            network.silent(object.url, function (data) {
                 if (data && data.items && data.items.length) {
                     next_cursor = data.next_cursor || null;
-                    var results = data.items.map(function(i) {
-                        var isTv = object.method === 'show' || object.method === 'tv';
-                        return {
-                            id: i.ids ? i.ids.tmdb : i.id,
-                            title: i.title, name: i.title,
-                            poster_path: i.poster_path, backdrop_path: i.backdrop_path,
-                            vote_average: i.score ? (i.score / 10) : 0,
-                            release_date: i.release_year ? i.release_year + '-01-01' : '',
-                            first_air_date: i.release_year ? i.release_year + '-01-01' : '',
-                            method: isTv ? 'tv' : 'movie'
-                        };
-                    });
-                    _this.build(results);
+                    _this.build(_this.formatData(data.items));
                 } else { _this.empty(); }
             }, function() { _this.empty(); });
         };
 
-        this.build = function (data) {
+        this.formatData = function(api_items) {
+            return api_items.map(function(i) {
+                var isTv = object.method === 'show' || object.method === 'tv';
+                return {
+                    id: i.ids ? i.ids.tmdb : i.id, title: i.title, name: i.title,
+                    poster_path: i.poster_path, backdrop_path: i.backdrop_path,
+                    vote_average: i.score ? (i.score / 10) : 0,
+                    release_date: i.release_year ? i.release_year + '-01-01' : '',
+                    first_air_date: i.release_year ? i.release_year + '-01-01' : '',
+                    method: isTv ? 'tv' : 'movie'
+                };
+            });
+        };
+
+        this.appendCards = function(data) {
             var _this = this;
             data.forEach(function (elem) {
                 var card = new Lampa.Card(elem, { card_wide: true, object: object });
@@ -817,10 +819,33 @@
                 scroll.append(card.render());
                 items.push(card);
             });
+        };
+
+        this.build = function (data) {
+            var _this = this;
+            this.appendCards(data);
             html.append(scroll.render());
+            
+            // Connect Infinite Scroll to Lampa's native scroll engine
+            scroll.onEnd = function() { _this.loadNext(); };
+            
             Lampa.Layer.update(html);
             this.activity.loader(false);
             this.activity.toggle();
+        };
+
+        this.loadNext = function() {
+            var _this = this;
+            if (loading || !next_cursor || items.length >= MAX_ITEMS) return; // The Safeguard!
+            loading = true;
+            
+            network.silent(object.url + '&cursor=' + next_cursor, function (data) {
+                if (data && data.items && data.items.length) {
+                    next_cursor = data.next_cursor || null;
+                    _this.appendCards(_this.formatData(data.items));
+                } else { next_cursor = null; }
+                loading = false;
+            }, function() { loading = false; });
         };
 
         this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
