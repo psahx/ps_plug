@@ -773,91 +773,105 @@
 
 
     
-    // --- 13. MDBList Grid Component (Standard Lampa Grid) ---
+   // --- 13. MDBList Grid Component (Architecturally Correct) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true });
         var items = [];
         var html = $('<div class="category-full"></div>');
-        var body = $('<div class="card-list items--grid"></div>');
+        var body = $('<div class="card-list items--grid"></div>'); // Correct grid class
         var active = 0;
 
         this.create = function () {
             var _this = this;
             this.activity.loader(true);
             
-            // 1. Get IDs from MDBList
+            html.append(body);
+            // We do NOT append scroll yet, we wait for the first network response to build the shell
+            
             network.silent(object.url, function (data) {
                 var resultsArray = data ? (data.movies || data.shows || data.items || []) : [];
                 if (resultsArray.length > 0) {
-                    _this.prepareData(resultsArray.slice(0, 20)); // Process top 20
-                } else { _this.empty(); }
+                    _this.build(resultsArray.slice(0, 20));
+                } else { 
+                    _this.empty(); 
+                }
             }, function() { _this.empty(); });
         };
 
-        this.prepareData = function(api_items) {
+        this.build = function (api_items) {
             var _this = this;
             var isTv = (object.method === 'show' || object.method === 'tv');
-            var prepared = [];
-            var count = 0;
 
-            // 2. Map all 20 IDs to TMDB details in parallel
+            // 1. Create all card objects IMMEDIATELY so the array is NEVER empty
             api_items.forEach(function(i) {
                 var tmdb_id = i.ids ? i.ids.tmdbid : i.id;
-                var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + tmdb_id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
+                
+                // Construct shell data from MDBList (No guessing, we have these fields)
+                var elem = {
+                    id: tmdb_id,
+                    title: i.title, name: i.title,
+                    release_date: i.year ? i.year + '-01-01' : '',
+                    first_air_date: i.year ? i.year + '-01-01' : '',
+                    method: isTv ? 'tv' : 'movie',
+                    vote_average: i.score ? (i.score / 10) : 0,
+                    poster_path: '' // Initially empty to prevent Lampa 404s
+                };
+
+                var card = new Lampa.Card(elem, { card_wide: true, object: object });
+                card.create();
+                
+                // Standard Lampa card event bindings
+                card.onFocus = function() {
+                    active = items.indexOf(card);
+                    scroll.update(card.render());
+                };
+                card.onEnter = function() {
+                    Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem });
+                };
+
+                body.append(card.render());
+                items.push(card); // Now items[0], items[1] etc are guaranteed to exist
+            });
+
+            // 2. Attach scroll and show the page
+            scroll.append(html);
+            this.activity.loader(false);
+            this.activity.toggle(); // Page is now live and stable
+
+            // 3. SILENTLY update posters from TMDB (The "Lazy Loader")
+            items.forEach(function(cardInstance) {
+                var cardData = cardInstance.object;
+                if (!cardData.id) return;
+
+                var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + cardData.id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
                 
                 network.silent(tmdbUrl, function(tmdb_data) {
-                    prepared.push({
-                        id: tmdb_id,
-                        title: tmdb_data.title || tmdb_data.name,
-                        name: tmdb_data.title || tmdb_data.name,
-                        poster_path: tmdb_data.poster_path,
-                        backdrop_path: tmdb_data.backdrop_path,
-                        vote_average: tmdb_data.vote_average || 0,
-                        release_date: tmdb_data.release_date || tmdb_data.first_air_date || '',
-                        first_air_date: tmdb_data.release_date || tmdb_data.first_air_date || '',
-                        method: isTv ? 'tv' : 'movie'
-                    });
-                    count++;
-                    if (count === api_items.length) _this.build(prepared); // Only build when ALL are ready
-                }, function() { 
-                    count++; // Still count as ready even if TMDB fails for one item
-                    if (count === api_items.length) _this.build(prepared);
+                    if (tmdb_data && tmdb_data.poster_path) {
+                        // Directly update the card's image in the DOM
+                        var img = cardInstance.render().find('img.card__img')[0];
+                        if (img) img.src = Lampa.Api.img(tmdb_data.poster_path, 'w780');
+                        
+                        // Update the internal object so the Full Page has the poster too
+                        cardInstance.object.poster_path = tmdb_data.poster_path;
+                        cardInstance.object.backdrop_path = tmdb_data.backdrop_path;
+                    }
                 });
             });
         };
 
-        this.build = function (data) {
-            var _this = this;
-            
-            data.forEach(function (elem) {
-                var card = new Lampa.Card(elem, { card_wide: true, object: object });
-                card.create();
-                card.onFocus = function() { 
-                    active = items.indexOf(card); 
-                    scroll.update(card.render()); 
-                };
-                card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
-                card.onBack = function() { Lampa.Activity.backward(); };
-
-                body.append(card.render());
-                items.push(card);
-            });
-
-            html.append(body);
-            scroll.append(html);
-
-            this.activity.loader(false);
-            this.activity.toggle();
+        this.empty = function() { 
+            html.append(new Lampa.Empty().render()); 
+            this.activity.loader(false); 
+            this.activity.toggle(); 
         };
 
-        this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
-        
         this.start = function() { 
-            var _this = this;
             Lampa.Controller.add('content', { 
                 link: this, 
-                toggle: function() { if (items[active]) items[active].toggle(); }, 
+                toggle: function() { 
+                    if (items[active]) items[active].toggle(); 
+                }, 
                 left: function() { 
                     if (active % 2 !== 0) { active--; items[active].toggle(); } 
                     else Lampa.Controller.toggle('menu'); 
@@ -877,9 +891,15 @@
             Lampa.Controller.toggle('content'); 
         };
 
-        this.pause = function() {}; this.stop = function() {}; 
+        this.pause = function() {}; 
+        this.stop = function() {}; 
         this.render = function() { return scroll.render(); };
-        this.destroy = function() { network.clear(); scroll.destroy(); if(html) html.remove(); items = null; };
+        this.destroy = function() { 
+            network.clear(); 
+            scroll.destroy(); 
+            if(html) html.remove(); 
+            items = null; 
+        };
     }
     Lampa.Component.add('mdblist_catalog', MDBListCatalogComponent);
     
