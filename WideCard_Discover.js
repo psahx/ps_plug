@@ -773,7 +773,7 @@
 
 
     
-     // --- 13. MDBList Grid Component (Sanitized & Stable) ---
+         // --- 13. MDBList Grid Component (Final Stable Version) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true });
@@ -786,49 +786,68 @@
             var _this = this;
             this.activity.loader(true);
             
+            // Step 1: Get the list from MDBList (1 request only)
             network.silent(object.url, function (data) {
-                // Defensive check for the movies/shows array
-                var resultsArray = data ? (data.movies || data.shows || data.items || []) : [];
-                
-                if (resultsArray.length > 0) {
-                    _this.build(resultsArray.slice(0, 20)); // Limit to top 20 for safety
-                } else { 
-                    _this.empty(); 
+                var results = data ? (data.movies || data.shows || data.items || []) : [];
+                if (results.length > 0) {
+                    _this.prepare(results.slice(0, 20)); // Only process the first 20
+                } else {
+                    _this.empty();
                 }
             }, function() { _this.empty(); });
         };
 
-        this.build = function (api_items) {
+        this.prepare = function (list) {
             var _this = this;
             var isTv = (object.method === 'show' || object.method === 'tv');
+            var ready_data = [];
+            var wait_count = 0;
 
-            api_items.forEach(function(i) {
-                // CRITICAL SAFETY CHECK: Stop the "undefined reading id" error
-                if (!i || !i.ids) return; 
+            // Step 2: Fetch TMDB details for all 20 items in parallel
+            list.forEach(function (item) {
+                if (!item || !item.ids) {
+                    wait_count++;
+                    return;
+                }
 
-                var tmdb_id = i.ids.tmdbid || i.id;
-                
-                var elem = {
-                    id: tmdb_id,
-                    title: i.title || 'No Title',
-                    name: i.title || 'No Title',
-                    release_date: i.year ? i.year + '-01-01' : '',
-                    first_air_date: i.year ? i.year + '-01-01' : '',
-                    method: isTv ? 'tv' : 'movie',
-                    vote_average: i.score ? (i.score / 10) : 0,
-                    poster_path: '' // No poster for this test to prove stability
-                };
+                var tmdb_id = item.ids.tmdbid || item.id;
+                var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + tmdb_id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
 
+                network.silent(tmdbUrl, function (tmdb) {
+                    ready_data.push({
+                        id: tmdb_id,
+                        title: tmdb.title || tmdb.name || item.title,
+                        name: tmdb.title || tmdb.name || item.title,
+                        poster_path: tmdb.poster_path,
+                        backdrop_path: tmdb.backdrop_path,
+                        vote_average: tmdb.vote_average || (item.score / 10) || 0,
+                        release_date: tmdb.release_date || tmdb.first_air_date || (item.year + '-01-01'),
+                        method: isTv ? 'tv' : 'movie'
+                    });
+                    
+                    wait_count++;
+                    if (wait_count === list.length) _this.build(ready_data);
+                }, function () {
+                    wait_count++;
+                    if (wait_count === list.length) _this.build(ready_data);
+                });
+            });
+        };
+
+        this.build = function (data) {
+            var _this = this;
+            
+            // Step 3: Draw the cards only once we have the data
+            data.forEach(function (elem) {
                 var card = new Lampa.Card(elem, { card_wide: true, object: object });
                 card.create();
                 
-                card.onFocus = function() {
+                card.onFocus = function () {
                     active = items.indexOf(card);
-                    // This moves the scrollbar to the active card
                     scroll.update(card.render());
                 };
                 
-                card.onEnter = function() {
+                card.onEnter = function () {
                     Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem });
                 };
 
@@ -836,56 +855,55 @@
                 items.push(card);
             });
 
-            // Assemble the DOM as seen in your inspector
             html.append(body);
             scroll.append(html);
 
+            // Step 4: Finalize the page
             this.activity.loader(false);
             this.activity.toggle();
         };
 
-        this.empty = function() { 
-            html.append(new Lampa.Empty().render()); 
-            this.activity.loader(false); 
-            this.activity.toggle(); 
+        this.start = function () {
+            Lampa.Controller.add('content', {
+                link: this,
+                toggle: function () {
+                    if (items[active] && items[active].toggle) items[active].toggle();
+                },
+                left: function () {
+                    if (active % 2 !== 0 && items[active - 1]) { active--; items[active].toggle(); }
+                    else Lampa.Controller.toggle('menu');
+                },
+                right: function () {
+                    if (active % 2 === 0 && items[active + 1]) { active++; items[active].toggle(); }
+                },
+                up: function () {
+                    if (active > 1 && items[active - 2]) { active -= 2; items[active].toggle(); }
+                    else Lampa.Controller.toggle('head');
+                },
+                down: function () {
+                    if (items[active + 2]) { active += 2; items[active].toggle(); }
+                },
+                back: function () {
+                    Lampa.Activity.backward();
+                }
+            });
+            Lampa.Controller.toggle('content');
         };
 
-        this.start = function() { 
-            Lampa.Controller.add('content', { 
-                link: this, 
-                toggle: function() { 
-                    // Defensive check: only toggle if card and the function exist
-                    if (items[active] && typeof items[active].toggle === 'function') {
-                        items[active].toggle();
-                    }
-                }, 
-                left: function() { 
-                    if (active % 2 !== 0 && items[active - 1]) { active--; items[active].toggle(); } 
-                    else Lampa.Controller.toggle('menu'); 
-                }, 
-                right: function() { 
-                    if (active % 2 === 0 && items[active + 1]) { active++; items[active].toggle(); } 
-                }, 
-                up: function() { 
-                    if (active > 1 && items[active - 2]) { active -= 2; items[active].toggle(); } 
-                    else Lampa.Controller.toggle('head'); 
-                }, 
-                down: function() { 
-                    if (items[active + 2]) { active += 2; items[active].toggle(); } 
-                }, 
-                back: function() { Lampa.Activity.backward(); } 
-            }); 
-            Lampa.Controller.toggle('content'); 
+        this.empty = function () {
+            html.append(new Lampa.Empty().render());
+            this.activity.loader(false);
+            this.activity.toggle();
         };
 
-        this.pause = function() {}; 
-        this.stop = function() {}; 
-        this.render = function() { return scroll.render(); };
-        this.destroy = function() { 
-            network.clear(); 
-            scroll.destroy(); 
-            if(html) html.remove(); 
-            items = null; 
+        this.render = function () { return scroll.render(); };
+        this.pause = function () { };
+        this.stop = function () { };
+        this.destroy = function () {
+            network.clear();
+            scroll.destroy();
+            if (html) html.remove();
+            items = null;
         };
     }
     Lampa.Component.add('mdblist_catalog', MDBListCatalogComponent);
