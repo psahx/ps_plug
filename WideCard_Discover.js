@@ -693,37 +693,68 @@
     }
 
 
-    // --- 12. MDBList Discover Engine ---
+    // --- 12. MDBList Discover Engine (Interactive) ---
+    function showCheckboxMenu(action) {
+        var items = [], title = '', stateArray = DiscoverState[action];
+        if (action === 'types') { title = Lampa.Lang.translate('title_type'); items = [{title: 'Movies', id: 'movie'}, {title: 'TV Shows', id: 'show'}]; }
+        else if (action === 'providers') { title = Lampa.Lang.translate('title_provider'); items = [{title: 'IMDb', id: 'imdb'}, {title: 'TMDB', id: 'tmdb'}, {title: 'RT Critics', id: 'tomatoes'}, {title: 'RT Audience', id: 'popcorn'}, {title: 'Metacritic', id: 'metacritic'}, {title: 'Letterboxd', id: 'letterboxd'}]; }
+        else if (action === 'genres') { title = Lampa.Lang.translate('title_genre'); if(window.mdblist_genres_dict) { for(var id in window.mdblist_genres_dict) items.push({title: window.mdblist_genres_dict[id], id: id}); } }
+        
+        items.forEach(function(i) { i.checkbox = true; i.checked = stateArray.indexOf(i.id) !== -1; });
+        Lampa.Select.show({ title: title, items: items, onBack: showMDBListDiscoverMenu, onCheck: function(i) {
+            var idx = stateArray.indexOf(i.id);
+            if (i.checked && idx !== -1) { stateArray.splice(idx, 1); i.checked = false; }
+            else if (!i.checked && idx === -1) { stateArray.push(i.id); i.checked = true; }
+        }});
+    }
+
+    function showNumberMenu(action) {
+        var titleKey = action === 'score_min' ? 'title_min_score' : action === 'score_max' ? 'title_max_score' : 'title_' + action;
+        var items = [], title = Lampa.Lang.translate(titleKey), isYear = action.indexOf('year') !== -1;
+        
+        if (isYear) { for(var y = new Date().getFullYear(); y >= 1970; y-=10) items.push({title: y+'', value: y}); }
+        else { for(var s = 100; s >= 50; s-=10) items.push({title: s+'', value: s}); }
+        items.push({title: 'Custom...', value: 'custom'});
+        
+        Lampa.Select.show({ title: title, items: items, onBack: showMDBListDiscoverMenu, onSelect: function(i) {
+            if (i.value === 'custom') {
+                Lampa.Input.edit({ title: title, value: '', free: true, nosave: true }, function(new_val) {
+                    var parsed = parseInt(new_val);
+                    if (!isNaN(parsed)) DiscoverState[action] = parsed;
+                    showMDBListDiscoverMenu();
+                });
+            } else { DiscoverState[action] = i.value; showMDBListDiscoverMenu(); }
+        }});
+    }
+
     function showMDBListDiscoverMenu() {
         if (!window.Lampa) return;
-        var currentController = Lampa.Controller.enabled().name;
-        
         var items = [
-            { title: Lampa.Lang.translate('title_type'), subtitle: DiscoverState.types.join(', '), action: 'type' },
-            { title: Lampa.Lang.translate('title_provider'), subtitle: DiscoverState.providers.join(', '), action: 'provider' },
-            { title: Lampa.Lang.translate('title_min_score'), subtitle: DiscoverState.score_min, action: 'min_score' },
-            { title: Lampa.Lang.translate('title_max_score'), subtitle: DiscoverState.score_max, action: 'max_score' },
+            { title: Lampa.Lang.translate('title_type'), subtitle: DiscoverState.types.join(', '), action: 'types' },
+            { title: Lampa.Lang.translate('title_provider'), subtitle: DiscoverState.providers.join(', '), action: 'providers' },
+            { title: Lampa.Lang.translate('title_min_score'), subtitle: DiscoverState.score_min, action: 'score_min' },
+            { title: Lampa.Lang.translate('title_max_score'), subtitle: DiscoverState.score_max, action: 'score_max' },
             { title: Lampa.Lang.translate('title_year_min'), subtitle: DiscoverState.year_min, action: 'year_min' },
             { title: Lampa.Lang.translate('title_year_max'), subtitle: DiscoverState.year_max, action: 'year_max' },
-            { title: Lampa.Lang.translate('title_genre'), subtitle: DiscoverState.genres.length ? DiscoverState.genres.length + ' selected' : Lampa.Lang.translate('title_any'), action: 'genre' },
+            { title: Lampa.Lang.translate('title_genre'), subtitle: DiscoverState.genres.length ? DiscoverState.genres.length + ' selected' : Lampa.Lang.translate('title_any'), action: 'genres' },
             { title: Lampa.Lang.translate('title_generate'), action: 'generate' }
         ];
 
         Lampa.Select.show({
             title: Lampa.Lang.translate('title_discover'),
             items: items,
-            onBack: function () { Lampa.Controller.toggle(currentController || 'menu'); },
+            onBack: function () { Lampa.Controller.toggle('menu'); },
             onSelect: function (item) {
                 if (item.action === 'generate') {
-                    console.log("READY TO BUILD CATALOG:", DiscoverState);
-                    // The MDBList API fetch logic will go here
-                } else {
-                    console.log("Opening sub-menu for:", item.action);
-                    // The hybrid sub-menus will go here
-                }
+                    console.log("EXECUTE MDBLIST API WITH:", DiscoverState);
+                    // The MDBList fetching logic is the final piece
+                } 
+                else if (['types', 'providers', 'genres'].indexOf(item.action) !== -1) showCheckboxMenu(item.action);
+                else if (['score_min', 'score_max', 'year_min', 'year_max'].indexOf(item.action) !== -1) showNumberMenu(item.action);
             }
         });
     }
+
 
     
     
