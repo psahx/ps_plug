@@ -822,14 +822,9 @@
 
         this.formatData = function(api_items) {
             return api_items.map(function(i) {
-                var isTv = object.method === 'show' || object.method === 'tv';
                 return {
-                    id: i.ids ? i.ids.tmdb : i.id, title: i.title, name: i.title,
-                    poster_path: i.poster_path, backdrop_path: i.backdrop_path,
-                    vote_average: i.score ? (i.score / 10) : 0,
-                    release_date: i.release_year ? i.release_year + '-01-01' : '',
-                    first_air_date: i.release_year ? i.release_year + '-01-01' : '',
-                    method: isTv ? 'tv' : 'movie'
+                    id: i.ids ? i.ids.tmdbid : i.id,
+                    method: (object.method === 'show' || object.method === 'tv') ? 'tv' : 'movie'
                 };
             });
         };
