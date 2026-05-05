@@ -773,26 +773,25 @@
 
 
     
-    // --- 13. MDBList Grid Component (Standard Lampa Grid Layout) ---
+    // --- 13. MDBList Grid Component (Instant Draw + Lazy TMDB) ---
     function MDBListCatalogComponent(object) {
         var network = new Lampa.Reguest();
         var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true });
         var items = [];
-        var html = $('<div class="category-full"></div>'); // Standard container for catalogs
-        var body = $('<div class="card-list items--grid"></div>'); // Magic class for grid layout
+        var html = $('<div class="category-full"></div>');
+        var body = $('<div class="card-list items--grid"></div>');
         var active = 0;
 
         this.create = function () {
             var _this = this;
             this.activity.loader(true);
-            
             html.append(body);
             scroll.append(html);
 
             network.silent(object.url, function (data) {
                 var resultsArray = data ? (data.movies || data.shows || data.items || []) : [];
                 if (resultsArray.length > 0) {
-                    _this.build(resultsArray.slice(0, 20)); // Load safe batch of 20
+                    _this.build(resultsArray.slice(0, 20));
                 } else { _this.empty(); }
             }, function() { _this.empty(); });
         };
@@ -800,49 +799,50 @@
         this.build = function (api_items) {
             var _this = this;
             var isTv = (object.method === 'show' || object.method === 'tv');
-            var loadedCount = 0;
 
-            api_items.forEach(function(i) {
+            api_items.forEach(function(i, index) {
                 var tmdb_id = i.ids ? i.ids.tmdbid : i.id;
-                if (!tmdb_id) return;
-
-                var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + tmdb_id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
                 
-                network.silent(tmdbUrl, function(tmdb_data) {
-                    var elem = {
-                        id: tmdb_id,
-                        title: tmdb_data.title || tmdb_data.name,
-                        name: tmdb_data.title || tmdb_data.name,
-                        poster_path: tmdb_data.poster_path,
-                        backdrop_path: tmdb_data.backdrop_path,
-                        vote_average: tmdb_data.vote_average || 0,
-                        release_date: tmdb_data.release_date || tmdb_data.first_air_date || '',
-                        first_air_date: tmdb_data.release_date || tmdb_data.first_air_date || '',
-                        method: isTv ? 'tv' : 'movie'
-                    };
+                // 1. Create a "Shell" card immediately using MDBList data
+                var elem = {
+                    id: tmdb_id,
+                    title: i.title, name: i.title,
+                    release_date: i.year ? i.year + '-01-01' : '',
+                    first_air_date: i.year ? i.year + '-01-01' : '',
+                    method: isTv ? 'tv' : 'movie',
+                    poster_path: '', // Placeholder initially
+                    vote_average: i.score ? (i.score / 10) : 0
+                };
 
-                    var card = new Lampa.Card(elem, { card_wide: true, object: object });
-                    card.create();
-                    
-                    // Bind the scroll engine to the card focus
-                    card.onFocus = function() {
-                        active = items.indexOf(card);
-                        scroll.update(card.render()); // Automatically scrolls to keep card in view
-                    };
-                    
-                    card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
-                    card.onBack = function() { Lampa.Activity.backward(); };
-                    
-                    body.append(card.render());
-                    items.push(card);
-                    
-                    loadedCount++;
-                    if (loadedCount === 1) { 
-                        _this.activity.loader(false);
-                        _this.activity.toggle();
-                    }
-                });
+                var card = new Lampa.Card(elem, { card_wide: true, object: object });
+                card.create();
+                
+                card.onFocus = function() { 
+                    active = items.indexOf(card); 
+                    scroll.update(card.render()); 
+                };
+                card.onEnter = function() { Lampa.Activity.push({ url: '', component: 'full', id: elem.id, method: elem.method, card: elem }); };
+                card.onBack = function() { Lampa.Activity.backward(); };
+
+                body.append(card.render());
+                items.push(card);
+
+                // 2. NOW fire the TMDB request to "fill in" the poster silently
+                if (tmdb_id) {
+                    var tmdbUrl = Lampa.TMDB.api((isTv ? 'tv/' : 'movie/') + tmdb_id + '?api_key=' + Lampa.TMDB.key() + '&language=' + (Lampa.Storage.get('language') || 'en'));
+                    network.silent(tmdbUrl, function(tmdb_data) {
+                        if (tmdb_data && tmdb_data.poster_path) {
+                            // Update the physical card image without re-drawing the whole grid
+                            var img = card.render().find('img.card__img')[0];
+                            if (img) img.src = Lampa.Api.img(tmdb_data.poster_path, 'w780');
+                        }
+                    });
+                }
             });
+
+            // 3. Immediately tell Lampa we are ready
+            this.activity.loader(false);
+            this.activity.toggle();
         };
 
         this.empty = function() { html.append(new Lampa.Empty().render()); this.activity.loader(false); this.activity.toggle(); };
@@ -857,27 +857,25 @@
                     else Lampa.Controller.toggle('menu'); 
                 }, 
                 right: function() { 
-                    if (active % 2 === 0 && active < items.length - 1) { active++; items[active].toggle(); } 
+                    if (active % 2 === 0 && (active + 1) < items.length) { active++; items[active].toggle(); } 
                 }, 
                 up: function() { 
                     if (active > 1) { active -= 2; items[active].toggle(); } 
                     else Lampa.Controller.toggle('head'); 
                 }, 
                 down: function() { 
-                    if (active < items.length - 2) { active += 2; items[active].toggle(); } 
+                    if ((active + 2) < items.length) { active += 2; items[active].toggle(); } 
                 }, 
                 back: function() { Lampa.Activity.backward(); } 
             }); 
             Lampa.Controller.toggle('content'); 
         };
 
-        this.pause = function() {}; 
-        this.stop = function() {}; 
-        this.render = function() { return scroll.render(); }; // Return the scroll container, not raw HTML
+        this.pause = function() {}; this.stop = function() {}; 
+        this.render = function() { return scroll.render(); };
         this.destroy = function() { network.clear(); scroll.destroy(); if(html) html.remove(); items = null; };
     }
     Lampa.Component.add('mdblist_catalog', MDBListCatalogComponent);
-
     
     // --- 11. Boot Sequence ---
     if (!window.plugin_interface_ready) startPlugin();
