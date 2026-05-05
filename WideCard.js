@@ -533,16 +533,23 @@
                                     initialTargetElement.text(movie.title);
                                     var apiKey = Lampa.TMDB.key();
                                     var language = Lampa.Storage.get('language');
-                                    var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
+                                
+                                    // Add the include_image_language fallback to the URL!
+                                    var apiUrl = Lampa.TMDB.api((movie.method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language + '&include_image_language=' + language + ',en,null');
 
                                     var masterNet = new Lampa.Reguest();
                                     masterNet.timeout(config.request_timeout || 7000);
                                     masterNet.silent(apiUrl, function (response) { 
                                         var logoPath = null;
                                         if (response && response.logos && response.logos.length > 0) {
-                                            var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
-                                            logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
+                                            // Smart filtering: Look for exact language match first, then fall back
+                                            var langLogos = response.logos.filter(l => l.iso_639_1 === language);
+                                            if (langLogos.length === 0) langLogos = response.logos; 
+                                            
+                                            var bestLogo = langLogos.find(l => l.file_path && !l.file_path.endsWith('.svg')) || langLogos[0];
+                                            logoPath = bestLogo.file_path;
                                         }
+
 
                                         var currentTargetElement = $(eventData.object.activity.render()).find(".full-start-new__title, .full-start__title");
 
