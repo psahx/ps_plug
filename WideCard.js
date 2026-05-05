@@ -361,180 +361,10 @@
     }
 
 
-    // --- 8. EXACT COPY: Old Plugin Info Panel ---
-    function create() { 
-        var html;
-        var timer; 
-        var network = new Lampa.Reguest(); 
-        var loaded = {}; 
-        
-        this.create = function () { 
-            html = $("<div class=\"new-interface-info\">\n            <div class=\"new-interface-info__body\">\n                <div class=\"new-interface-info__head\"></div>\n                <div class=\"new-interface-info__title\"></div>\n                <div class=\"new-interface-info__details\"></div>\n                <div class=\"new-interface-info__description\"></div>\n            </div>\n        </div>"); 
-        }; 
-        
-        this.update = function(data) { 
-            var _this = this; 
-            if (!html) return;
-            if (!data || !data.id || !data.title) return;
+    // --- 8. EXACT COPY: Old Plugin Info Panel --- REMOVED - OBSOLETE
+    
 
-            html.find('.new-interface-info__head, .new-interface-info__details').text('---'); 
-            Lampa.Background.change(Lampa.Api.img(data.backdrop_path, 'w200'));
-            delete mdblistRatingsCache[data.id]; 
-            delete mdblistRatingsPending[data.id]; 
-
-            var descriptionText = data.overview || Lampa.Lang.translate('full_notext');
-            html.find('.new-interface-info__description').text(descriptionText);
-
-            var storageKey = 'show_logo_instead_of_title';
-            var showLogos = (Lampa.Storage.get(storageKey, 'false') === 'true' || Lampa.Storage.get(storageKey, false) === true);
-            
-            var descElement = html.find('.new-interface-info__description');
-            if (descElement.length) {
-                var targetLineClamp = showLogos ? '2' : '4'; 
-                descElement.css({ '-webkit-line-clamp': targetLineClamp, 'line-clamp': targetLineClamp });
-            }
-
-            if (showLogos && data.method && data.title) { 
-                this.displayLogoOrTitle(data); 
-            } else if (data.title) {
-                html.find('.new-interface-info__title').text(data.title); 
-            } else {
-                html.find('.new-interface-info__title').empty(); 
-            }
-
-            if (data.id && data.method) {
-                mdblistRatingsPending[data.id] = true;
-                fetchRatings(data, function(mdblistResult) {
-                    mdblistRatingsCache[data.id] = mdblistResult;
-                    delete mdblistRatingsPending[data.id];
-                    var tmdb_url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
-                    if (typeof loaded !== 'undefined' && loaded[tmdb_url]) {
-                         _this.draw(loaded[tmdb_url]);
-                    }
-                });
-            }
-
-            this.load(data);
-        }; 
-
-        this.draw = function (data) {
-            var create_year = ((data.release_date || data.first_air_date || '0000') + '').slice(0, 4);
-            var vote = parseFloat((data.vote_average || 0) + '').toFixed(1);
-            var head = [];
-            var genreDetails = [];   
-            var countries = Lampa.Api.sources.tmdb.parseCountries(data);
-            var pg = Lampa.Api.sources.tmdb.parsePG(data);
-
-            if (create_year !== '0000') head.push('<span>' + create_year + '</span>');
-            if (countries.length > 0) head.push(countries.join(', '));
-
-            var mdblistResult = mdblistRatingsCache[data.id];
-            
-            // Re-use our clean builder function for the arrays!
-            var lineOneDetails = buildRatingsHtmlArray(mdblistResult, vote);
-
-            if (data.runtime) {
-                lineOneDetails.push(Lampa.Utils.secondsToTime(data.runtime * 60, true));
-            }
-            if (pg) {
-                lineOneDetails.push('<span class="full-start__pg" style="font-size: 0.9em;">' + pg + '</span>');
-            }
-
-            if (data.genres && data.genres.length > 0) {
-                genreDetails.push(data.genres.map(function (item) { return Lampa.Utils.capitalizeFirstLetter(item.name); }).join(' | '));
-            }
-
-            html.find('.new-interface-info__head').empty().append(head.join(', '));
-
-            let lineOneHtml = lineOneDetails.join('<span class="new-interface-info__split">&#9679;</span>');
-            let genresHtml = genreDetails.length > 0 ? genreDetails[0] : '';
-
-            let finalDetailsHtml = '';
-            if (lineOneDetails.length > 0) { finalDetailsHtml += `<div class="line-one-details">${lineOneHtml}</div>`; }
-            if (genresHtml) { finalDetailsHtml += `<div class="genre-details-line">${genresHtml}</div>`; }
-
-            html.find('.new-interface-info__details').html(finalDetailsHtml);
-        }; 
-                       
-        this.load = function (data) {
-            var _this = this; 
-            clearTimeout(timer); 
-            var url = Lampa.TMDB.api((data.name ? 'tv' : 'movie') + '/' + data.id + '?api_key=' + Lampa.TMDB.key() + '&append_to_response=content_ratings,release_dates&language=' + Lampa.Storage.get('language'));
-            if (loaded[url]) return this.draw(loaded[url]); 
-            timer = setTimeout(function () { 
-                network.clear(); 
-                network.timeout(5000); 
-                network.silent(url, function (movie) { 
-                    loaded[url] = movie; 
-                    if (!movie.method) movie.method = data.name ? 'tv' : 'movie'; 
-                    _this.draw(movie); 
-                }); 
-            }, 300); 
-        };
-        
-        this.render = function () { return html; };
-        
-        this.displayLogoOrTitle = function(movieData) {
-            if (!html) return; 
-            var titleElement = html.find('.new-interface-info__title');
-            if (!titleElement.length) return; 
-
-            if (!movieData || !movieData.id || !movieData.method || !movieData.title) {
-                titleElement.empty(); 
-                return;
-            }
-
-            var id = movieData.id;
-            titleElement.text(movieData.title); 
-
-            var method = movieData.method;
-            var apiKey = Lampa.TMDB.key();
-            var language = Lampa.Storage.get('language');
-            var apiUrl = Lampa.TMDB.api((method === 'tv' ? 'tv/' : 'movie/') + id + '/images?api_key=' + apiKey + '&language=' + language);
-
-            network.clear(); 
-            network.timeout(config.request_timeout || 7000);
-            network.silent(apiUrl, function (response) { 
-                var logoPath = null;
-                if (response && response.logos && response.logos.length > 0) {
-                    var pngLogo = response.logos.find(logo => logo.file_path && !logo.file_path.endsWith('.svg'));
-                    logoPath = pngLogo ? pngLogo.file_path : response.logos[0].file_path;
-                }
-
-                var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
-
-                if (currentTitleElement && currentTitleElement.length) {
-                    if (logoPath) {
-                         var selectedHeight = Lampa.Storage.get('info_panel_logo_max_height', '100'); 
-                         if (!/^\d+$/.test(selectedHeight)) { selectedHeight = '100'; }
-                         var imageSize = 'original'; 
-                         var styleAttr = `max-height: ${selectedHeight}px; max-width: 100%; vertical-align: middle; margin-bottom: 0.1em;`;
-                         var imgUrl = Lampa.TMDB.image('/t/p/' + imageSize + logoPath);
-                         currentTitleElement.empty().html(`<img src="${imgUrl}" style="${styleAttr}" alt="${movieData.title} Logo" />`); 
-                    } else { currentTitleElement.text(movieData.title); }
-                }
-
-            }, function(xhr, status) { 
-                 var currentTitleElement = html ? html.find('.new-interface-info__title') : null;
-                  if (currentTitleElement && currentTitleElement.length) {
-                      if(movieData && movieData.title) { currentTitleElement.text(movieData.title); } 
-                      else { currentTitleElement.empty(); }
-                  }
-            }); 
-        }; 
-        
-        this.empty = function () {};
-        
-        this.destroy = function () { 
-            html.remove(); 
-            loaded = {}; 
-            html = null; 
-            mdblistRatingsCache = {}; 
-            mdblistRatingsPending = {}; 
-        }; 
-    }
-
-    // --- 9. EXACT COPY: Old Plugin Grid Replacement ---
+    // --- 9. EXACT COPY: Old Plugin Grid Replacement (Cleaned of Section 8) ---
     function component(object) { 
         var network = new Lampa.Reguest(); 
         var scroll = new Lampa.Scroll({ mask: true, over: true, scroll_by_item: true }); 
@@ -542,7 +372,6 @@
         var html = $('<div class="new-interface"><img class="full-start__background"></div>'); 
         var active = 0; 
         var newlampa = Lampa.Manifest.app_digital >= 166; 
-        var info; 
         var lezydata; 
         var viewall = Lampa.Storage.field('card_views_type') == 'view' || Lampa.Storage.field('navigation_type') == 'mouse'; 
         var background_img = html.find('.full-start__background'); 
@@ -584,11 +413,7 @@
         this.build = function (data) {
             var _this2 = this;
             lezydata = data; 
-            info = new create(object); 
-            info.create(); 
-            scroll.minus(info.render()); 
             data.slice(0, viewall ? data.length : 2).forEach(this.append.bind(this)); 
-            html.append(info.render()); 
             html.append(scroll.render()); 
             if (newlampa) {
                 Lampa.Layer.update(html); 
@@ -599,8 +424,9 @@
                     if (step > 0) _this2.down(); 
                     else if (active > 0) _this2.up(); 
                 }; 
-            } if (items.length > 0 && items[0] && items[0].data) { 
-                active = 0; info.update(items[active].data); 
+            } 
+            if (items.length > 0 && items[0] && items[0].data) { 
+                active = 0; 
                 this.background(items[active].data); 
             }    
             this.activity.loader(false); 
@@ -634,9 +460,8 @@
             item.onBack = this.back.bind(this); 
             item.onToggle = function () { active = items.indexOf(item); }; 
             if (this.onMore) item.onMore = this.onMore.bind(this); 
-            item.onFocus = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; 
-            item.onHover = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; info.update(elem); _this3.background(elem); }; 
-            item.onFocusMore = info.empty.bind(info); 
+            item.onFocus = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; _this3.background(elem); }; 
+            item.onHover = function (elem) { if (!elem.method) elem.method = elem.name ? 'tv' : 'movie'; _this3.background(elem); }; 
             scroll.append(item.render()); 
             items.push(item); 
         }; 
@@ -669,11 +494,11 @@
             network.clear(); 
             Lampa.Arrays.destroy(items); 
             scroll.destroy(); 
-            if (info) info.destroy(); 
             if (html) html.remove(); 
-            items = null; network = null; lezydata = null; info = null; html = null; 
+            items = null; network = null; lezydata = null; html = null; 
         }; 
     }
+
 
     // --- 10. EXACT COPY: Old Plugin Init + TWEAK 3: Full Page Ratings ---
     function startPlugin() {
